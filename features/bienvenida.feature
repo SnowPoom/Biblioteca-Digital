@@ -1,4 +1,5 @@
 # language: es
+#Ss
 Característica: Bienvenida de la plataforma
 
   Escenario: Mostrar el mensaje de inicio
