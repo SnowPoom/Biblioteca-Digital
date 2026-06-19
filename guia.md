@@ -75,4 +75,77 @@ Django usa el patrón MVT. Para que una página exista en el navegador, siempre 
 1. **Lenguaje Simple:** Documentamos y escribimos los casos de uso para que los entienda cualquier persona. Evitemos términos hiper-técnicos o rebuscados en las descripciones del negocio.
 2. **¡NO subas el entorno virtual!:** El archivo `.gitignore` es sagrado. Nunca debe subirse la carpeta `venv/`, ni la base de datos local `db.sqlite3`.
 3. **La terminal integrada es tu amiga:** Usa `Ctrl + ñ` en VS Code para correr el servidor (`python manage.py runserver`) o las pruebas (`python manage.py behave`). Todo en una misma ventana.
-4. **Si se rompe, pregunta:** Todos estamos aprendiendo. Si algo falla en el entorno virtual o Git, avisa al equipo antes de borrar cosas al azar.
+4. **Si se rompe, pregunta:** Todos estamos aprendiendo. Si algo falla en el entorno virtual o Git, avisa al equipo antes de borrar cosas al azar. 
+
+## 🤖 6. Guía de Commits y Magia en el Tablero (Automatización)
+
+Para que nuestro tablero de GitHub se actualice solo (gracias a los *Workflows* automáticos) y no tengamos que arrastrar tarjetas a la columna de "Listo" manualmente, debemos escribir nuestros mensajes de guardado (*commits*) siguiendo una regla muy sencilla.
+
+### La Fórmula del Commit Perfecto
+
+Cada vez que vayas a guardar cambios en VS Code, tu mensaje debe tener esta estructura:
+
+`tipo: qué hiciste de forma breve. PalabraMágica #NúmeroDeTarea`
+
+**1. El Tipo (¿Qué estamos subiendo?)**
+Usa una de estas palabras cortas al inicio para que todos sepamos de qué trata el cambio sin tener que revisar el código:
+
+* `feat:` (Característica nueva) $\rightarrow$ *Ej: feat: crear página de catálogo*
+* `fix:` (Arreglo de error) $\rightarrow$ *Ej: fix: corregir texto superpuesto en inicio*
+* `docs:` (Documentación) $\rightarrow$ *Ej: docs: actualizar la guía del equipo*
+* `test:` (Pruebas BDD) $\rightarrow$ *Ej: test: agregar escenarios Gherkin para buscador*
+
+**2. La Palabra Mágica (Para cerrar tareas automáticamente)**
+Para que GitHub detecte tu código y mueva la tarjeta a la columna de finalizado, **debes** usar una de estas palabras al final de tu mensaje, seguida de un espacio y el número exacto de tu tarea (*Issue*):
+
+* `Closes #1` (La más común, "Cierra el número 1")
+* `Fixes #2` ("Arregla el número 2", ideal para errores)
+* `Resolves #3` ("Resuelve el número 3")
+
+### Ejemplos Reales:
+
+✅ **¡Perfecto!**
+`feat: agregar buscador de libros por autor. Closes #5`
+*(Esto sube el código y el sistema mueve automáticamente la tarjeta #5 a "Done").*
+
+✅ **¡Perfecto!**
+`fix: ajustar color del título en la página principal. Fixes #12`
+
+❌ **Mal (No hará magia en el tablero)**
+`subiendo el buscador de libros`
+*(Falta el tipo, la palabra mágica y el número. El sistema no sabrá de qué tarea hablas y tendrás que mover la tarjeta a mano).*
+
+### El flujo con ramas y Pull Requests
+
+Si en el futuro trabajamos uniendo código a través de *Pull Requests*, nuestros *Workflows* también están configurados para detectar estas palabras mágicas. En cuanto el código se apruebe y se una al proyecto principal, la tarea se cerrará sola de forma inmediata.
+
+## 🌿 7. El Uso de Ramas (Branches) y Pull Requests
+
+Para evitar que la plataforma se rompa y asegurar que el trabajo de uno no borre el del otro, la regla de oro es: **nunca trabajamos ni guardamos cambios directamente en la rama `main`**.
+
+Cada vez que tomes una tarea nueva del tablero, vas a crear una "rama". Piensa en una rama como un borrador seguro o un espacio de trabajo aislado donde puedes experimentar sin afectar la versión oficial del proyecto.
+
+### ¿Cómo nombrar tu rama?
+
+El nombre de tu rama debe decirle a cualquier compañero qué estás haciendo y a qué tarea del tablero pertenece, con solo un vistazo. Usa siempre letras minúsculas, sin espacios (usa guiones) y sigue este formato: `tipo/numero-tarea-descripcion-corta`.
+
+* **Para funcionalidades nuevas:** Usa el prefijo `feature/`
+  * *Ejemplo:* `feature/5-buscador-autores` (Estás haciendo la tarea #5, que es el buscador).
+* **Para arreglar errores:** Usa el prefijo `fix/`
+  * *Ejemplo:* `fix/12-color-boton` (Estás arreglando el botón de la tarea #12).
+
+### El flujo de trabajo paso a paso en VS Code:
+
+1. **Actualízate primero:** Antes de empezar cualquier tarea, asegúrate de estar en la rama `main` y haz clic en el botón de **Sincronizar cambios** (o ejecuta `git pull`). Esto descarga lo último que haya subido el resto del equipo.
+2. **Crea tu rama:** En la esquina inferior izquierda de VS Code, haz clic donde dice `main`. Se abrirá un menú en la parte superior; elige **"Crear nueva rama"** (Create new branch) y escribe el nombre (ej. `feature/3-catalogo`).
+3. **Programa tranquilo:** Escribe tu código, corre tus pruebas de Behave y haz tus *commits* con las reglas que ya aprendimos (ej. `feat: crear catálogo. Closes #3`).
+4. **Sube tu rama:** En la pestaña de Git de VS Code, haz clic en **Publicar rama** (Publish branch) para que se suba a GitHub.
+
+### Uniendo tu trabajo al proyecto oficial (Pull Requests)
+
+Una vez que tu rama está subida a GitHub, no la mezclas tú mismo con el `main`. Vamos a trabajar en equipo:
+
+1. Ve a la página de nuestro repositorio en GitHub. Verás un botón verde grande que dice **"Compare & pull request"**. Haz clic ahí.
+2. Esto crea un "Pull Request" (PR), que es básicamente decirle al equipo: *"Chicos, terminé la tarea del catálogo, ¿alguien puede revisar que todo funcione bien?"*.
+3. Un compañero leerá tu código rápidamente. Si todo está en orden, él presionará el botón de **"Merge"** (Unir).
+4. ¡Listo! Tu código se une a `main` y, como usaste la palabra mágica en tu commit, la tarea se moverá sola a la columna de "Listo" en nuestro tablero.
