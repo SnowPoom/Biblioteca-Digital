@@ -1,72 +1,61 @@
 # language: es
 
-Característica: Seguimiento de actividad académica (Feed)
+Característica: Seguimiento de actividad académica (Feed de seguimiento)
   Como usuario de la biblioteca digital
-  Quiero ver en un feed lo que publican las personas que sigo
-  Para estar al día con el contenido de mi comunidad académica
+  Quiero ver en un feed el contenido publicado por los usuarios que sigo
+  Para estar al día con los recursos de mi comunidad académica sin buscarlo activamente
 
   Antecedentes:
-    Dado que estoy registrado en la plataforma
-    Y he iniciado sesión en la aplicación
-
-  Escenario: Ver el feed con publicaciones de mis seguidos
-    Dado que sigo a los usuarios "Ana García" y "Carlos López"
-    Y ambos han publicado material recientemente
-    Cuando entro a la sección de feed
-    Entonces veo sus publicaciones ordenadas de la más reciente a la más antigua
-
-  Escenario: El feed no muestra contenido de personas que no sigo
-    Dado que hay usuarios en la plataforma que no sigo
-    Cuando reviso mi feed
-    Entonces solo aparece contenido de las personas que sigo
-    Y no veo publicaciones de otros usuarios
-
-  Escenario: Filtrar el feed para ver solo libros
-    Dado que estoy en la sección de feed
-    Cuando selecciono el filtro "Solo libros"
-    Entonces el feed muestra únicamente los libros publicados por mis seguidos
-    Y las colecciones no aparecen en esta vista
-
-  Escenario: Filtrar el feed para ver solo colecciones
-    Dado que estoy en la sección de feed
-    Cuando selecciono el filtro "Solo colecciones"
-    Entonces el feed muestra únicamente las colecciones de mis seguidos
-    Y los libros individuales no aparecen en esta vista
-
-  Escenario: Ver una republicación en el feed con la autoría original
-    Dado que alguien que sigo republicó un libro de otro usuario
-    Cuando reviso mi feed
-    Entonces veo esa publicación indicando que fue republicada por la persona que sigo
-    Y el nombre del autor original también aparece visible
-
-  Escenario: Feed vacío cuando no sigo a nadie
-    Dado que no sigo a ningún usuario todavía
-    Cuando entro a la sección de feed
-    Entonces veo el feed de recomendaciones generales de la plataforma
-    Y no veo una pantalla vacía sin contenido
-
-  Escenario: Feed vacío cuando mis seguidos no tienen publicaciones recientes
-    Dado que sigo a usuarios que no han publicado nada recientemente
-    Cuando entro a la sección de feed
-    Entonces veo el feed de recomendaciones generales en lugar del feed vacío
-
-  Escenario: Ir al detalle de una publicación desde el feed
-    Dado que estoy revisando el feed y veo una publicación que me interesa
-    Cuando toco esa publicación
-    Entonces la app me lleva al detalle completo de ese libro o colección
+    Dado que el usuario ha iniciado sesión en la plataforma
 
   Escenario: Seguir a otro usuario
-    Dado que estoy viendo el perfil de otro usuario
-    Cuando toco el botón "Seguir"
-    Entonces empiezo a seguir a ese usuario
-    Y sus publicaciones empiezan a aparecer en mi feed
+    Dado que el usuario está visitando el perfil público de otro usuario
+    Cuando el usuario decide seguir a ese perfil
+    Entonces el contenido que publique ese usuario comienza a aparecer en el feed de seguimiento
 
   Escenario: Dejar de seguir a un usuario elimina su contenido del feed de inmediato
-    Dado que sigo a "María Torres" y su contenido aparece en mi feed
-    Cuando entro a su perfil y toco "Dejar de seguir"
-    Entonces las publicaciones de "María Torres" desaparecen de mi feed en ese momento
+    Dado que el usuario sigue a otro usuario cuyo contenido aparece en su feed
+    Cuando el usuario deja de seguir a ese usuario
+    Entonces el contenido de ese usuario desaparece del feed de seguimiento de forma inmediata
 
-  Escenario: Recibir notificación cuando alguien empieza a seguirme
-    Dado que soy usuario de la plataforma
-    Cuando otro usuario toca "Seguir" en mi perfil
-    Entonces recibo una notificación indicando que ese usuario empezó a seguirme
+  Escenario: El feed de seguimiento muestra publicaciones en orden cronológico inverso
+    Dado que el usuario sigue a uno o más usuarios que han publicado material recientemente
+    Cuando el usuario accede al feed de seguimiento
+    Entonces las publicaciones aparecen ordenadas de la más reciente a la más antigua
+
+  Escenario: El feed de seguimiento no muestra contenido de usuarios no seguidos
+    Dado que hay usuarios en la plataforma a los que el usuario no sigue
+    Cuando el usuario accede al feed de seguimiento
+    Entonces solo aparece contenido de los usuarios que sigue
+
+  Esquema del escenario: Filtrar el feed de seguimiento por tipo de contenido
+    Dado que el usuario accede al feed de seguimiento
+    Cuando el usuario filtra por <tipo_contenido>
+    Entonces el feed muestra únicamente <tipo_contenido> publicado por sus seguidos
+    Y el otro tipo de contenido no aparece en esa vista
+
+    Ejemplos:
+      | tipo_contenido |
+      | libros         |
+      | colecciones    |
+
+  Escenario: Una republicación en el feed preserva la autoría original
+    Dado que un usuario seguido ha republicado contenido de un tercero
+    Cuando el usuario accede al feed de seguimiento
+    Entonces esa publicación aparece indicando quién la republicó
+    Y la autoría original del contenido es visible
+
+  Escenario: Cuando no hay seguidos ni publicaciones recientes se muestra el feed de recomendaciones
+    Dado que el usuario no sigue a nadie o sus seguidos no tienen publicaciones recientes
+    Cuando el usuario accede al feed de seguimiento
+    Entonces el sistema muestra el feed de recomendaciones en su lugar
+
+  Escenario: Acceder al detalle de una publicación desde el feed
+    Dado que el usuario está revisando el feed de seguimiento
+    Cuando el usuario selecciona una publicación
+    Entonces el sistema lo redirige al detalle completo de ese libro o colección
+
+  Escenario: Recibir notificación cuando alguien empieza a seguirte
+    Dado que el usuario tiene un perfil público en la plataforma
+    Cuando otro usuario comienza a seguirlo
+    Entonces el usuario recibe una notificación informando quién lo empezó a seguir

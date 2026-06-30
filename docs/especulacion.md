@@ -10,19 +10,19 @@ personalizadas y compartirlas con la comunidad académica.
 
 # Objetivos de negocio
 
-1.  Ofrecer una plataforma centralizada de contenido 
-académico que fomente la accesibilidad y disponibilidad de recusos originales a toda la comunidad.
-    
-2. Ofrecer herramientas para
-   crear, compartir y descubrir contenido entre sí para fomentar la cultura de colaborarión entre la comunidad educativa.
+1. Ofrecer una plataforma centralizada de contenido académico
+   que fomente la accesibilidad y disponibilidad de recursos originales a toda la comunidad. 
+2. Ofrecer herramientas para crear, compartir y descubrir contenido entre sí 
+   para fomentar la cultura de colaboración entre la comunidad educativa.
 
 # Capacidades
 
--  Gestión de material y colecciones digitales originales.
-- Exploración de material educativos digitales
+- Gestión de material y colecciones digitales originales.
+- Exploración de material educativo digital.
 - Colaboración en colecciones.
 
 # Características
+
 ### Capacidad 1: Gestión de material y colecciones digitales originales
  * Publicación de material educativos
  * Anotación y enriquecimiento de material
@@ -33,4 +33,3 @@ académico que fomente la accesibilidad y disponibilidad de recusos originales a
 ### Capacidad 3: Colaboración en colecciones
  * Coautoría y edición compartida de colecciones
  * Sistema de revisión y retroalimentación entre pares
- * Gestión de permisos y visibilidad

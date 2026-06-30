@@ -2,56 +2,56 @@
 
 Característica: Sistema de revisión y retroalimentación entre pares
   Como participante de una colección colaborativa
-  Quiero poder comentar y proponer cambios sobre el contenido de la colección
+  Quiero comentar y proponer cambios sobre el contenido de la colección
   Para mejorar el material de manera conjunta con mis compañeros
 
   Antecedentes:
-    Dado que estoy registrado en la plataforma
-    Y he iniciado sesión en la aplicación
-    Y soy participante de la colección "Recursos de Física"
+    Dado que el usuario ha iniciado sesión en la plataforma
+    Y que el usuario es participante de una colección colaborativa
 
   Escenario: Dejar un comentario de retroalimentación sobre un libro de la colección
-    Dado que estoy viendo el libro "Mecánica Clásica" dentro de la colección
-    Cuando toco la opción "Dejar retroalimentación"
-    Y escribo "Este libro cubre muy bien los fundamentos, pero le faltan ejercicios resueltos"
-    Y toco "Enviar"
-    Entonces mi comentario queda guardado
+    Dado que el usuario está visualizando un libro dentro de la colección
+    Cuando el usuario deja un comentario de retroalimentación sobre ese libro
+    Entonces el comentario queda guardado
     Y todos los participantes de la colección pueden verlo
 
-  Escenario: Los comentarios solo son visibles para los miembros de la colección
-    Dado que hay comentarios de retroalimentación en la colección
-    Cuando un usuario que no es miembro de la colección la encuentra en la biblioteca
-    Entonces ese usuario no puede ver los comentarios internos de retroalimentación
+  Escenario: Los comentarios de retroalimentación no son visibles fuera de la colección
+    Dado que una colección tiene comentarios de retroalimentación registrados
+    Cuando un usuario que no es miembro de la colección accede a ella
+    Entonces ese usuario no puede ver los comentarios internos
 
   Escenario: Proponer incluir un nuevo libro en la colección
-    Dado que estoy dentro de la colección "Recursos de Física"
-    Cuando toco "Proponer un libro" y selecciono "Termodinámica Aplicada"
-    Y toco "Enviar solicitud"
-    Entonces el administrador recibe la solicitud de inclusión
+    Dado que el usuario está dentro de una colección colaborativa
+    Cuando el usuario propone incluir un libro mediante una solicitud de cambio
+    Entonces el administrador recibe la solicitud
     Y el libro no se agrega hasta que el administrador la apruebe
 
   Escenario: Proponer excluir un libro de la colección
-    Dado que estoy dentro de la colección "Recursos de Física"
-    Cuando toco el libro "Óptica Geométrica" y elijo "Proponer exclusión"
-    Y escribo la razón "Este libro está desactualizado"
-    Y toco "Enviar solicitud"
-    Entonces el administrador recibe la solicitud de exclusión
-    Y el libro permanece en la colección hasta que el administrador decida
+    Dado que el usuario está dentro de una colección colaborativa
+    Cuando el usuario propone excluir un libro mediante una solicitud de cambio con su justificación
+    Entonces el administrador recibe la solicitud
+    Y el libro permanece en la colección hasta que el administrador tome una decisión
 
   Escenario: El administrador aprueba una solicitud de cambio
-    Dado que soy administrador de la colección y recibí una solicitud para incluir un libro
-    Cuando entro a la sección de solicitudes pendientes y toco "Aprobar"
-    Entonces el libro se agrega a la colección
-    Y el cambio queda registrado en el historial de actividad
+    Dado que el administrador tiene una solicitud de cambio pendiente en la colección
+    Cuando el administrador aprueba la solicitud
+    Entonces el cambio propuesto se aplica a la colección
+    Y queda registrado en el historial de actividad
 
-  Escenario: Un comentario con contenido inapropiado es rechazado
-    Dado que estoy dejando retroalimentación sobre un libro de la colección
-    Cuando escribo un comentario con lenguaje inapropiado y toco "Enviar"
-    Entonces el sistema detecta el contenido y no permite publicar el comentario
-    Y veo el mensaje "El contenido no cumple con las normas de la comunidad"
+  Escenario: El administrador rechaza una solicitud de cambio
+    Dado que el administrador tiene una solicitud de cambio pendiente en la colección
+    Cuando el administrador rechaza la solicitud
+    Entonces el contenido de la colección no se modifica
+    Y el solicitante es notificado del rechazo
+
+  Escenario: Un comentario con contenido inapropiado es rechazado por el sistema
+    Dado que el usuario intenta dejar un comentario de retroalimentación con contenido inapropiado
+    Cuando el usuario envía el comentario
+    Entonces el sistema detecta el contenido y rechaza la operación
+    Y el comentario no queda registrado en la colección
 
   Escenario: El historial de revisiones no puede ser eliminado
-    Dado que hay comentarios y propuestas de cambio registradas en la colección
-    Cuando intento eliminar un comentario del historial de revisiones
-    Entonces el sistema no me permite borrarlo
-    Y veo el mensaje "Los registros de revisión son permanentes"
+    Dado que existen comentarios y propuestas de cambio registradas en la colección
+    Cuando un participante intenta eliminar un registro del historial de revisiones
+    Entonces el sistema rechaza la operación
+    Y el registro permanece en el historial

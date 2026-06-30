@@ -2,111 +2,90 @@
 
 Característica: Publicación de material educativo
   Como usuario autenticado de la biblioteca digital
-  Quiero poder publicar mis propios libros y colecciones
+  Quiero publicar libros y colecciones propias en la plataforma
   Para compartir mis recursos educativos con la comunidad académica
 
   Antecedentes:
-    Dado que estoy registrado en la plataforma
-    Y he iniciado sesión en la aplicación
+    Dado que el usuario ha iniciado sesión en la plataforma
 
-  Escenario: Publicar un libro exitosamente
-    Dado que estoy en la pantalla de creación de libro
-    Y he escrito el título "Introducción al Álgebra Lineal"
-    Y he subido una portada como imagen
-    Y he agregado contenido de texto al libro
-    Y he seleccionado la categoría "Matemáticas"
-    Cuando toco el botón "Publicar"
-    Entonces el sistema valida automáticamente el contenido
+  Escenario: Publicar un libro con todos los requisitos completos
+    Dado que el usuario ha preparado un libro con título, portada, contenido textual y categoría
+    Cuando el usuario solicita publicar el libro
+    Entonces el sistema valida el contenido automáticamente
     Y el libro queda visible para la comunidad académica
 
-  Escenario: No se puede publicar un libro sin portada
-    Dado que estoy en la pantalla de creación de libro
-    Y he escrito el título y el contenido del libro
-    Pero no he subido ninguna imagen de portada
-    Cuando toco el botón "Publicar"
-    Entonces veo el mensaje "Debes subir una portada para poder publicar"
-    Y el libro no se publica
+  Esquema del escenario: No se puede publicar un libro con requisitos incompletos
+    Dado que el usuario está creando un libro sin <requisito_faltante>
+    Cuando el usuario intenta publicar el libro
+    Entonces el sistema rechaza la operación
+    Y el libro no queda publicado
 
-  Escenario: No se puede publicar un libro sin texto
-    Dado que estoy en la pantalla de creación de libro
-    Y he subido la portada
-    Pero el contenido del libro solo tiene imágenes sin texto
-    Cuando toco el botón "Publicar"
-    Entonces veo el mensaje "El libro debe tener contenido de texto"
-    Y el libro no se publica
+    Ejemplos:
+      | requisito_faltante |
+      | portada            |
+      | contenido textual  |
+      | categoría          |
 
-  Escenario: No se puede publicar un libro sin categoría
-    Dado que estoy en la pantalla de creación de libro
-    Y he llenado el título, portada y contenido del libro
-    Pero no he seleccionado ninguna categoría
-    Cuando toco el botón "Publicar"
-    Entonces veo el mensaje "Debes seleccionar al menos una categoría"
-    Y el libro no se publica
+  Escenario: No se puede publicar un libro compuesto únicamente por imágenes
+    Dado que el usuario ha preparado un libro cuyo contenido consiste solo en imágenes sin texto
+    Cuando el usuario intenta publicar el libro
+    Entonces el sistema rechaza la operación
+    Y el libro no queda publicado
 
-  Escenario: El libro no puede superar las 500 páginas
-    Dado que estoy creando un libro
-    Y el contenido del libro tiene más de 500 páginas
-    Cuando intento publicarlo
-    Entonces veo el mensaje "El libro no puede tener más de 500 páginas"
-    Y el sistema no permite continuar hasta reducir el contenido
+  Escenario: No se puede publicar un libro que supera el límite de páginas
+    Dado que el usuario ha preparado un libro que excede las 500 páginas
+    Cuando el usuario intenta publicar el libro
+    Entonces el sistema rechaza la operación
+    Y el libro no queda publicado hasta que el contenido sea reducido
 
-  Escenario: Editar los datos de un libro ya publicado
-    Dado que tengo un libro publicado en mi perfil
-    Cuando entro al libro y toco "Editar"
-    Y cambio el título a "Álgebra Lineal Avanzada"
-    Y toco "Guardar cambios"
-    Entonces los datos del libro se actualizan de inmediato
-    Y el contenido publicado sigue siendo visible
+  Escenario: Editar los metadatos de un libro publicado no requiere nueva validación
+    Dado que el usuario tiene un libro publicado en su perfil
+    Cuando el usuario modifica los metadatos del libro
+    Entonces los cambios se aplican de forma inmediata
+    Y el libro continúa visible para la comunidad
 
-  Escenario: Editar el contenido de un libro ya publicado requiere nueva validación
-    Dado que tengo un libro publicado en mi perfil
-    Cuando entro al libro, toco "Editar" y modifico el contenido de texto
-    Y toco "Guardar cambios"
-    Entonces el libro queda en estado de revisión
-    Y no es visible para otros usuarios hasta que pase la validación automática
+  Escenario: Editar el contenido de un libro publicado requiere nueva validación
+    Dado que el usuario tiene un libro publicado en su perfil
+    Cuando el usuario modifica el contenido textual del libro
+    Entonces el libro pasa a estado de revisión
+    Y deja de ser visible para otros usuarios hasta superar la validación automática
 
-  Escenario: Retirar un libro publicado
-    Dado que tengo un libro publicado en mi perfil
-    Cuando entro al libro y toco "Retirar publicación"
-    Y confirmo la acción
-    Entonces el libro deja de aparecer para otros usuarios
-    Y solo yo puedo verlo desde mi perfil
+  Escenario: Retirar un libro publicado lo hace invisible para otros usuarios
+    Dado que el usuario tiene un libro publicado en su perfil
+    Cuando el usuario retira la publicación del libro
+    Entonces el libro deja de estar disponible para el resto de la comunidad
+    Y el usuario puede seguir accediendo a él desde su propio perfil
 
-  Escenario: No puedo editar el libro de otro usuario
-    Dado que estoy viendo el libro de otro usuario
-    Cuando intento acceder a la opción de editar
-    Entonces no veo la opción "Editar" disponible
-    Y el sistema no me permite realizar cambios
+  Escenario: Un usuario no puede editar el material publicado por otro
+    Dado que el usuario está visualizando un libro publicado por otro usuario
+    Cuando el usuario intenta modificar ese libro
+    Entonces el sistema rechaza la operación
 
-  Escenario: Republicar el material de otro usuario
-    Dado que estoy viendo un libro publicado por otro usuario
-    Cuando toco la opción "Republicar en mi perfil"
-    Entonces el libro aparece en mi perfil
-    Y la autoría original del otro usuario se conserva visible
+  Escenario: Republicar el material de otro usuario preserva la autoría original
+    Dado que el usuario está visualizando un libro publicado por otro usuario
+    Cuando el usuario republica ese libro en su perfil
+    Entonces el libro aparece en el perfil del usuario como contenido republicado
+    Y la autoría original del libro se conserva visible
 
-  Escenario: Ver las métricas de mis publicaciones
-    Dado que tengo al menos un libro publicado
-    Cuando accedo al detalle de mi libro
-    Entonces puedo ver el número de veces que fue visto
-    Y cuántas veces fue republicado
-    Y cuántas veces fue descargado
+  Escenario: El autor puede ver las métricas de sus publicaciones
+    Dado que el usuario tiene al menos un libro publicado
+    Cuando el usuario accede al detalle de ese libro
+    Entonces puede consultar el número de visualizaciones, republicaciones y descargas
 
-  Escenario: Publicar una colección sin categoría falla
-    Dado que estoy creando una colección
-    Y le he puesto un nombre y he agregado libros
-    Pero no he seleccionado ninguna etiqueta de categoría
-    Cuando toco "Publicar colección"
-    Entonces veo el mensaje "La colección necesita al menos una categoría"
-    Y la colección no se publica
+  Escenario: No se puede publicar una colección sin categoría
+    Dado que el usuario ha preparado una colección con nombre y libros pero sin categoría
+    Cuando el usuario intenta publicar la colección
+    Entonces el sistema rechaza la operación
+    Y la colección no queda publicada
 
-  Escenario: Una colección puede tener hasta 20 libros
-    Dado que tengo una colección con 20 libros
-    Cuando intento agregar un libro más a la colección
-    Entonces veo el mensaje "La colección ya alcanzó el límite de libros permitidos"
-    Y el libro no se agrega
+  Escenario: Una colección no puede superar el límite de libros configurado
+    Dado que una colección ha alcanzado su límite máximo de libros
+    Cuando el usuario intenta agregar un libro más a esa colección
+    Entonces el sistema rechaza la operación
+    Y el libro no se agrega a la colección
 
-  Escenario: Eliminar un libro de una colección no lo borra de la biblioteca
-    Dado que tengo una colección con un libro llamado "Física Cuántica"
-    Cuando elimino ese libro de la colección
+  Escenario: Eliminar un libro de una colección no lo elimina de la biblioteca
+    Dado que el usuario tiene una colección que contiene un libro
+    Cuando el usuario elimina ese libro de la colección
     Entonces el libro desaparece de la colección
-    Pero sigue disponible para cualquier usuario en la biblioteca general
+    Y el libro sigue disponible para cualquier usuario en la biblioteca general
