@@ -21,4 +21,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('src.materiales.urls')),
     path('auth/', include('src.login.urls', namespace='login')),
+    path('feed/', include('src.feed.urls', namespace='feed')),
+    path('busqueda/', include('src.busqueda.urls', namespace='busqueda')),
+    path('colecciones/', include('src.colecciones.urls', namespace='colecciones')),
 ]

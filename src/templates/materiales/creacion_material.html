@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creación del material</title>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text: #000000;
+            --accent: #6798f2;
+            --surface: #d9d9d9;
+            --border: #000000;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: 'Roboto', Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .page {
+            min-height: 100vh;
+            padding: 24px 32px 40px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .shell {
+            width: min(1440px, 100%);
+            position: relative;
+        }
+
+        .title {
+            font-size: 48px;
+            font-weight: 600;
+            margin: 24px 0 0 16px;
+            letter-spacing: -0.48px;
+        }
+
+        .avatar {
+            width: 74px;
+            height: 72px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #d9d9d9, #bfbfbf);
+            position: absolute;
+            top: 24px;
+            right: 10px;
+        }
+
+        .editor-panel {
+            margin-top: 30px;
+            border: 1px solid var(--border);
+            min-height: 792px;
+            padding: 28px 24px 36px;
+            position: relative;
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .toolbar-label {
+            font-size: 48px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .publish-btn {
+            background: var(--accent);
+            border: none;
+            padding: 20px 28px;
+            font-size: 24px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .editor-surface {
+            background: var(--surface);
+            min-height: 630px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 600;
+            border: 1px solid #bdbdbd;
+        }
+
+        .editor-surface span {
+            color: #111;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="shell">
+            <div class="title">{{ titulo }}</div>
+            <div class="avatar" aria-label="Perfil"></div>
+
+            <section class="editor-panel">
+                <div class="toolbar">
+                    <p class="toolbar-label">barra de herramientas para edición</p>
+                    <button class="publish-btn" type="button">Publicar</button>
+                </div>
+                <div class="editor-surface">
+                    <span>Texto</span>
+                </div>
+            </section>
+        </div>
+    </div>
+</body>
+</html>

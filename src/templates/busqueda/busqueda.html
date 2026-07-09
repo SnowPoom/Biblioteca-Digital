@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Búsqueda - Biblioteca</title>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text: #000000;
+            --muted: #5f5e5e;
+            --accent: #3ff5a9;
+            --surface: #d9d9d9;
+            --surface-soft: #f4f4f4;
+            --border: #000000;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: 'Roboto', Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .page {
+            min-height: 100vh;
+            padding: 24px 40px 60px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .shell {
+            width: min(1400px, 100%);
+            position: relative;
+        }
+
+        .avatar {
+            width: 74px;
+            height: 72px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #d9d9d9, #bfbfbf);
+            position: absolute;
+            top: 24px;
+            right: 0;
+        }
+
+        .sidebar {
+            position: absolute;
+            left: 40px;
+            top: 360px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            font-size: 25px;
+            font-weight: 600;
+        }
+
+        .sidebar a {
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .sidebar .active {
+            color: #111;
+        }
+
+        .search-bar {
+            margin: 24px 0 0 232px;
+            width: min(1000px, calc(100% - 232px));
+            background: var(--surface);
+            border-radius: 25px;
+            padding: 20px 24px 20px 86px;
+            color: var(--muted);
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .results-title {
+            margin: 40px 0 24px 232px;
+            font-size: 48px;
+            font-weight: 600;
+            letter-spacing: -0.48px;
+        }
+
+        .result-card {
+            margin-left: 232px;
+            margin-bottom: 24px;
+            width: min(1005px, calc(100% - 232px));
+            background: var(--surface);
+            padding: 24px;
+            display: grid;
+            grid-template-columns: 147px 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .image-placeholder {
+            width: 147px;
+            height: 161px;
+            background: var(--surface-soft);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 25px;
+            font-weight: 600;
+            border: 1px solid #e0d7d7;
+        }
+
+        .content h3 {
+            margin: 0 0 12px;
+            font-size: 25px;
+            font-weight: 600;
+        }
+
+        .tags {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+
+        .tag {
+            background: var(--accent);
+            padding: 8px 18px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .content p {
+            margin: 0;
+            font-size: 15px;
+            line-height: 1.5;
+            color: #111;
+            max-width: 760px;
+        }
+
+        .collection-card {
+            margin-left: 232px;
+            margin-bottom: 24px;
+            width: min(1005px, calc(100% - 232px));
+            background: var(--surface);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .collection-card h3 {
+            margin: 0;
+            font-size: 25px;
+            font-weight: 600;
+        }
+
+        @media (max-width: 960px) {
+            .sidebar { position: static; flex-direction: row; flex-wrap: wrap; margin: 40px 0 0 232px; }
+            .search-bar, .results-title, .result-card, .collection-card { margin-left: 0; width: 100%; }
+            .results-title { font-size: 36px; }
+        }
+
+        @media (max-width: 720px) {
+            .page { padding: 24px 16px 40px; }
+            .result-card { grid-template-columns: 1fr; }
+            .image-placeholder { width: 100%; max-width: 220px; }
+            .search-bar { padding: 18px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="shell">
+            <div class="avatar" aria-label="Perfil"></div>
+
+            <nav class="sidebar" aria-label="Navegación lateral">
+                <a href="#">Para ti</a>
+                <a href="#">Siguiendo</a>
+                <a class="active" href="#">Buscar</a>
+            </nav>
+
+            <div class="search-bar">Ingrese titulo del material o colección o autor</div>
+
+            <div class="results-title">Resultados</div>
+
+            <section class="result-card">
+                <div class="image-placeholder">Imagen</div>
+                <div class="content">
+                    <h3>Título</h3>
+                    <div class="tags">
+                        <span class="tag">categoria</span>
+                        <span class="tag">categoria</span>
+                        <span class="tag">categoria</span>
+                    </div>
+                    <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since 1966, when designers at Letraset and James Mosley...</p>
+                </div>
+            </section>
+
+            <section class="collection-card">
+                <h3>Título de la colección</h3>
+                <div class="tags">
+                    <span class="tag">categoria</span>
+                    <span class="tag">categoria</span>
+                    <span class="tag">categoria</span>
+                </div>
+            </section>
+        </div>
+    </div>
+</body>
+</html>

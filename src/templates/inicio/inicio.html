@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inicio - Biblioteca</title>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text: #000000;
+            --accent: #3ff5a9;
+            --surface: #d9d9d9;
+            --surface-soft: #f4f4f4;
+            --border: #000000;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: 'Roboto', Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .page {
+            min-height: 100vh;
+            padding: 36px 40px 60px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .shell {
+            width: min(1400px, 100%);
+            position: relative;
+        }
+
+        .title {
+            font-size: 48px;
+            font-weight: 600;
+            margin: 16px 0 0 220px;
+            letter-spacing: -0.48px;
+        }
+
+        .avatar {
+            width: 74px;
+            height: 72px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #d9d9d9, #bfbfbf);
+            position: absolute;
+            top: 24px;
+            right: 0;
+        }
+
+        .content-panel {
+            margin-top: 40px;
+            border: 1px solid var(--border);
+            padding: 24px 24px 36px;
+            min-height: 760px;
+        }
+
+        .header-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .mode-switch {
+            display: flex;
+            gap: 0;
+            margin-left: auto;
+        }
+
+        .mode-button {
+            border: 1px solid var(--border);
+            padding: 10px 28px;
+            font-size: 25px;
+            font-weight: 600;
+            background: #ffffff;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .mode-button.active {
+            background: var(--surface);
+        }
+
+        .mode-button:first-child {
+            border-right: 0;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 160px 1fr;
+            gap: 28px;
+            margin-top: 24px;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            padding-top: 60px;
+            font-size: 25px;
+            font-weight: 600;
+        }
+
+        .sidebar a {
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .main {
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+
+        .card {
+            background: var(--surface);
+            padding: 24px;
+            display: grid;
+            grid-template-columns: 160px 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .image-placeholder {
+            width: 147px;
+            height: 161px;
+            background: var(--surface-soft);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 25px;
+            font-weight: 600;
+            border: 1px solid #e0d7d7;
+        }
+
+        .content h2 {
+            margin: 0 0 12px;
+            font-size: 25px;
+            font-weight: 600;
+        }
+
+        .tags {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+
+        .tag {
+            background: var(--accent);
+            padding: 8px 18px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .content p {
+            margin: 0;
+            font-size: 15px;
+            line-height: 1.5;
+            color: #111;
+            max-width: 760px;
+        }
+
+        .collection-card {
+            background: var(--surface);
+            padding: 24px 24px 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .collection-card h3 {
+            margin: 0;
+            font-size: 25px;
+            font-weight: 600;
+        }
+
+        .hidden { display: none; }
+
+        @media (max-width: 960px) {
+            .layout { grid-template-columns: 1fr; }
+            .sidebar { flex-direction: row; flex-wrap: wrap; padding-top: 0; }
+            .title { margin-left: 0; }
+        }
+
+        @media (max-width: 720px) {
+            .page { padding: 24px 16px 40px; }
+            .card { grid-template-columns: 1fr; }
+            .image-placeholder { width: 100%; max-width: 220px; }
+            .mode-button { font-size: 20px; padding: 10px 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="shell">
+            <div class="title">Para ti</div>
+            <div class="avatar" aria-label="Perfil"></div>
+
+            <div class="content-panel">
+                <div class="header-bar">
+                    <div class="mode-switch" role="tablist" aria-label="Seleccionar vista">
+                        <button class="mode-button active" data-view="material" type="button">Material</button>
+                        <button class="mode-button" data-view="collections" type="button">Colecciones</button>
+                    </div>
+                </div>
+
+                <div class="layout">
+                    <nav class="sidebar" aria-label="Navegación lateral">
+                        <a href="#">Buscar</a>
+                        <a href="#">Para ti</a>
+                        <a href="#">Siguiendo</a>
+                    </nav>
+
+                    <div class="main">
+                        <section id="material-view" class="view-panel">
+                            <div class="card">
+                                <div class="image-placeholder">Imagen</div>
+                                <div class="content">
+                                    <h2>Título</h2>
+                                    <div class="tags">
+                                        <span class="tag">categoria</span>
+                                        <span class="tag">categoria</span>
+                                        <span class="tag">categoria</span>
+                                    </div>
+                                    <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since 1966, when designers at Letraset and James Mosley...</p>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="image-placeholder">Imagen</div>
+                                <div class="content">
+                                    <h2>Título</h2>
+                                    <div class="tags">
+                                        <span class="tag">categoria</span>
+                                        <span class="tag">categoria</span>
+                                        <span class="tag">categoria</span>
+                                    </div>
+                                    <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since 1966, when designers at Letraset and James Mosley...</p>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section id="collections-view" class="view-panel hidden">
+                            <div class="collection-card">
+                                <h3>Título de la colección</h3>
+                                <div class="tags">
+                                    <span class="tag">categoria</span>
+                                    <span class="tag">categoria</span>
+                                    <span class="tag">categoria</span>
+                                </div>
+                            </div>
+
+                            <div class="collection-card">
+                                <h3>Título de la colección</h3>
+                                <div class="tags">
+                                    <span class="tag">categoria</span>
+                                    <span class="tag">categoria</span>
+                                    <span class="tag">categoria</span>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const buttons = document.querySelectorAll('.mode-button');
+        const materialView = document.getElementById('material-view');
+        const collectionsView = document.getElementById('collections-view');
+
+        buttons.forEach((button) => {
+            button.addEventListener('click', () => {
+                buttons.forEach((btn) => btn.classList.remove('active'));
+                button.classList.add('active');
+
+                if (button.dataset.view === 'collections') {
+                    materialView.classList.add('hidden');
+                    collectionsView.classList.remove('hidden');
+                } else {
+                    collectionsView.classList.add('hidden');
+                    materialView.classList.remove('hidden');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

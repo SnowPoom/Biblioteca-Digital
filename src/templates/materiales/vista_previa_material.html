@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vista previa del material</title>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text: #000000;
+            --accent: #6798f2;
+            --accent-soft: #8bf297;
+            --surface: #d9d9d9;
+            --surface-soft: #f4f4f4;
+            --border: #000000;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: 'Roboto', Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .page {
+            min-height: 100vh;
+            padding: 24px 32px 40px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .shell {
+            width: min(1440px, 100%);
+            position: relative;
+        }
+
+        .title {
+            font-size: 48px;
+            font-weight: 600;
+            margin: 64px 0 0 240px;
+            letter-spacing: -0.48px;
+        }
+
+        .avatar {
+            width: 74px;
+            height: 72px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #d9d9d9, #bfbfbf);
+            position: absolute;
+            top: 24px;
+            right: 10px;
+        }
+
+        .sidebar {
+            position: absolute;
+            left: 16px;
+            top: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            font-size: 25px;
+            font-weight: 600;
+        }
+
+        .sidebar a {
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .content-frame {
+            margin: 120px 0 0 220px;
+            border: 1px solid var(--border);
+            min-height: 780px;
+            padding: 24px 24px 28px;
+            display: grid;
+            grid-template-columns: minmax(320px, 620px) minmax(280px, 430px);
+            gap: 40px;
+            align-items: start;
+        }
+
+        .cover {
+            background: var(--surface);
+            min-height: 680px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 25px;
+            font-weight: 600;
+            border: 1px solid #bdbdbd;
+        }
+
+        .info {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            padding-top: 20px;
+        }
+
+        .meta {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .description {
+            font-size: 25px;
+            line-height: 1.4;
+            margin: 0;
+            max-width: 420px;
+        }
+
+        .categories {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+
+        .chip {
+            background: var(--accent-soft);
+            padding: 8px 18px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid #2fbf72;
+        }
+
+        .primary-btn, .secondary-btn {
+            border: none;
+            cursor: pointer;
+            font-size: 25px;
+            font-weight: 600;
+            padding: 16px 24px;
+            width: 100%;
+            max-width: 404px;
+        }
+
+        .primary-btn {
+            background: var(--accent);
+            margin-top: 12px;
+        }
+
+        .secondary-btn {
+            background: var(--accent-soft);
+            margin-top: 12px;
+        }
+
+        .collection-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 25px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        .collection-toggle .caret {
+            font-size: 30px;
+        }
+
+        @media (max-width: 960px) {
+            .content-frame { grid-template-columns: 1fr; margin-left: 0; }
+            .sidebar { position: static; flex-direction: row; margin: 40px 0 0; }
+            .title { margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="shell">
+            <div class="title">{{ titulo }}</div>
+            <div class="avatar" aria-label="Perfil"></div>
+
+            <nav class="sidebar" aria-label="Navegación lateral">
+                <a href="#">Buscar</a>
+                <a href="#">Para ti</a>
+                <a href="#">Siguiendo</a>
+            </nav>
+
+            <section class="content-frame">
+                <div class="cover">PORTADA</div>
+                <div class="info">
+                    <p class="meta">{{ autor }}</p>
+                    <p class="description">{{ descripcion }}</p>
+                    <div class="categories">
+                        {% for categoria in categorias %}
+                            <span class="chip">{{ categoria }}</span>
+                        {% endfor %}
+                    </div>
+                    <button class="primary-btn" type="button">Leer</button>
+                    <button class="secondary-btn" type="button">Añadir a la colección</button>
+                    <div class="collection-toggle"><span class="caret">V</span><span>colección</span></div>
+                </div>
+            </section>
+        </div>
+    </div>
+</body>
+</html>

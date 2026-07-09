@@ -1,6 +1,29 @@
 from django.shortcuts import render
 
-from django.http import HttpResponse
 
 def inicio(request):
-    return HttpResponse("<h1>Hola Mundo - Biblioteca Digital</h1>")
+    return render(request, 'inicio/inicio.html')
+
+
+def vista_previa_material(request):
+    return render(request, 'materiales/vista_previa_material.html', {
+        'titulo': 'Nombre del Material',
+        'autor': 'Autor',
+        'descripcion': 'Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry\'s standard dummy text ever since 1966.',
+        'categorias': ['categoria', 'categoria'],
+    })
+
+
+def lectura_material(request):
+    return render(request, 'materiales/lectura_material.html', {
+        'titulo': 'Nombre del Material',
+        'autor': 'Autor',
+        'contenido': 'Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry\'s standard dummy text ever since 1966.',
+        'notas': 'Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry\'s standard dummy text ever since 1966.',
+    })
+
+
+def creacion_material(request):
+    return render(request, 'materiales/creacion_material.html', {
+        'titulo': 'Nombre del Material',
+    })

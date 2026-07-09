@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Colecciones - Biblioteca</title>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text: #000000;
+            --accent: #3ff5a9;
+            --surface: #d9d9d9;
+            --surface-soft: #f4f4f4;
+            --border: #000000;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: 'Roboto', Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .page {
+            min-height: 100vh;
+            padding: 24px 40px 60px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .shell {
+            width: min(1440px, 100%);
+            position: relative;
+        }
+
+        .title {
+            font-size: 48px;
+            font-weight: 600;
+            margin: 16px 0 0 220px;
+            letter-spacing: -0.48px;
+        }
+
+        .avatar {
+            width: 74px;
+            height: 72px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #d9d9d9, #bfbfbf);
+            position: absolute;
+            top: 24px;
+            right: 0;
+        }
+
+        .sidebar {
+            position: absolute;
+            left: 40px;
+            top: 380px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            font-size: 25px;
+            font-weight: 600;
+        }
+
+        .sidebar a {
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .sidebar .active {
+            color: #111;
+        }
+
+        .content-panel {
+            margin-top: 40px;
+            margin-left: 220px;
+            border: 1px solid var(--border);
+            width: min(1118px, calc(100% - 220px));
+            min-height: 777px;
+            padding: 28px 36px 36px;
+            position: relative;
+        }
+
+        .panel-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .category-pill {
+            background: var(--accent);
+            padding: 10px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 120px;
+        }
+
+        .collaborators {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .avatar-stack {
+            display: flex;
+            gap: -8px;
+        }
+
+        .mini-avatar {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #d9d9d9, #bfbfbf);
+            border: 2px solid #fff;
+            margin-left: -10px;
+        }
+
+        .mini-avatar:first-child {
+            margin-left: 0;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(220px, 1fr));
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--surface);
+            padding: 24px;
+            min-height: 357px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-placeholder {
+            width: 272px;
+            height: 203px;
+            background: var(--surface-soft);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 25px;
+            font-weight: 600;
+            margin-bottom: 24px;
+        }
+
+        .card h3 {
+            margin: 0;
+            font-size: 25px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .tags {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .tag {
+            background: var(--accent);
+            padding: 8px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media (max-width: 1160px) {
+            .content-panel { margin-left: 0; width: 100%; }
+            .sidebar { position: static; flex-direction: row; flex-wrap: wrap; margin: 32px 0 0 0; }
+            .title { margin-left: 0; }
+        }
+
+        @media (max-width: 900px) {
+            .card-grid { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+            .panel-top { flex-direction: column; align-items: flex-start; }
+        }
+
+        @media (max-width: 640px) {
+            .page { padding: 24px 16px 40px; }
+            .card-grid { grid-template-columns: 1fr; }
+            .image-placeholder { width: 100%; max-width: 272px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="shell">
+            <div class="title">Nombre de la colección</div>
+            <div class="avatar" aria-label="Perfil"></div>
+
+            <nav class="sidebar" aria-label="Navegación lateral">
+                <a href="#">Para ti</a>
+                <a href="#">Siguiendo</a>
+                <a href="#">Buscar</a>
+            </nav>
+
+            <div class="content-panel">
+                <div class="panel-top">
+                    <div class="category-pill">categoria</div>
+                    <div class="collaborators">
+                        <span>Colaboradores:</span>
+                        <div class="avatar-stack">
+                            <div class="mini-avatar"></div>
+                            <div class="mini-avatar"></div>
+                            <div class="mini-avatar"></div>
+                            <div class="mini-avatar"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="image-placeholder">Imagen</div>
+                        <h3>Titulo</h3>
+                        <div class="tags">
+                            <span class="tag">categoria</span>
+                            <span class="tag">categoria</span>
+                            <span class="tag">categoria</span>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="image-placeholder">Imagen</div>
+                        <h3>Titulo</h3>
+                        <div class="tags">
+                            <span class="tag">categoria</span>
+                            <span class="tag">categoria</span>
+                            <span class="tag">categoria</span>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="image-placeholder">Imagen</div>
+                        <h3>Titulo</h3>
+                        <div class="tags">
+                            <span class="tag">categoria</span>
+                            <span class="tag">categoria</span>
+                            <span class="tag">categoria</span>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="image-placeholder">Imagen</div>
+                        <h3>Titulo</h3>
+                        <div class="tags">
+                            <span class="tag">categoria</span>
+                            <span class="tag">categoria</span>
+                            <span class="tag">categoria</span>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="image-placeholder">Imagen</div>
+                        <h3>Titulo</h3>
+                        <div class="tags">
+                            <span class="tag">categoria</span>
+                            <span class="tag">categoria</span>
+                            <span class="tag">categoria</span>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="image-placeholder">Imagen</div>
+                        <h3>Titulo</h3>
+                        <div class="tags">
+                            <span class="tag">categoria</span>
+                            <span class="tag">categoria</span>
+                            <span class="tag">categoria</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
