@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Panel de Usuario</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        font-family: Roboto, Arial, sans-serif;
+        background: #ffffff;
+        min-height: 100vh;
+      }
+
+      .panel-shell {
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 32px 16px;
+      }
+
+      .panel-card {
+        width: min(685px, calc(100% - 32px));
+        max-width: 685px;
+        border: 1px solid #70cdde;
+        border-radius: 1px;
+        background: #fff9f9;
+        padding: 40px 32px;
+        box-sizing: border-box;
+      }
+
+      h1 {
+        margin: 0 0 24px;
+        font-size: 32px;
+        color: #000;
+      }
+
+      .usuario-info {
+        margin-bottom: 24px;
+        font-size: 18px;
+        line-height: 1.4;
+      }
+
+      .accion-salir {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 41px;
+        padding: 0 24px;
+        border-radius: 8px;
+        background: #6798f2;
+        color: #000;
+        text-decoration: none;
+        font-weight: 500;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Hola {{ usuario.get_username }}</h1>
+  </body>
+</html>
