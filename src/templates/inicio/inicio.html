@@ -20,24 +20,54 @@
             font-family: 'Roboto', Arial, sans-serif;
             background: var(--bg);
             color: var(--text);
-        }
-
-        .page {
-            min-height: 100vh;
-            padding: 36px 40px 60px;
             display: flex;
-            justify-content: center;
+            min-height: 100vh;
         }
 
-        .shell {
-            width: min(1400px, 100%);
+        .sidebar-frame {
+            width: 180px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 28px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            align-self: flex-start;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .sidebar-nav a {
+            display: block;
+            padding: 14px 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+            text-decoration: none;
+            transition: opacity 0.15s ease;
+        }
+
+        .sidebar-nav a:hover { opacity: 0.55; }
+        .sidebar-nav .activo { font-weight: 600; }
+
+        .content-frame {
+            flex: 1;
+            min-width: 0;
+            padding: 36px 40px 60px;
             position: relative;
         }
 
         .title {
             font-size: 48px;
             font-weight: 600;
-            margin: 16px 0 0 220px;
+            margin: 0 0 0 0;
             letter-spacing: -0.48px;
         }
 
@@ -81,41 +111,17 @@
             background: #ffffff;
             cursor: pointer;
             transition: background 0.2s ease;
+            font-family: 'Roboto', Arial, sans-serif;
         }
 
-        .mode-button.active {
-            background: var(--surface);
-        }
-
-        .mode-button:first-child {
-            border-right: 0;
-        }
-
-        .layout {
-            display: grid;
-            grid-template-columns: 160px 1fr;
-            gap: 28px;
-            margin-top: 24px;
-        }
-
-        .sidebar {
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-            padding-top: 60px;
-            font-size: 25px;
-            font-weight: 600;
-        }
-
-        .sidebar a {
-            color: var(--text);
-            text-decoration: none;
-        }
+        .mode-button.active { background: var(--surface); }
+        .mode-button:first-child { border-right: 1px solid var(--border); }
 
         .main {
             display: flex;
             flex-direction: column;
             gap: 28px;
+            margin-top: 24px;
         }
 
         .card {
@@ -198,27 +204,25 @@
     </style>
 </head>
 <body>
-    <div class="page">
-        <div class="shell">
-            <div class="title">Para ti</div>
-            <div class="avatar" aria-label="Perfil"></div>
+    <aside class="sidebar-frame">
+        <nav class="sidebar-nav" aria-label="Navegacion principal">
+            <a href="#">Buscar</a>
+            <a class="activo" href="#">Para ti</a>
+            <a href="#">Siguiendo</a>
+        </nav>
+    </aside>
 
-            <div class="content-panel">
-                <div class="header-bar">
-                    <div class="mode-switch" role="tablist" aria-label="Seleccionar vista">
-                        <button class="mode-button active" data-view="material" type="button">Material</button>
-                        <button class="mode-button" data-view="collections" type="button">Colecciones</button>
-                    </div>
-                </div>
+    <div class="content-frame">
+        <h1 class="title">Para ti</h1>
+        <div class="avatar" aria-label="Perfil"></div>
 
-                <div class="layout">
-                    <nav class="sidebar" aria-label="Navegación lateral">
-                        <a href="#">Buscar</a>
-                        <a href="#">Para ti</a>
-                        <a href="#">Siguiendo</a>
-                    </nav>
+        <div class="content-panel">
+            <div class="mode-switch" role="tablist" aria-label="Seleccionar vista">
+                <button class="mode-button active" data-view="material" type="button">Material</button>
+                <button class="mode-button" data-view="collections" type="button">Colecciones</button>
+            </div>
 
-                    <div class="main">
+            <div class="main">
                         <section id="material-view" class="view-panel">
                             <div class="card">
                                 <div class="image-placeholder">Imagen</div>
@@ -266,8 +270,6 @@
                                 </div>
                             </div>
                         </section>
-                    </div>
-                </div>
             </div>
         </div>
     </div>

@@ -20,24 +20,54 @@
             font-family: 'Roboto', Arial, sans-serif;
             background: var(--bg);
             color: var(--text);
-        }
-
-        .page {
-            min-height: 100vh;
-            padding: 24px 40px 60px;
             display: flex;
-            justify-content: center;
+            min-height: 100vh;
         }
 
-        .shell {
-            width: min(1440px, 100%);
+        .sidebar-frame {
+            width: 180px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 28px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            align-self: flex-start;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .sidebar-nav a {
+            display: block;
+            padding: 14px 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+            text-decoration: none;
+            transition: opacity 0.15s ease;
+        }
+
+        .sidebar-nav a:hover { opacity: 0.55; }
+        .sidebar-nav .activo { font-weight: 600; }
+
+        .content-frame {
+            flex: 1;
+            min-width: 0;
+            padding: 36px 40px 60px;
             position: relative;
         }
 
         .title {
             font-size: 48px;
             font-weight: 600;
-            margin: 16px 0 0 220px;
+            margin: 0;
             letter-spacing: -0.48px;
         }
 
@@ -51,31 +81,9 @@
             right: 0;
         }
 
-        .sidebar {
-            position: absolute;
-            left: 40px;
-            top: 380px;
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-            font-size: 25px;
-            font-weight: 600;
-        }
-
-        .sidebar a {
-            color: var(--text);
-            text-decoration: none;
-        }
-
-        .sidebar .active {
-            color: #111;
-        }
-
         .content-panel {
             margin-top: 40px;
-            margin-left: 220px;
             border: 1px solid var(--border);
-            width: min(1118px, calc(100% - 220px));
             min-height: 777px;
             padding: 28px 36px 36px;
             position: relative;
@@ -179,37 +187,27 @@
             justify-content: center;
         }
 
-        @media (max-width: 1160px) {
-            .content-panel { margin-left: 0; width: 100%; }
-            .sidebar { position: static; flex-direction: row; flex-wrap: wrap; margin: 32px 0 0 0; }
-            .title { margin-left: 0; }
-        }
-
-        @media (max-width: 900px) {
-            .card-grid { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
-            .panel-top { flex-direction: column; align-items: flex-start; }
-        }
-
-        @media (max-width: 640px) {
-            .page { padding: 24px 16px 40px; }
+        @media (max-width: 720px) {
+            .content-frame { padding: 24px 16px 40px; }
             .card-grid { grid-template-columns: 1fr; }
             .image-placeholder { width: 100%; max-width: 272px; }
         }
     </style>
 </head>
 <body>
-    <div class="page">
-        <div class="shell">
-            <div class="title">Nombre de la colección</div>
-            <div class="avatar" aria-label="Perfil"></div>
+    <aside class="sidebar-frame">
+        <nav class="sidebar-nav" aria-label="Navegacion principal">
+            <a href="#">Buscar</a>
+            <a href="#">Para ti</a>
+            <a href="#">Siguiendo</a>
+        </nav>
+    </aside>
 
-            <nav class="sidebar" aria-label="Navegación lateral">
-                <a href="#">Para ti</a>
-                <a href="#">Siguiendo</a>
-                <a href="#">Buscar</a>
-            </nav>
+    <div class="content-frame">
+        <h1 class="title">Nombre de la colección</h1>
+        <div class="avatar" aria-label="Perfil"></div>
 
-            <div class="content-panel">
+        <div class="content-panel">
                 <div class="panel-top">
                     <div class="category-pill">categoria</div>
                     <div class="collaborators">
@@ -279,7 +277,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
         </div>
     </div>
 </body>
