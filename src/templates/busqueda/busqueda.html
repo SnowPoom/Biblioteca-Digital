@@ -21,17 +21,47 @@
             font-family: 'Roboto', Arial, sans-serif;
             background: var(--bg);
             color: var(--text);
-        }
-
-        .page {
-            min-height: 100vh;
-            padding: 24px 40px 60px;
             display: flex;
-            justify-content: center;
+            min-height: 100vh;
         }
 
-        .shell {
-            width: min(1400px, 100%);
+        .sidebar-frame {
+            width: 180px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 28px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            align-self: flex-start;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .sidebar-nav a {
+            display: block;
+            padding: 14px 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+            text-decoration: none;
+            transition: opacity 0.15s ease;
+        }
+
+        .sidebar-nav a:hover { opacity: 0.55; }
+        .sidebar-nav .activo { font-weight: 600; }
+
+        .content-frame {
+            flex: 1;
+            min-width: 0;
+            padding: 36px 40px 60px;
             position: relative;
         }
 
@@ -45,48 +75,25 @@
             right: 0;
         }
 
-        .sidebar {
-            position: absolute;
-            left: 40px;
-            top: 360px;
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-            font-size: 25px;
-            font-weight: 600;
-        }
-
-        .sidebar a {
-            color: var(--text);
-            text-decoration: none;
-        }
-
-        .sidebar .active {
-            color: #111;
-        }
-
         .search-bar {
-            margin: 24px 0 0 232px;
-            width: min(1000px, calc(100% - 232px));
+            margin: 24px 0 0 0;
             background: var(--surface);
             border-radius: 25px;
-            padding: 20px 24px 20px 86px;
+            padding: 20px 24px;
             color: var(--muted);
             font-size: 20px;
             font-weight: 600;
         }
 
         .results-title {
-            margin: 40px 0 24px 232px;
+            margin: 40px 0 24px;
             font-size: 48px;
             font-weight: 600;
             letter-spacing: -0.48px;
         }
 
         .result-card {
-            margin-left: 232px;
             margin-bottom: 24px;
-            width: min(1005px, calc(100% - 232px));
             background: var(--surface);
             padding: 24px;
             display: grid;
@@ -136,9 +143,7 @@
         }
 
         .collection-card {
-            margin-left: 232px;
             margin-bottom: 24px;
-            width: min(1005px, calc(100% - 232px));
             background: var(--surface);
             padding: 24px;
             display: flex;
@@ -152,14 +157,8 @@
             font-weight: 600;
         }
 
-        @media (max-width: 960px) {
-            .sidebar { position: static; flex-direction: row; flex-wrap: wrap; margin: 40px 0 0 232px; }
-            .search-bar, .results-title, .result-card, .collection-card { margin-left: 0; width: 100%; }
-            .results-title { font-size: 36px; }
-        }
-
         @media (max-width: 720px) {
-            .page { padding: 24px 16px 40px; }
+            .content-frame { padding: 24px 16px 40px; }
             .result-card { grid-template-columns: 1fr; }
             .image-placeholder { width: 100%; max-width: 220px; }
             .search-bar { padding: 18px 20px; }
@@ -167,19 +166,19 @@
     </style>
 </head>
 <body>
-    <div class="page">
-        <div class="shell">
-            <div class="avatar" aria-label="Perfil"></div>
+    <aside class="sidebar-frame">
+        <nav class="sidebar-nav" aria-label="Navegacion principal">
+            <a class="activo" href="#">Buscar</a>
+            <a href="#">Para ti</a>
+            <a href="#">Siguiendo</a>
+        </nav>
+    </aside>
 
-            <nav class="sidebar" aria-label="Navegación lateral">
-                <a href="#">Para ti</a>
-                <a href="#">Siguiendo</a>
-                <a class="active" href="#">Buscar</a>
-            </nav>
+    <div class="content-frame">
+        <div class="avatar" aria-label="Perfil"></div>
 
-            <div class="search-bar">Ingrese titulo del material o colección o autor</div>
-
-            <div class="results-title">Resultados</div>
+        <div class="search-bar">Ingrese titulo del material o colección o autor</div>
+        <div class="results-title">Resultados</div>
 
             <section class="result-card">
                 <div class="image-placeholder">Imagen</div>
@@ -202,7 +201,6 @@
                     <span class="tag">categoria</span>
                 </div>
             </section>
-        </div>
     </div>
 </body>
 </html>

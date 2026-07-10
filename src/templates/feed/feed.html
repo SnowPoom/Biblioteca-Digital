@@ -1,9 +1,15 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Feed - Biblioteca</title>
+    <title>Siguiendo</title>
+    <meta name="description"
+        content="Feed de publicaciones y republicaciones de los usuarios que sigues en la Biblioteca Digital.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg: #ffffff;
@@ -14,30 +20,47 @@
             --border: #000000;
         }
 
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
             font-family: 'Roboto', Arial, sans-serif;
             background: var(--bg);
             color: var(--text);
-        }
-
-        .page {
-            min-height: 100vh;
-            padding: 36px 40px 60px;
             display: flex;
-            justify-content: center;
+            min-height: 100vh;
         }
 
-        .shell {
-            width: min(1400px, 100%);
+        /* Frame izquierdo: menu de navegacion */
+        .sidebar-frame {
+            width: 180px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 28px;
+            /* sticky mantiene el menu centrado sin importar el scroll del contenido */
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            align-self: flex-start;
+        }
+
+        /* Frame derecho: todo el contenido */
+        .content-frame {
+            flex: 1;
+            min-width: 0;
+            padding: 36px 40px 60px;
             position: relative;
         }
 
         .title {
             font-size: 48px;
             font-weight: 600;
-            margin: 16px 0 0 220px;
+            margin: 0 0 0 0;
             letter-spacing: -0.48px;
         }
 
@@ -49,6 +72,19 @@
             position: absolute;
             top: 24px;
             right: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+            overflow: hidden;
+        }
+
+        .avatar svg {
+            width: 40px;
+            height: 40px;
+            opacity: 0.5;
         }
 
         .content-panel {
@@ -81,6 +117,7 @@
             background: #ffffff;
             cursor: pointer;
             transition: background 0.2s ease;
+            font-family: 'Roboto', Arial, sans-serif;
         }
 
         .mode-button.active {
@@ -91,29 +128,34 @@
             border-right: 0;
         }
 
-        .layout {
-            display: grid;
-            grid-template-columns: 160px 1fr;
-            gap: 28px;
-            margin-top: 24px;
-        }
-
-        .sidebar {
+        /* Sidebar nav: items apilados sin separadores */
+        .sidebar-nav {
             display: flex;
             flex-direction: column;
-            gap: 24px;
-            padding-top: 60px;
-            font-size: 25px;
+            gap: 8px;
+        }
+
+        .sidebar-nav a {
+            display: block;
+            padding: 14px 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+            text-decoration: none;
+            transition: opacity 0.15s ease;
+        }
+
+        .sidebar-nav a:hover {
+            opacity: 0.55;
+        }
+
+        .sidebar-nav .activo {
             font-weight: 600;
         }
 
-        .sidebar a {
-            color: var(--text);
-            text-decoration: none;
-        }
-
-        .sidebar .active {
-            color: #111;
+        .layout {
+            display: block;
+            margin-top: 24px;
         }
 
         .main {
@@ -122,6 +164,7 @@
             gap: 28px;
         }
 
+        /* Tarjeta de publicacion */
         .card {
             background: var(--surface);
             padding: 24px;
@@ -129,6 +172,24 @@
             grid-template-columns: 160px 1fr;
             gap: 24px;
             align-items: start;
+            transition: filter 0.2s ease;
+        }
+
+        .card:hover {
+            filter: brightness(0.97);
+        }
+
+        /* Indicador de republicacion sobre la tarjeta */
+        .republicacion-header {
+            font-size: 13px;
+            font-weight: 600;
+            color: #444;
+            margin-bottom: -14px;
+            padding-left: 4px;
+        }
+
+        .republicacion-header span {
+            color: #000;
         }
 
         .image-placeholder {
@@ -143,10 +204,17 @@
             border: 1px solid #e0d7d7;
         }
 
-        .content h2 {
-            margin: 0 0 12px;
+        .card-content h2 {
+            margin: 0 0 8px;
             font-size: 25px;
             font-weight: 600;
+        }
+
+        /* Autor original en republicaciones */
+        .autor-original {
+            font-size: 13px;
+            color: #555;
+            margin: 0 0 10px;
         }
 
         .tags {
@@ -163,7 +231,7 @@
             font-weight: 600;
         }
 
-        .content p {
+        .card-content p {
             margin: 0;
             font-size: 15px;
             line-height: 1.5;
@@ -171,12 +239,18 @@
             max-width: 760px;
         }
 
+        /* Colecciones */
         .collection-card {
             background: var(--surface);
             padding: 24px 24px 28px;
             display: flex;
             flex-direction: column;
             gap: 14px;
+            transition: filter 0.2s ease;
+        }
+
+        .collection-card:hover {
+            filter: brightness(0.97);
         }
 
         .collection-card h3 {
@@ -185,116 +259,217 @@
             font-weight: 600;
         }
 
-        .hidden { display: none; }
+        /* Estado vacío */
+        .estado-vacio {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+            font-size: 18px;
+        }
+
+        .estado-vacio strong {
+            display: block;
+            font-size: 22px;
+            font-weight: 600;
+            color: #222;
+            margin-bottom: 8px;
+        }
+
+        .hidden {
+            display: none;
+        }
 
         @media (max-width: 960px) {
-            .layout { grid-template-columns: 1fr; }
-            .sidebar { flex-direction: row; flex-wrap: wrap; padding-top: 0; }
-            .title { margin-left: 0; }
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                flex-direction: row;
+                flex-wrap: wrap;
+                padding-top: 0;
+            }
+
+            .title {
+                margin-left: 0;
+            }
         }
 
         @media (max-width: 720px) {
-            .page { padding: 24px 16px 40px; }
-            .card { grid-template-columns: 1fr; }
-            .image-placeholder { width: 100%; max-width: 220px; }
-            .mode-button { font-size: 20px; padding: 10px 16px; }
+            .page {
+                padding: 24px 16px 40px;
+            }
+
+            .card {
+                grid-template-columns: 1fr;
+            }
+
+            .image-placeholder {
+                width: 100%;
+                max-width: 220px;
+            }
+
+            .mode-button {
+                font-size: 20px;
+                padding: 10px 16px;
+            }
         }
     </style>
 </head>
+
 <body>
-    <div class="page">
-        <div class="shell">
-            <div class="title">Siguiendo</div>
-            <div class="avatar" aria-label="Perfil"></div>
+    <!-- Frame izquierdo: menu de navegacion permanente -->
+    <aside class="sidebar-frame">
+        <nav class="sidebar-nav" aria-label="Navegacion principal">
+            <a href="#">Buscar</a>
+            <a href="#">Para ti</a>
+            <a class="activo" href="#">Siguiendo</a>
+        </nav>
+    </aside>
 
-            <div class="content-panel">
-                <div class="header-bar">
-                    <div class="mode-switch" role="tablist" aria-label="Seleccionar vista">
-                        <button class="mode-button active" data-view="material" type="button">Material</button>
-                        <button class="mode-button" data-view="collections" type="button">Colecciones</button>
-                    </div>
-                </div>
+    <!-- Frame derecho: contenido del feed -->
+    <div class="content-frame">
+        <h1 class="title">Siguiendo</h1>
 
-                <div class="layout">
-                    <nav class="sidebar" aria-label="Navegación lateral">
-                        <a href="#">Buscar</a>
-                        <a href="#">Para ti</a>
-                        <a class="active" href="#">Siguiendo</a>
-                    </nav>
+        <div class="avatar" aria-label="Perfil de {{ request.user.get_full_name|default:request.user.username }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+            </svg>
+        </div>
 
-                    <div class="main">
-                        <section id="material-view" class="view-panel">
-                            <div class="card">
-                                <div class="image-placeholder">Imagen</div>
-                                <div class="content">
-                                    <h2>Título</h2>
-                                    <div class="tags">
-                                        <span class="tag">categoria</span>
-                                        <span class="tag">categoria</span>
-                                        <span class="tag">categoria</span>
-                                    </div>
-                                    <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since 1966, when designers at Letraset and James Mosley...</p>
-                                </div>
-                            </div>
-
-                            <div class="card">
-                                <div class="image-placeholder">Imagen</div>
-                                <div class="content">
-                                    <h2>Título</h2>
-                                    <div class="tags">
-                                        <span class="tag">categoria</span>
-                                        <span class="tag">categoria</span>
-                                        <span class="tag">categoria</span>
-                                    </div>
-                                    <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since 1966, when designers at Letraset and James Mosley...</p>
-                                </div>
-                            </div>
-                        </section>
-
-                        <section id="collections-view" class="view-panel hidden">
-                            <div class="collection-card">
-                                <h3>Título de la colección</h3>
-                                <div class="tags">
-                                    <span class="tag">categoria</span>
-                                    <span class="tag">categoria</span>
-                                    <span class="tag">categoria</span>
-                                </div>
-                            </div>
-
-                            <div class="collection-card">
-                                <h3>Título de la colección</h3>
-                                <div class="tags">
-                                    <span class="tag">categoria</span>
-                                    <span class="tag">categoria</span>
-                                    <span class="tag">categoria</span>
-                                </div>
-                            </div>
-                        </section>
-                    </div>
-                </div>
+        <div class="content-panel">
+            <div class="mode-switch" role="tablist" aria-label="Seleccionar vista">
+                <button id="btn-material" class="mode-button active" data-view="material" type="button"
+                    role="tab" aria-selected="true">Material</button>
+                <button id="btn-colecciones" class="mode-button" data-view="colecciones" type="button"
+                    role="tab" aria-selected="false">Colecciones</button>
             </div>
+
+        <div class="layout">
+            <div class="main">
+                        <!-- Vista: Material (libros y republicaciones) -->
+                        <section id="material-view" class="view-panel" role="tabpanel" aria-labelledby="btn-material">
+
+                            {% if not material_feed %}
+                            <div class="estado-vacio">
+                                <strong>Sin publicaciones recientes</strong>
+                                Sigue a otros usuarios para ver su contenido aquí.
+                            </div>
+                            {% else %}
+
+                            {% for item in material_feed %}
+                                {% if item.titulo %}
+                                <!-- Es una Publicacion normal (Libro) -->
+                                <a href="#" style="text-decoration:none; color:inherit; display:block; margin-bottom:28px;">
+                                    <article class="card" aria-label="{{ item.titulo }}">
+                                        <div class="image-placeholder" aria-hidden="true">Imagen</div>
+                                        <div class="card-content">
+                                            <h2>{{ item.titulo }}</h2>
+                                            <p class="autor-original">Por {% firstof item.autor.get_full_name item.autor.username %}</p>
+                                            <div class="tags">
+                                                {% for cat in item.categorias.all %}
+                                                <span class="tag">{{ cat.nombre }}</span>
+                                                {% empty %}
+                                                <span class="tag">{{ item.get_tipo_display }}</span>
+                                                {% endfor %}
+                                            </div>
+                                            {% if item.descripcion %}
+                                            <p>{{ item.descripcion|truncatewords:40 }}</p>
+                                            {% endif %}
+                                        </div>
+                                    </article>
+                                </a>
+                                {% else %}
+                                <!-- Es una Republicacion -->
+                                <div style="margin-bottom:28px;">
+                                    <p class="republicacion-header">
+                                        Republicado por <span>{% firstof item.republicado_por.get_full_name item.republicado_por.username %}</span>
+                                    </p>
+                                    <a href="#" style="text-decoration:none; color:inherit; display:block;">
+                                        <article class="card"
+                                            aria-label="{{ item.publicacion.titulo }} (republicado)">
+                                            <div class="image-placeholder" aria-hidden="true">Imagen</div>
+                                            <div class="card-content">
+                                                <h2>{{ item.publicacion.titulo }}</h2>
+                                                <p class="autor-original">Autor original: {% firstof item.publicacion.autor.get_full_name item.publicacion.autor.username %}</p>
+                                                <div class="tags">
+                                                    {% for cat in item.publicacion.categorias.all %}
+                                                    <span class="tag">{{ cat.nombre }}</span>
+                                                    {% empty %}
+                                                    <span class="tag">{{ item.publicacion.get_tipo_display }}</span>
+                                                    {% endfor %}
+                                                </div>
+                                                {% if item.publicacion.descripcion %}
+                                                <p>{{ item.publicacion.descripcion|truncatewords:40 }}</p>
+                                                {% endif %}
+                                            </div>
+                                        </article>
+                                    </a>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% endif %}
+                        </section>
+
+                        <!-- Vista: Colecciones -->
+                        <section id="colecciones-view" class="view-panel hidden" role="tabpanel"
+                            aria-labelledby="btn-colecciones">
+
+                            {% if not colecciones %}
+                            <div class="estado-vacio">
+                                <strong>Sin colecciones recientes</strong>
+                                Los usuarios que sigues aún no han publicado colecciones.
+                            </div>
+                            {% else %}
+                            {% for coleccion in colecciones %}
+                            <a href="#" style="text-decoration:none; color:inherit; display:block; margin-bottom:28px;">
+                                <article class="collection-card" aria-label="{{ coleccion.titulo }}">
+                                    <h3>{{ coleccion.titulo }}</h3>
+                                    <p class="autor-original">Por {% firstof coleccion.autor.get_full_name coleccion.autor.username %}</p>
+                                    <div class="tags">
+                                        {% for cat in coleccion.categorias.all %}
+                                        <span class="tag">{{ cat.nombre }}</span>
+                                        {% empty %}
+                                        <span class="tag">Coleccion</span>
+                                        {% endfor %}
+                                    </div>
+                                </article>
+                            </a>
+                            {% endfor %}
+                            {% endif %}
+
+                </section>
+            </div>
+        </div>
         </div>
     </div>
 
     <script>
-        const buttons = document.querySelectorAll('.mode-button');
-        const materialView = document.getElementById('material-view');
-        const collectionsView = document.getElementById('collections-view');
+        const botones = document.querySelectorAll('.mode-button');
+        const vistaMaterial = document.getElementById('material-view');
+        const vistaColecciones = document.getElementById('colecciones-view');
 
-        buttons.forEach((button) => {
-            button.addEventListener('click', () => {
-                buttons.forEach((btn) => btn.classList.remove('active'));
-                button.classList.add('active');
+        botones.forEach((boton) => {
+            boton.addEventListener('click', () => {
+                botones.forEach((b) => {
+                    b.classList.remove('active');
+                    b.setAttribute('aria-selected', 'false');
+                });
+                boton.classList.add('active');
+                boton.setAttribute('aria-selected', 'true');
 
-                if (button.dataset.view === 'collections') {
-                    materialView.classList.add('hidden');
-                    collectionsView.classList.remove('hidden');
+                if (boton.dataset.view === 'colecciones') {
+                    vistaMaterial.classList.add('hidden');
+                    vistaColecciones.classList.remove('hidden');
                 } else {
-                    collectionsView.classList.add('hidden');
-                    materialView.classList.remove('hidden');
+                    vistaColecciones.classList.add('hidden');
+                    vistaMaterial.classList.remove('hidden');
                 }
             });
         });
     </script>
 </body>
+
 </html>

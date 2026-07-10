@@ -21,24 +21,54 @@
             font-family: 'Roboto', Arial, sans-serif;
             background: var(--bg);
             color: var(--text);
-        }
-
-        .page {
-            min-height: 100vh;
-            padding: 24px 32px 40px;
             display: flex;
-            justify-content: center;
+            min-height: 100vh;
         }
 
-        .shell {
-            width: min(1440px, 100%);
+        .sidebar-frame {
+            width: 180px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 28px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            align-self: flex-start;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .sidebar-nav a {
+            display: block;
+            padding: 14px 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+            text-decoration: none;
+            transition: opacity 0.15s ease;
+        }
+
+        .sidebar-nav a:hover { opacity: 0.55; }
+        .sidebar-nav .activo { font-weight: 600; }
+
+        .content-frame-page {
+            flex: 1;
+            min-width: 0;
+            padding: 24px 32px 40px;
             position: relative;
         }
 
         .title {
             font-size: 48px;
             font-weight: 600;
-            margin: 64px 0 0 240px;
+            margin: 40px 0 0 0;
             letter-spacing: -0.48px;
         }
 
@@ -52,24 +82,8 @@
             right: 10px;
         }
 
-        .sidebar {
-            position: absolute;
-            left: 16px;
-            top: 320px;
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-            font-size: 25px;
-            font-weight: 600;
-        }
-
-        .sidebar a {
-            color: var(--text);
-            text-decoration: none;
-        }
-
-        .content-frame {
-            margin: 120px 0 0 220px;
+        .content-panel {
+            margin-top: 40px;
             border: 1px solid var(--border);
             min-height: 780px;
             padding: 24px 24px 28px;
@@ -159,25 +173,25 @@
         }
 
         @media (max-width: 960px) {
-            .content-frame { grid-template-columns: 1fr; margin-left: 0; }
-            .sidebar { position: static; flex-direction: row; margin: 40px 0 0; }
+            .content-panel { grid-template-columns: 1fr; }
             .title { margin-left: 0; }
         }
     </style>
 </head>
 <body>
-    <div class="page">
-        <div class="shell">
-            <div class="title">{{ titulo }}</div>
-            <div class="avatar" aria-label="Perfil"></div>
+    <aside class="sidebar-frame">
+        <nav class="sidebar-nav" aria-label="Navegacion principal">
+            <a href="#">Buscar</a>
+            <a href="#">Para ti</a>
+            <a href="#">Siguiendo</a>
+        </nav>
+    </aside>
 
-            <nav class="sidebar" aria-label="Navegación lateral">
-                <a href="#">Buscar</a>
-                <a href="#">Para ti</a>
-                <a href="#">Siguiendo</a>
-            </nav>
+    <div class="content-frame-page">
+        <h1 class="title">{{ titulo }}</h1>
+        <div class="avatar" aria-label="Perfil"></div>
 
-            <section class="content-frame">
+        <section class="content-panel">
                 <div class="cover">PORTADA</div>
                 <div class="info">
                     <p class="meta">{{ autor }}</p>
@@ -191,8 +205,7 @@
                     <button class="secondary-btn" type="button">Añadir a la colección</button>
                     <div class="collection-toggle"><span class="caret">V</span><span>colección</span></div>
                 </div>
-            </section>
-        </div>
+        </section>
     </div>
 </body>
 </html>
