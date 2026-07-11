@@ -102,7 +102,9 @@
     <div class="page">
         <div class="shell">
             <div class="title">{{ titulo }}</div>
+            <a href="{% url 'feed:perfil_publico' request.user.username %}" style="text-decoration:none; color:inherit;">
             <div class="avatar" aria-label="Perfil"></div>
+            </a>
 
             <section class="editor-panel">
                 <div class="toolbar">

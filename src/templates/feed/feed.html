@@ -153,6 +153,44 @@
             font-weight: 600;
         }
 
+        /* Icono de campana */
+        .notificacion-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+            text-decoration: none;
+            transition: opacity 0.15s ease;
+            position: relative;
+        }
+
+        .notificacion-link:hover { opacity: 0.55; }
+
+        .notificacion-link svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .badge {
+            background: #ff3b3b;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 5px;
+            position: absolute;
+            top: 10px;
+            left: 14px;
+        }
+
         .layout {
             display: block;
             margin-top: 24px;
@@ -318,9 +356,17 @@
 </head>
 
 <body>
-    <!-- Frame izquierdo: menu de navegacion permanente -->
     <aside class="sidebar-frame">
         <nav class="sidebar-nav" aria-label="Navegacion principal">
+            <a href="{% url 'feed:notificaciones' %}" class="notificacion-link" aria-label="Notificaciones">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                {% if unread_notifications_count > 0 %}
+                <span class="badge">{{ unread_notifications_count }}</span>
+                {% endif %}
+            </a>
             <a href="#">Buscar</a>
             <a href="#">Para ti</a>
             <a class="activo" href="#">Siguiendo</a>
@@ -331,12 +377,14 @@
     <div class="content-frame">
         <h1 class="title">Siguiendo</h1>
 
+        <a href="{% url 'feed:perfil_publico' request.user.username %}" style="text-decoration:none; color:inherit;">
         <div class="avatar" aria-label="Perfil de {{ request.user.get_full_name|default:request.user.username }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                 <circle cx="12" cy="8" r="4" />
                 <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
             </svg>
         </div>
+        </a>
 
         <div class="content-panel">
             <div class="mode-switch" role="tablist" aria-label="Seleccionar vista">

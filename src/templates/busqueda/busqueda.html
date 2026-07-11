@@ -175,7 +175,9 @@
     </aside>
 
     <div class="content-frame">
+        <a href="{% url 'feed:perfil_publico' request.user.username %}" style="text-decoration:none; color:inherit;">
         <div class="avatar" aria-label="Perfil"></div>
+        </a>
 
         <div class="search-bar">Ingrese titulo del material o colección o autor</div>
         <div class="results-title">Resultados</div>
