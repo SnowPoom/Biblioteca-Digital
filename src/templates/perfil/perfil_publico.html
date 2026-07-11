@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ usuario_perfil.get_full_name|default:usuario_perfil.username }} — Perfil</title>
+    <meta name="description"
+        content="Perfil de {{ usuario_perfil.get_full_name|default:usuario_perfil.username }} en la Biblioteca Digital.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text: #000000;
+            --accent: #3ff5a9;
+            --surface: #d9d9d9;
+            --surface-soft: #f4f4f4;
+            --border: #000000;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Roboto', Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Frame izquierdo: menu de navegacion */
+        .sidebar-frame {
+            width: 180px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 28px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            align-self: flex-start;
+        }
+
+        /* Frame derecho: todo el contenido */
+        .content-frame {
+            flex: 1;
+            min-width: 0;
+            padding: 36px 40px 60px;
+            position: relative;
+        }
+
+        .title {
+            font-size: 48px;
+            font-weight: 600;
+            margin: 0;
+            letter-spacing: -0.48px;
+        }
+
+        /* Sidebar nav */
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .sidebar-nav a {
+            display: block;
+            padding: 14px 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+            text-decoration: none;
+            transition: opacity 0.15s ease;
+        }
+
+        .sidebar-nav a:hover {
+            opacity: 0.55;
+        }
+
+        .content-panel {
+            margin-top: 40px;
+            border: 1px solid var(--border);
+            padding: 24px 24px 36px;
+            min-height: 760px;
+        }
+
+        /* Cabecera del perfil */
+        .perfil-header {
+            display: flex;
+            align-items: center;
+            gap: 28px;
+            margin-bottom: 32px;
+        }
+
+        .perfil-avatar {
+            width: 96px;
+            height: 96px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #d9d9d9, #bfbfbf);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .perfil-avatar svg {
+            width: 52px;
+            height: 52px;
+            opacity: 0.5;
+        }
+
+        .perfil-info {
+            flex: 1;
+        }
+
+        .perfil-nombre {
+            font-size: 28px;
+            font-weight: 600;
+            margin: 0 0 4px;
+        }
+
+        .perfil-rol {
+            font-size: 14px;
+            color: #555;
+            margin: 0 0 12px;
+        }
+
+        .perfil-stats {
+            display: flex;
+            gap: 24px;
+        }
+
+        .perfil-stat {
+            font-size: 14px;
+            color: #333;
+        }
+
+        .perfil-stat strong {
+            font-weight: 600;
+            font-size: 18px;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        /* Boton de seguir/dejar de seguir */
+        .btn-seguir {
+            border: 1px solid var(--border);
+            padding: 10px 32px;
+            font-size: 16px;
+            font-weight: 600;
+            background: var(--accent);
+            cursor: pointer;
+            transition: background 0.2s ease, filter 0.2s ease;
+            font-family: 'Roboto', Arial, sans-serif;
+        }
+
+        .btn-seguir:hover {
+            filter: brightness(0.92);
+        }
+
+        .btn-dejar-de-seguir {
+            border: 1px solid var(--border);
+            padding: 10px 32px;
+            font-size: 16px;
+            font-weight: 600;
+            background: var(--surface);
+            cursor: pointer;
+            transition: background 0.2s ease, filter 0.2s ease;
+            font-family: 'Roboto', Arial, sans-serif;
+        }
+
+        .btn-dejar-de-seguir:hover {
+            filter: brightness(0.88);
+        }
+
+        /* Separador */
+        .separador {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 28px 0;
+        }
+
+        .seccion-titulo {
+            font-size: 22px;
+            font-weight: 600;
+            margin: 0 0 20px;
+        }
+
+        /* Tarjetas de publicacion (reutilizando el estilo del feed) */
+        .main {
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+
+        .card {
+            background: var(--surface);
+            padding: 24px;
+            display: grid;
+            grid-template-columns: 160px 1fr;
+            gap: 24px;
+            align-items: start;
+            transition: filter 0.2s ease;
+        }
+
+        .card:hover {
+            filter: brightness(0.97);
+        }
+
+        .image-placeholder {
+            width: 147px;
+            height: 161px;
+            background: var(--surface-soft);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 25px;
+            font-weight: 600;
+            border: 1px solid #e0d7d7;
+        }
+
+        .card-content h2 {
+            margin: 0 0 8px;
+            font-size: 25px;
+            font-weight: 600;
+        }
+
+        .autor-original {
+            font-size: 13px;
+            color: #555;
+            margin: 0 0 10px;
+        }
+
+        .tags {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+
+        .tag {
+            background: var(--accent);
+            padding: 8px 18px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .card-content p {
+            margin: 0;
+            font-size: 15px;
+            line-height: 1.5;
+            color: #111;
+            max-width: 760px;
+        }
+
+        /* Estado vacio */
+        .estado-vacio {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+            font-size: 18px;
+        }
+
+        .estado-vacio strong {
+            display: block;
+            font-size: 22px;
+            font-weight: 600;
+            color: #222;
+            margin-bottom: 8px;
+        }
+
+        @media (max-width: 960px) {
+            .perfil-header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .perfil-stats {
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .content-frame {
+                padding: 24px 16px 40px;
+            }
+
+            .card {
+                grid-template-columns: 1fr;
+            }
+
+            .image-placeholder {
+                width: 100%;
+                max-width: 220px;
+            }
+
+            .title {
+                font-size: 36px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Frame izquierdo: menu de navegacion permanente -->
+    <aside class="sidebar-frame">
+        <nav class="sidebar-nav" aria-label="Navegacion principal">
+            <a href="#">Buscar</a>
+            <a href="#">Para ti</a>
+            <a href="{% url 'feed:feed' %}">Siguiendo</a>
+        </nav>
+    </aside>
+
+    <!-- Frame derecho: contenido del perfil -->
+    <div class="content-frame">
+        <h1 class="title">Perfil</h1>
+
+        <div class="content-panel">
+            <!-- Cabecera del perfil -->
+            <div class="perfil-header">
+                <div class="perfil-avatar" aria-label="Avatar de {{ usuario_perfil.get_full_name|default:usuario_perfil.username }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                        <circle cx="12" cy="8" r="4" />
+                        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                    </svg>
+                </div>
+
+                <div class="perfil-info">
+                    <h2 class="perfil-nombre">{{ usuario_perfil.get_full_name|default:usuario_perfil.username }}</h2>
+                    {% if usuario_perfil.perfil %}
+                    <p class="perfil-rol">{{ usuario_perfil.perfil.get_rol_display }}</p>
+                    {% endif %}
+
+                    <div class="perfil-stats">
+                        <div class="perfil-stat">
+                            <strong>{{ cantidad_seguidores }}</strong>
+                            Seguidores
+                        </div>
+                        <div class="perfil-stat">
+                            <strong>{{ cantidad_seguidos }}</strong>
+                            Siguiendo
+                        </div>
+                        <div class="perfil-stat">
+                            <strong>{{ publicaciones.count }}</strong>
+                            Publicaciones
+                        </div>
+                    </div>
+                </div>
+
+                {% if not es_propio %}
+                <div>
+                    {% if ya_sigue %}
+                    <form method="post" action="{% url 'feed:dejar_de_seguir' usuario_perfil.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-dejar-de-seguir" id="btn-dejar-seguir">Dejar de seguir</button>
+                    </form>
+                    {% else %}
+                    <form method="post" action="{% url 'feed:seguir_usuario' usuario_perfil.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-seguir" id="btn-seguir">Seguir</button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            <hr class="separador">
+
+            <!-- Publicaciones del usuario -->
+            <h3 class="seccion-titulo">Publicaciones</h3>
+
+            <div class="main">
+                {% if not publicaciones %}
+                <div class="estado-vacio">
+                    <strong>Sin publicaciones</strong>
+                    {% if es_propio %}
+                    Aún no has publicado material en la plataforma.
+                    {% else %}
+                    Este usuario aún no ha publicado material.
+                    {% endif %}
+                </div>
+                {% else %}
+                {% for item in publicaciones %}
+                <a href="#" style="text-decoration:none; color:inherit; display:block;">
+                    <article class="card" aria-label="{{ item.titulo }}">
+                        <div class="image-placeholder" aria-hidden="true">Imagen</div>
+                        <div class="card-content">
+                            <h2>{{ item.titulo }}</h2>
+                            <div class="tags">
+                                {% for cat in item.categorias.all %}
+                                <span class="tag">{{ cat.nombre }}</span>
+                                {% empty %}
+                                <span class="tag">{{ item.get_tipo_display }}</span>
+                                {% endfor %}
+                            </div>
+                            {% if item.descripcion %}
+                            <p>{{ item.descripcion|truncatewords:40 }}</p>
+                            {% endif %}
+                        </div>
+                    </article>
+                </a>
+                {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

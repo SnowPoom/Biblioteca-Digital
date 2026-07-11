@@ -205,7 +205,9 @@
 
     <div class="content-frame">
         <h1 class="title">Nombre de la colección</h1>
+        <a href="{% url 'feed:perfil_publico' request.user.username %}" style="text-decoration:none; color:inherit;">
         <div class="avatar" aria-label="Perfil"></div>
+        </a>
 
         <div class="content-panel">
                 <div class="panel-top">

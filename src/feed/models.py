@@ -24,6 +24,15 @@ class Seguimiento(models.Model):
     def __str__(self):
         return f'{self.seguidor.username} sigue a {self.seguido.username}'
 
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+        if is_new:
+            Notificacion.objects.create(
+                usuario=self.seguido,
+                mensaje=f'El usuario {self.seguidor.username} ha comenzado a seguirte.'
+            )
+
 
 class Categoria(models.Model):
     """Etiqueta temática que puede asociarse a una Publicacion."""
@@ -96,3 +105,24 @@ class Republicacion(models.Model):
             f'{self.republicado_por.username} republicó '
             f'"{self.publicacion.titulo}" de {self.publicacion.autor.username}'
         )
+
+
+class Notificacion(models.Model):
+    """
+    Notificación para un usuario sobre algún evento, como ser seguido por otro usuario.
+    """
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notificaciones',
+    )
+    mensaje = models.CharField(max_length=255)
+    leida = models.BooleanField(default=False)
+    creado = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-creado']
+
+    def __str__(self):
+        return f'Notificación para {self.usuario.username}: {self.mensaje}'
+

@@ -14,6 +14,18 @@ def vista_previa_material(request):
     })
 
 
+def detalle_libro(request, pk):
+    from src.feed.models import Publicacion
+    from django.shortcuts import get_object_or_404
+    libro = get_object_or_404(Publicacion, pk=pk)
+    return render(request, 'materiales/vista_previa_material.html', {
+        'libro': libro,
+        'titulo': libro.titulo,
+        'autor': libro.autor,
+        'descripcion': libro.descripcion,
+    })
+
+
 def lectura_material(request):
     return render(request, 'materiales/lectura_material.html', {
         'titulo': 'Nombre del Material',
