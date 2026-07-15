@@ -1,14 +1,18 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Búsqueda - Biblioteca</title>
+    <title>Notificaciones - Biblioteca</title>
+    <meta name="description" content="Centro de notificaciones de la Biblioteca Digital.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg: #ffffff;
             --text: #000000;
-            --muted: #5f5e5e;
             --accent: #3ff5a9;
             --surface: #d9d9d9;
             --surface-soft: #f4f4f4;
@@ -16,6 +20,7 @@
         }
 
         * { box-sizing: border-box; }
+
         body {
             margin: 0;
             font-family: 'Roboto', Arial, sans-serif;
@@ -25,6 +30,7 @@
             min-height: 100vh;
         }
 
+        /* Sidebar */
         .sidebar-frame {
             width: 180px;
             flex-shrink: 0;
@@ -96,11 +102,19 @@
             left: 14px;
         }
 
+        /* Contenido */
         .content-frame {
             flex: 1;
             min-width: 0;
             padding: 36px 40px 60px;
             position: relative;
+        }
+
+        .title {
+            font-size: 48px;
+            font-weight: 600;
+            margin: 0;
+            letter-spacing: -0.48px;
         }
 
         .avatar {
@@ -111,102 +125,104 @@
             position: absolute;
             top: 24px;
             right: 0;
-        }
-
-        .search-bar {
-            margin: 24px 0 0 0;
-            background: var(--surface);
-            border-radius: 25px;
-            padding: 20px 24px;
-            color: var(--muted);
-            font-size: 20px;
-            font-weight: 600;
-        }
-
-        .results-title {
-            margin: 40px 0 24px;
-            font-size: 48px;
-            font-weight: 600;
-            letter-spacing: -0.48px;
-        }
-
-        .result-card {
-            margin-bottom: 24px;
-            background: var(--surface);
-            padding: 24px;
-            display: grid;
-            grid-template-columns: 147px 1fr;
-            gap: 24px;
-            align-items: start;
-        }
-
-        .image-placeholder {
-            width: 147px;
-            height: 161px;
-            background: var(--surface-soft);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 25px;
-            font-weight: 600;
-            border: 1px solid #e0d7d7;
+            overflow: hidden;
         }
 
-        .content h3 {
-            margin: 0 0 12px;
-            font-size: 25px;
-            font-weight: 600;
+        .avatar svg {
+            width: 40px;
+            height: 40px;
+            opacity: 0.5;
         }
 
-        .tags {
+        .content-panel {
+            margin-top: 40px;
+            border: 1px solid var(--border);
+            padding: 24px 24px 36px;
+            min-height: 760px;
+        }
+
+        /* Notificaciones */
+        .notificacion-item {
             display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 14px;
+            align-items: center;
+            gap: 16px;
+            padding: 18px 16px;
+            border-bottom: 1px solid #e5e5e5;
+            transition: background 0.15s ease;
         }
 
-        .tag {
+        .notificacion-item:last-child {
+            border-bottom: none;
+        }
+
+        .notificacion-item:hover {
+            background: var(--surface-soft);
+        }
+
+        .notificacion-icono {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
             background: var(--accent);
-            padding: 8px 18px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .content p {
-            margin: 0;
-            font-size: 15px;
-            line-height: 1.5;
-            color: #111;
-            max-width: 760px;
-        }
-
-        .collection-card {
-            margin-bottom: 24px;
-            background: var(--surface);
-            padding: 24px;
             display: flex;
-            flex-direction: column;
-            gap: 14px;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
 
-        .collection-card h3 {
+        .notificacion-icono svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .notificacion-texto {
+            flex: 1;
+        }
+
+        .notificacion-texto p {
             margin: 0;
-            font-size: 25px;
+            font-size: 16px;
+            line-height: 1.4;
+        }
+
+        .notificacion-fecha {
+            font-size: 13px;
+            color: #777;
+            margin-top: 4px;
+        }
+
+        .estado-vacio {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+            font-size: 18px;
+        }
+
+        .estado-vacio strong {
+            display: block;
+            font-size: 22px;
             font-weight: 600;
+            color: #222;
+            margin-bottom: 8px;
         }
 
         @media (max-width: 720px) {
+            .sidebar-frame { width: 60px; padding: 0 10px; }
+            .sidebar-nav a { font-size: 0; }
+            .notificacion-link { font-size: 0; }
             .content-frame { padding: 24px 16px 40px; }
-            .result-card { grid-template-columns: 1fr; }
-            .image-placeholder { width: 100%; max-width: 220px; }
-            .search-bar { padding: 18px 20px; }
+            .title { font-size: 32px; }
         }
     </style>
 </head>
+
 <body>
     <aside class="sidebar-frame">
         <nav class="sidebar-nav" aria-label="Navegacion principal">
-            <a href="{% url 'feed:notificaciones' %}" class="notificacion-link" aria-label="Notificaciones">
+            <a href="{% url 'feed:notificaciones' %}" class="notificacion-link activo" aria-label="Notificaciones">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                     <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
@@ -215,7 +231,7 @@
                 <span class="badge">{{ unread_notifications_count }}</span>
                 {% endif %}
             </a>
-            <a class="activo" href="{% url 'busqueda:busqueda' %}">Buscar</a>
+            <a href="{% url 'busqueda:busqueda' %}">Buscar</a>
             <a href="{% url 'materiales:inicio' %}">Para ti</a>
             <a href="{% url 'feed:feed' %}">Siguiendo</a>
             <a href="{% url 'materiales:creacion_material' %}">Crear Material</a>
@@ -223,34 +239,44 @@
     </aside>
 
     <div class="content-frame">
+        <h1 class="title">Notificaciones</h1>
+
         <a href="{% url 'feed:perfil_publico' request.user.username %}" style="text-decoration:none; color:inherit;">
-        <div class="avatar" aria-label="Perfil"></div>
+        <div class="avatar" aria-label="Perfil de {{ request.user.get_full_name|default:request.user.username }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+            </svg>
+        </div>
         </a>
 
-        <div class="search-bar">Ingrese titulo del material o colección o autor</div>
-        <div class="results-title">Resultados</div>
-
-            <section class="result-card">
-                <div class="image-placeholder">Imagen</div>
-                <div class="content">
-                    <h3>Título</h3>
-                    <div class="tags">
-                        <span class="tag">categoria</span>
-                        <span class="tag">categoria</span>
-                        <span class="tag">categoria</span>
-                    </div>
-                    <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since 1966, when designers at Letraset and James Mosley...</p>
+        <div class="content-panel">
+            {% if not notificaciones %}
+            <div class="estado-vacio">
+                <strong>Sin notificaciones</strong>
+                Cuando alguien comience a seguirte, aparecerá aquí.
+            </div>
+            {% else %}
+            <a href="javascript:history.back()" class="btn-atras">← Volver atrás</a>
+            {% for notif in notificaciones %}
+            <div class="notificacion-item">
+                <div class="notificacion-icono">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <line x1="19" y1="8" x2="19" y2="14"/>
+                        <line x1="22" y1="11" x2="16" y2="11"/>
+                    </svg>
                 </div>
-            </section>
-
-            <section class="collection-card">
-                <h3>Título de la colección</h3>
-                <div class="tags">
-                    <span class="tag">categoria</span>
-                    <span class="tag">categoria</span>
-                    <span class="tag">categoria</span>
+                <div class="notificacion-texto">
+                    <p>{{ notif.mensaje }}</p>
+                    <p class="notificacion-fecha">{{ notif.creado|timesince }} atras</p>
                 </div>
-            </section>
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
     </div>
 </body>
+
 </html>
