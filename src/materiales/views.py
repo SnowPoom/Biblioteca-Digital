@@ -17,9 +17,6 @@ def vista_previa_material(request):
         'descripcion': 'Lorem Ipsum is simply dummy text of the printing and typesetting industry.',
         'categorias': ['categoria', 'categoria'],
     })
-
-
-<<<<<<< HEAD
 def detalle_libro(request, pk):
     from src.feed.models import Publicacion
     from django.shortcuts import get_object_or_404
@@ -32,11 +29,8 @@ def detalle_libro(request, pk):
     })
 
 
-def lectura_material(request):
-=======
 def lectura_material(request, libro_id):
     libro = get_object_or_404(Libro, id=libro_id)
->>>>>>> 611c206086779698a35086298d2c145ca4bc942f
     return render(request, 'materiales/lectura_material.html', {
         'libro': libro,
         'notas': 'Sección de notas...',
