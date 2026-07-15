@@ -84,6 +84,44 @@
             opacity: 0.55;
         }
 
+        /* Icono de campana */
+        .notificacion-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+            text-decoration: none;
+            transition: opacity 0.15s ease;
+            position: relative;
+        }
+
+        .notificacion-link:hover { opacity: 0.55; }
+
+        .notificacion-link svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .badge {
+            background: #ff3b3b;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 5px;
+            position: absolute;
+            top: 10px;
+            left: 14px;
+        }
+
         .content-panel {
             margin-top: 40px;
             border: 1px solid var(--border);
@@ -325,6 +363,7 @@
             <a href="{% url 'busqueda:busqueda' %}">Buscar</a>
             <a href="{% url 'materiales:inicio' %}">Para ti</a>
             <a href="{% url 'feed:feed' %}">Siguiendo</a>
+            <a href="{% url 'materiales:creacion_material' %}">Crear Material</a>
         </nav>
     </aside>
 
