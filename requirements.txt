@@ -6,6 +6,7 @@ colorama==0.4.6
 cucumber-expressions==20.0.0
 cucumber-tag-expressions==10.0.0
 Django==6.0.6
+Pillow==11.2.1
 parse==1.22.1
 parse_type==0.6.6
 six==1.17.0

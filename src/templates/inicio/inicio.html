@@ -172,15 +172,16 @@
         }
 
         .image-placeholder {
-            width: 147px;
-            height: 161px;
+            width: 120px;
+            height: 180px; /* Aspecto 2:3 tipico de libro */
             background: var(--surface-soft);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 25px;
+            font-size: 20px;
             font-weight: 600;
             border: 1px solid #e0d7d7;
+            border-radius: 4px;
         }
 
         .content h2 {
@@ -256,6 +257,7 @@
             <a href="{% url 'busqueda:busqueda' %}">Buscar</a>
             <a class="activo" href="{% url 'materiales:inicio' %}">Para ti</a>
             <a href="{% url 'feed:feed' %}">Siguiendo</a>
+            <a href="{% url 'materiales:creacion_material' %}">Crear Material</a>
         </nav>
     </aside>
 
@@ -270,34 +272,29 @@
                 <button class="mode-button active" data-view="material" type="button">Material</button>
                 <button class="mode-button" data-view="collections" type="button">Colecciones</button>
             </div>
-
             <div class="main">
                         <section id="material-view" class="view-panel">
+                            {% for libro in libros %}
                             <div class="card">
-                                <div class="image-placeholder">Imagen</div>
+                                {% if libro.portada %}
+                                    <div class="image-placeholder" style="background-image: url('{{ libro.portada.url }}'); background-size: cover; background-position: center; color: transparent;">Imagen</div>
+                                {% else %}
+                                    <div class="image-placeholder">Sin Portada</div>
+                                {% endif %}
                                 <div class="content">
-                                    <h2>Título</h2>
+                                    <h2><a href="{% url 'materiales:lectura_material' libro.id %}" style="text-decoration: none; color: inherit;">{{ libro.titulo }}</a></h2>
                                     <div class="tags">
-                                        <span class="tag">categoria</span>
-                                        <span class="tag">categoria</span>
-                                        <span class="tag">categoria</span>
+                                        {% for categoria in libro.categorias.all %}
+                                        <span class="tag">{{ categoria.nombre }}</span>
+                                        {% empty %}
+                                        <span class="tag">Sin categoría</span>
+                                        {% endfor %}
                                     </div>
-                                    <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since 1966, when designers at Letraset and James Mosley...</p>
                                 </div>
                             </div>
-
-                            <div class="card">
-                                <div class="image-placeholder">Imagen</div>
-                                <div class="content">
-                                    <h2>Título</h2>
-                                    <div class="tags">
-                                        <span class="tag">categoria</span>
-                                        <span class="tag">categoria</span>
-                                        <span class="tag">categoria</span>
-                                    </div>
-                                    <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since 1966, when designers at Letraset and James Mosley...</p>
-                                </div>
-                            </div>
+                            {% empty %}
+                            <p style="font-size: 18px; color: #555;">No hay libros publicados aún.</p>
+                            {% endfor %}
                         </section>
 
                         <section id="collections-view" class="view-panel hidden">
