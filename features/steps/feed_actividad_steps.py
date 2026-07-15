@@ -60,14 +60,20 @@ def step_visitando_perfil_publico(context):
 @when('el usuario decide seguir a ese perfil')
 def step_usuario_decide_seguir(context):
     """
-    Simula la acción de seguir al usuario objetivo.
-    La relación se crea directamente sin requerir aprobación,
-    conforme a la regla de negocio RN-FED-05.
+    Simula la acción de seguir al usuario objetivo a través de la vista real.
     """
-    Seguimiento.objects.create(
+    context.test.client.force_login(context.usuario_principal)
+    url = reverse('feed:seguir_usuario', args=[context.usuario_objetivo.pk])
+    response = context.test.client.post(url)
+    
+    context.test.assertEqual(response.status_code, 302, 'Expected redirect after following')
+    
+    # Verifica que la relación se ha creado
+    relacion_existe = Seguimiento.objects.filter(
         seguidor=context.usuario_principal,
-        seguido=context.usuario_objetivo,
-    )
+        seguido=context.usuario_objetivo
+    ).exists()
+    context.test.assertTrue(relacion_existe, "La relación de seguimiento no se creó.")
 
 
 @then('el contenido que publique ese usuario comienza a aparecer en el feed de seguimiento')
@@ -143,10 +149,20 @@ def step_usuario_sigue_a_otro_con_contenido(context):
 @when('el usuario deja de seguir a ese usuario')
 def step_usuario_deja_de_seguir(context):
     """
-    Elimina la relación de seguimiento, simulando la acción de
-    dejar de seguir conforme a la regla RN-FED-06.
+    Elimina la relación de seguimiento usando la vista real.
     """
-    context.seguimiento_a_eliminar.delete()
+    context.test.client.force_login(context.usuario_principal)
+    url = reverse('feed:dejar_de_seguir', args=[context.usuario_a_dejar.pk])
+    response = context.test.client.post(url)
+    
+    context.test.assertEqual(response.status_code, 302, 'Expected redirect after unfollowing')
+    
+    # Verifica que la relación se ha eliminado
+    relacion_existe = Seguimiento.objects.filter(
+        seguidor=context.usuario_principal,
+        seguido=context.usuario_a_dejar
+    ).exists()
+    context.test.assertFalse(relacion_existe, "La relación de seguimiento no se eliminó.")
 
 
 @then('el contenido de ese usuario desaparece del feed de seguimiento de forma inmediata')
@@ -160,7 +176,7 @@ def step_contenido_desaparece_del_feed(context):
 
     if response.status_code == 302:
         # El feed quedó completamente vacío y redirigió a inicio
-        context.test.assertIn('/', response.url)
+        context.test.assertRedirects(response, reverse('materiales:inicio'))
     else:
         context.test.assertEqual(
             response.status_code,
@@ -473,8 +489,7 @@ def step_no_sigue_a_nadie_o_sin_publicaciones(context):
 @then('el sistema muestra el feed de recomendaciones en su lugar')
 def step_muestra_feed_recomendaciones(context):
     # El sistema debe redirigir a la página de inicio (materiales:inicio)
-    context.test.assertEqual(context.response.status_code, 302)
-    context.test.assertIn('/', context.response.url)
+    context.test.assertRedirects(context.response, reverse('materiales:inicio'))
 
 
 # ---------------------------------------------------------------------------
@@ -490,8 +505,11 @@ def step_revisando_feed(context):
 
 @when('el usuario selecciona una publicación')
 def step_selecciona_publicacion(context):
-    # Simulamos el clic en la publicación
-    url = reverse('materiales:detalle_libro', kwargs={'pk': context.publicacion_a_seleccionar.pk})
+    import re
+    html = context.response.content.decode('utf-8')
+    match = re.search(fr'href="([^"]+/{context.publicacion_a_seleccionar.pk}/?[^"]*)"', html)
+    context.test.assertIsNotNone(match, "No se encontró el enlace a la publicación en el HTML")
+    url = match.group(1)
     context.response_detalle = context.test.client.get(url)
 
 @then('el sistema lo redirige al detalle completo de ese libro o colección')

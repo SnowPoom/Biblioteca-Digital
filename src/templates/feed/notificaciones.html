@@ -253,9 +253,10 @@
             {% if not notificaciones %}
             <div class="estado-vacio">
                 <strong>Sin notificaciones</strong>
-                Cuando alguien comience a seguirte, aparecera aqui.
+                Cuando alguien comience a seguirte, aparecerá aquí.
             </div>
             {% else %}
+            <a href="javascript:history.back()" class="btn-atras">← Volver atrás</a>
             {% for notif in notificaciones %}
             <div class="notificacion-item">
                 <div class="notificacion-icono">

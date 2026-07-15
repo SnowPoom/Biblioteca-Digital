@@ -367,9 +367,9 @@
                 <span class="badge">{{ unread_notifications_count }}</span>
                 {% endif %}
             </a>
-            <a href="#">Buscar</a>
-            <a href="#">Para ti</a>
-            <a class="activo" href="#">Siguiendo</a>
+            <a href="{% url 'busqueda:busqueda' %}">Buscar</a>
+            <a href="{% url 'materiales:inicio' %}">Para ti</a>
+            <a class="activo" href="{% url 'feed:feed' %}">Siguiendo</a>
         </nav>
     </aside>
 
@@ -409,7 +409,7 @@
                             {% for item in material_feed %}
                                 {% if item.titulo %}
                                 <!-- Es una Publicacion normal (Libro) -->
-                                <a href="#" style="text-decoration:none; color:inherit; display:block; margin-bottom:28px;">
+                                <a href="{% url 'materiales:detalle_libro' item.pk %}" style="text-decoration:none; color:inherit; display:block; margin-bottom:28px;">
                                     <article class="card" aria-label="{{ item.titulo }}">
                                         <div class="image-placeholder" aria-hidden="true">Imagen</div>
                                         <div class="card-content">
@@ -434,7 +434,7 @@
                                     <p class="republicacion-header">
                                         Republicado por <span>{% firstof item.republicado_por.get_full_name item.republicado_por.username %}</span>
                                     </p>
-                                    <a href="#" style="text-decoration:none; color:inherit; display:block;">
+                                    <a href="{% url 'materiales:detalle_libro' item.publicacion.pk %}" style="text-decoration:none; color:inherit; display:block;">
                                         <article class="card"
                                             aria-label="{{ item.publicacion.titulo }} (republicado)">
                                             <div class="image-placeholder" aria-hidden="true">Imagen</div>
@@ -472,7 +472,7 @@
                             </div>
                             {% else %}
                             {% for coleccion in colecciones %}
-                            <a href="#" style="text-decoration:none; color:inherit; display:block; margin-bottom:28px;">
+                            <a href="{% url 'materiales:detalle_libro' coleccion.pk %}" style="text-decoration:none; color:inherit; display:block; margin-bottom:28px;">
                                 <article class="collection-card" aria-label="{{ coleccion.titulo }}">
                                     <h3>{{ coleccion.titulo }}</h3>
                                     <p class="autor-original">Por {% firstof coleccion.autor.get_full_name coleccion.autor.username %}</p>

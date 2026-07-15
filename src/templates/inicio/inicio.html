@@ -253,9 +253,9 @@
                 <span class="badge">{{ unread_notifications_count }}</span>
                 {% endif %}
             </a>
-            <a href="#">Buscar</a>
-            <a class="activo" href="#">Para ti</a>
-            <a href="#">Siguiendo</a>
+            <a href="{% url 'busqueda:busqueda' %}">Buscar</a>
+            <a class="activo" href="{% url 'materiales:inicio' %}">Para ti</a>
+            <a href="{% url 'feed:feed' %}">Siguiendo</a>
         </nav>
     </aside>
 

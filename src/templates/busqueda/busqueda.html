@@ -168,9 +168,9 @@
 <body>
     <aside class="sidebar-frame">
         <nav class="sidebar-nav" aria-label="Navegacion principal">
-            <a class="activo" href="#">Buscar</a>
-            <a href="#">Para ti</a>
-            <a href="#">Siguiendo</a>
+            <a class="activo" href="{% url 'busqueda:busqueda' %}">Buscar</a>
+            <a href="{% url 'materiales:inicio' %}">Para ti</a>
+            <a href="{% url 'feed:feed' %}">Siguiendo</a>
         </nav>
     </aside>
 

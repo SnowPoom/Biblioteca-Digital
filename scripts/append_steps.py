@@ -39,7 +39,12 @@ def step_otro_tipo_no_aparece(context):
         context.test.assertEqual(col.tipo, 'coleccion', 'Hay un libro en colecciones')
 '''
 
-with open('features/steps/feed_actividad_steps.py', 'a', encoding='utf-8') as f:
-    f.write(new_steps)
+with open('features/steps/feed_actividad_steps.py', 'r', encoding='utf-8') as f:
+    content = f.read()
 
-print('Steps appended.')
+if "def step_usuario_filtra_por_tipo" not in content:
+    with open('features/steps/feed_actividad_steps.py', 'a', encoding='utf-8') as f:
+        f.write(new_steps)
+    print('Steps appended.')
+else:
+    print('Steps already exist. Skipping.')
