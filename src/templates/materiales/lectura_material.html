@@ -53,7 +53,7 @@
         .sidebar {
             position: absolute;
             left: 16px;
-            top: 320px;
+            top: 160px; /* Alineado mejor con el reader */
             display: flex;
             flex-direction: column;
             gap: 24px;
@@ -67,37 +67,52 @@
         }
 
         .reader {
-            margin: 120px 0 0 220px;
+            margin: 60px 0 0 220px; /* 220px evita colision con la barra lateral */
             border: 1px solid var(--border);
-            min-height: 780px;
             padding: 24px 24px 28px;
             display: grid;
-            grid-template-columns: minmax(320px, 620px) 320px;
+            grid-template-columns: minmax(320px, 480px) 300px;
             gap: 28px;
             align-items: start;
         }
 
         .content-card {
             background: var(--surface);
-            min-height: 680px;
-            padding: 24px;
+            width: 100%;
+            /* La altura se controla por JS dependiendo si es portada o texto */
+            padding: 0; 
             display: flex;
-            align-items: flex-start;
-            justify-content: center;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: flex-start;
+            overflow: hidden; 
+            position: relative;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.25); /* Sombreado solicitado */
+            border: 1px solid #ddd;
         }
-
-        .content-card p {
-            margin: 0;
-            font-size: 25px;
-            line-height: 1.4;
-            max-width: 420px;
+        
+        .page-scaler {
+            width: 816px;
+            height: 1056px;
+            transform-origin: top left;
+            padding: 96px;
+            background: #fff;
+            box-sizing: border-box;
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 12pt;
+            line-height: 1.5;
+        }
+        
+        .page-scaler img {
+            max-width: 100%;
+            height: auto;
         }
 
         .notes {
             border: 1px solid var(--border);
             background: #ffffff;
-            min-height: 560px;
-            padding: 24px 18px 24px 20px;
+            min-height: 400px;
+            padding: 20px 16px;
         }
 
         .notes h2 {
@@ -125,6 +140,24 @@
             font-weight: 600;
             cursor: pointer;
         }
+        
+        .nav-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+        }
+        
+        .nav-controls button {
+            margin: 0;
+            padding: 10px 20px;
+            font-size: 20px;
+        }
+        
+        .nav-controls button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
 
         @media (max-width: 980px) {
             .reader { grid-template-columns: 1fr; margin-left: 0; }
@@ -136,28 +169,136 @@
 <body>
     <div class="page">
         <div class="shell">
-            <div class="title">{{ titulo }}</div>
+            <div class="title">{{ libro.titulo }}</div>
             <div class="avatar" aria-label="Perfil"></div>
 
             <nav class="sidebar" aria-label="Navegación lateral">
+                <a href="{% url 'materiales:inicio' %}">Volver al Inicio</a>
                 <a href="#">Buscar</a>
                 <a href="#">Para ti</a>
                 <a href="#">Siguiendo</a>
             </nav>
 
             <section class="reader">
-                <div class="content-card">
-                    <p>{{ contenido }}</p>
+                <div class="content-card" id="page-display">
+                    <!-- Contenido dinamico inyectado por JS -->
                 </div>
                 <div>
                     <div class="notes">
                         <h2>Notas</h2>
-                        <p>{{ notas }}</p>
+                        <p>Sección de notas...</p>
                     </div>
-                    <button class="print-btn" type="button">Imprimir</button>
+                    
+                    <div class="nav-controls">
+                        <button id="btn-prev" class="print-btn" disabled>&larr;</button>
+                        <span id="page-indicator" style="font-size: 18px; font-weight: 600;">Portada</span>
+                        <button id="btn-next" class="print-btn">&rarr;</button>
+                    </div>
+                    <button class="print-btn" type="button" style="width: 100%; margin-top: 20px;">Imprimir</button>
                 </div>
             </section>
+            
+            <!-- Contenedor oculto con todo el texto crudo del editor -->
+            <div id="raw-content" style="display: none;">
+                {{ libro.contenido_texto|safe }}
+            </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const rawContentDiv = document.getElementById('raw-content');
+            const pageDisplay = document.getElementById('page-display');
+            const btnPrev = document.getElementById('btn-prev');
+            const btnNext = document.getElementById('btn-next');
+            const pageIndicator = document.getElementById('page-indicator');
+            
+            const pages = [];
+            
+            // Portada como primera pagina (height auto para que encaje su proporcion real)
+            {% if libro.portada %}
+            pages.push('<img style="width: 100%; height: auto; display: block;" src="{{ libro.portada.url }}" alt="Portada">');
+            {% else %}
+            pages.push('<div style="text-align: center; padding-top: 200px; font-size: 32px; color: #888;">Sin Portada</div>');
+            {% endif %}
+            
+            const temp = document.createElement('div');
+            temp.innerHTML = rawContentDiv.innerHTML;
+            
+            let currentChunk = document.createElement('div');
+            
+            Array.from(temp.children).forEach(child => {
+                if (child.classList && child.classList.contains('page-gap')) {
+                    if (currentChunk.innerHTML.trim() !== '') {
+                        // Envolvemos en el escalador
+                        pages.push('<div class="page-scaler">' + currentChunk.innerHTML + '</div>');
+                        currentChunk = document.createElement('div');
+                    }
+                } else {
+                    currentChunk.appendChild(child.cloneNode(true));
+                }
+            });
+            
+            if (currentChunk.innerHTML.trim() !== '') {
+                pages.push('<div class="page-scaler">' + currentChunk.innerHTML + '</div>');
+            }
+            
+            let currentPageIndex = 0;
+            
+            function scaleContent() {
+                const cardWidth = pageDisplay.clientWidth;
+                
+                if (currentPageIndex === 0) {
+                    // Para la portada, dejamos que la imagen defina la altura naturalmente
+                    pageDisplay.style.height = 'auto';
+                } else {
+                    // Para las paginas de texto, forzamos la altura escalada
+                    const scale = cardWidth / 816; // 816 es el ancho base de la hoja
+                    const scalers = document.querySelectorAll('.page-scaler');
+                    if (scalers.length > 0) {
+                        scalers.forEach(s => {
+                            s.style.transform = 'scale(' + scale + ')';
+                        });
+                        // Altura matematica exacta: 1056 * escala
+                        pageDisplay.style.height = (1056 * scale) + 'px';
+                    }
+                }
+            }
+            
+            function renderPage() {
+                pageDisplay.innerHTML = pages[currentPageIndex];
+                
+                if (currentPageIndex === 0) {
+                    pageIndicator.textContent = "Portada";
+                } else {
+                    pageIndicator.textContent = "Página " + currentPageIndex + " de " + (pages.length - 1);
+                }
+                
+                btnPrev.disabled = currentPageIndex === 0;
+                btnNext.disabled = currentPageIndex === pages.length - 1;
+                
+                scaleContent();
+            }
+            
+            btnPrev.addEventListener('click', () => {
+                if (currentPageIndex > 0) {
+                    currentPageIndex--;
+                    renderPage();
+                }
+            });
+            
+            btnNext.addEventListener('click', () => {
+                if (currentPageIndex < pages.length - 1) {
+                    currentPageIndex++;
+                    renderPage();
+                }
+            });
+            
+            window.addEventListener('resize', scaleContent);
+            
+            // Inicializar
+            renderPage();
+        });
+    </script>
 </body>
 </html>
