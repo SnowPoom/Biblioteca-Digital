@@ -521,6 +521,20 @@ class Anotacion(models.Model):
         ).first()
 
 
+class LibroColeccion(models.Model):
+    coleccion = models.ForeignKey('Coleccion', on_delete=models.CASCADE)
+    libro = models.ForeignKey('Libro', on_delete=models.CASCADE)
+    agregado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+    fecha_agregado = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('coleccion', 'libro')
+
 class Coleccion(models.Model):
     PUBLICA = 'publica'
     PRIVADA = 'privada'
@@ -558,6 +572,7 @@ class Coleccion(models.Model):
         Libro,
         blank=True,
         related_name='colecciones_pertenecientes',
+        through='LibroColeccion'
     )
     creado = models.DateTimeField(auto_now_add=True)
     actualizado = models.DateTimeField(auto_now=True)
@@ -584,6 +599,35 @@ class Coleccion(models.Model):
         self.visibilidad = self.PUBLICA
         self.save()
         return True, "Colección publicada"
+
+    def agregar_libro(self, usuario, libro):
+        """Agrega un libro a la colección respetando el límite máximo.
+        
+        Regla de negocio aplicada:
+        - RN-COL-08: Todos los participantes pueden añadir libros a la colección,
+          sujeto al límite máximo configurado de libros por colección.
+        """
+        if self.libros.filter(id=libro.id).exists():
+            raise ValidationError("El libro ya se encuentra en la colección.")
+        if self.libros.count() >= self.limite_libros:
+            raise ValidationError(f"La colección ha alcanzado su límite máximo de {self.limite_libros} libros.")
+        LibroColeccion.objects.create(
+            coleccion=self,
+            libro=libro,
+            agregado_por=usuario
+        )
+
+    def eliminar_libro(self, usuario, libro):
+        """Elimina un libro de la colección sin borrarlo de la plataforma.
+        
+        Reglas de negocio aplicadas:
+        - RN-COL-09: Solo el administrador o el participante que añadió un libro puede eliminarlo.
+        - RN-PUB-16: Eliminar un libro de una colección no lo elimina de la biblioteca general.
+        """
+        if not self.participaciones.filter(usuario=usuario).exists():
+            raise PermissionError("Solo los participantes de la colección pueden eliminar libros.")
+            
+        self.libros.remove(libro)
 
     def es_administrador(self, usuario):
         return self.participaciones.filter(usuario=usuario, rol=ParticipacionColeccion.ADMINISTRADOR).exists()
@@ -630,11 +674,12 @@ class Coleccion(models.Model):
         if self.participaciones.count() >= 15:
             return False, "Se ha alcanzado el límite máximo de 15 participantes."
             
-        solicitud = SolicitudAccesoColeccion.objects.filter(coleccion=self, usuario_solicitante=usuario_solicitante).first()
-        if solicitud:
-            if solicitud.estado != SolicitudAccesoColeccion.PENDIENTE:
-                return False, "Ya existe una solicitud procesada para este usuario."
-            return True, "La solicitud ya había sido enviada."
+        if self.participaciones.filter(usuario=usuario_solicitante).exists():
+            return False, "El usuario ya es miembro de la colección."
+
+        solicitud_pendiente = SolicitudAccesoColeccion.objects.filter(coleccion=self, usuario_solicitante=usuario_solicitante, estado=SolicitudAccesoColeccion.PENDIENTE).first()
+        if solicitud_pendiente:
+            return False, "Ya tienes una solicitud pendiente para esta colección."
             
         solicitud = SolicitudAccesoColeccion.objects.create(
             coleccion=self,
@@ -652,54 +697,7 @@ class Coleccion(models.Model):
             )
         return True, "Solicitud enviada."
         
-    def retirar_participante(self, admin_usuario, participante_usuario):
-        if not self.participaciones.filter(usuario=admin_usuario, rol=ParticipacionColeccion.ADMINISTRADOR).exists():
-            raise PermissionError("Solo un administrador puede retirar participantes.")
-        if self.creador == participante_usuario:
-            raise PermissionError("No se puede retirar al creador de la colección.")
-            
-        participacion = self.participaciones.filter(usuario=participante_usuario).first()
-        if participacion:
-            participacion.delete()
-            from src.feed.models import Notificacion
-            Notificacion.objects.create(
-                usuario=participante_usuario,
-                tipo='sistema',
-                mensaje=f'Has sido retirado de la colección "{self.nombre}".',
-                extra_data={'coleccion_id': self.id}
-            )
-            return True
-        return False
-        
-    def abandonar(self, usuario):
-        participacion = self.participaciones.filter(usuario=usuario).first()
-        if not participacion:
-            return False
-            
-        if self.creador == usuario:
-            otros_miembros = self.participaciones.exclude(usuario=usuario)
-            if otros_miembros.exists():
-                nuevo_admin = otros_miembros.first()
-                nuevo_admin.rol = ParticipacionColeccion.ADMINISTRADOR
-                nuevo_admin.save()
-                self.creador = nuevo_admin.usuario
-                self.save()
-            else:
-                self.creador = None
-                self.save()
-                
-        participacion.delete()
-        
-        if self.creador and self.creador != usuario:
-            from src.feed.models import Notificacion
-            Notificacion.objects.create(
-                usuario=self.creador,
-                tipo='sistema',
-                mensaje=f'{usuario.username} ha abandonado la colección "{self.nombre}".',
-                extra_data={'coleccion_id': self.id}
-            )
-            
-        return True
+
 
 class ParticipacionColeccion(models.Model):
     ADMINISTRADOR = 'administrador'

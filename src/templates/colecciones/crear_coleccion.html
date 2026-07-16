@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crear colección - Biblioteca</title>
+    <title>{% if es_edicion %}Editar colección{% else %}Crear colección{% endif %} - Biblioteca</title>
     <style>
         :root {
             --bg: #ffffff;
@@ -248,7 +248,11 @@
 
     <div class="content-frame">
         <div class="shell">
-            <div class="title">Crear colección</div>
+                {% if es_edicion %}
+                <div class="title">Editar colección</div>
+                {% else %}
+                <div class="title">Crear colección</div>
+                {% endif %}
             <a href="{% url 'feed:perfil_publico' request.user.username %}" style="text-decoration:none; color:inherit;">
             <div class="avatar" aria-label="Perfil"></div>
             </a>
@@ -258,7 +262,11 @@
                     {% csrf_token %}
                     
                     <div class="toolbar-top">
-                        <button class="publish-btn" type="submit">Crear colección</button>
+                        {% if es_edicion %}
+                <button class="publish-btn" type="submit">Editar colección</button>
+                {% else %}
+                <button class="publish-btn" type="submit">Crear colección</button>
+                {% endif %}
                     </div>
 
                     {% if form.non_field_errors %}

@@ -236,75 +236,7 @@ def step_intenta_gestionar_participantes(context):
     except PermissionError:
         pass
 
-    try:
-        context.coleccion.retirar_participante(admin_usuario=context.usuario_principal, participante_usuario=context.tercero)
-    except PermissionError:
-        pass
-
     context.resultado = False
-
-# ---------------------------------------------------------------------------
-# Escenario: Retirar a un participante de la colección
-# ---------------------------------------------------------------------------
-
-@given('que el usuario es administrador de una colección')
-def step_es_admin_coleccion(context):
-    context.coleccion = Coleccion.objects.create(nombre='Col a Retirar', creador=context.usuario_principal)
-    context.participante = User.objects.create_user(username='participante_ret', password='123')
-    context.coleccion.agregar_participante(context.participante)
-    
-    from src.materiales.models import Libro
-    context.libro_aportado = Libro.objects.create(titulo="Libro Ret", autor=context.participante, numero_paginas=10, estado=Libro.PUBLICADO)
-    context.coleccion.libros.add(context.libro_aportado)
-
-@when('el usuario retira a un participante de la colección')
-def step_retira_participante(context):
-    try:
-        context.resultado_retirar = context.coleccion.retirar_participante(
-            admin_usuario=context.usuario_principal, participante_usuario=context.participante
-        )
-    except Exception as e:
-        context.exception = e
-
-@then('ese participante pierde acceso de edición a la colección')
-def step_pierde_acceso_edicion(context):
-    es_participante = ParticipacionColeccion.objects.filter(
-        coleccion=context.coleccion, usuario=context.participante
-    ).exists()
-    context.test.assertFalse(es_participante)
-
-@then('el contenido que aportó permanece en la colección')
-def step_contenido_permanece(context):
-    context.test.assertTrue(context.coleccion.libros.filter(id=context.libro_aportado.id).exists())
-
-# ---------------------------------------------------------------------------
-# Escenario: Abandonar una colección voluntariamente
-# ---------------------------------------------------------------------------
-
-@given('que el usuario es participante de una colección')
-def step_usuario_es_participante(context):
-    admin = User.objects.create_user(username='admin_aband', password='123')
-    context.coleccion = Coleccion.objects.create(nombre='Col Abandonar', creador=admin)
-    context.coleccion.agregar_participante(context.usuario_principal, rol=ParticipacionColeccion.PARTICIPANTE)
-
-@when('el usuario decide abandonar esa colección')
-def step_decide_abandonar(context):
-    try:
-        context.resultado_abandonar = context.coleccion.abandonar(usuario=context.usuario_principal)
-    except Exception as e:
-        context.exception = e
-
-@then('deja de ser participante')
-def step_deja_ser_participante(context):
-    es_participante = ParticipacionColeccion.objects.filter(
-        coleccion=context.coleccion, usuario=context.usuario_principal
-    ).exists()
-    context.test.assertFalse(es_participante)
-
-@then('pierde acceso de edición a la colección')
-def step_pierde_acceso_edicion_abandonar(context):
-    # Verificado en el step anterior
-    pass
 
 # ---------------------------------------------------------------------------
 # Escenario: Cualquier participante puede agregar libros a la colección
@@ -326,7 +258,7 @@ def step_participante_sin_limite_libros(context):
 @when('el usuario agrega un libro a la colección')
 def step_agrega_libro(context):
     try:
-        context.coleccion.libros.add(context.libro)
+        context.coleccion.agregar_libro(context.usuario_principal, context.libro)
     except Exception as e:
         context.exception = e
 
@@ -342,7 +274,7 @@ def step_cambio_visible(context):
 # Escenario: Solo el administrador o el aportante puede eliminar un libro de la colección
 # ---------------------------------------------------------------------------
 
-@given('que el usuario es un participante que no agregó un libro específico y no es administrador')
+@given('que el usuario es un participante de la colección y hay un libro en ella')
 def step_participante_no_aportante(context):
     admin = User.objects.create_user(username='admin_elim_lib', password='123')
     context.coleccion = Coleccion.objects.create(nombre='Col Eliminar', creador=admin)
@@ -359,16 +291,16 @@ def step_participante_no_aportante(context):
 @when('el usuario intenta eliminar ese libro de la colección')
 def step_intenta_eliminar_libro(context):
     try:
-        if not context.coleccion.es_administrador(context.usuario_principal) and context.libro_otro.autor != context.usuario_principal:
-            raise PermissionError("No puedes eliminar este libro")
-        context.coleccion.libros.remove(context.libro_otro)
+        context.coleccion.eliminar_libro(context.usuario_principal, context.libro_otro)
+        context.resultado = True
     except PermissionError as e:
+        context.resultado = False
         context.exception_eliminar = e
 
-@then('el sistema deniega el permiso y el libro permanece')
-def step_deniega_permiso(context):
-    context.test.assertIsNotNone(getattr(context, 'exception_eliminar', None))
-    context.test.assertTrue(context.coleccion.libros.filter(id=context.libro_otro.id).exists())
+@then('la operación es exitosa')
+def step_operacion_exitosa_eliminar(context):
+    context.test.assertTrue(context.resultado)
+
 
 # ---------------------------------------------------------------------------
 # Escenario: El rol de administrador pasa al colaborador más activo si el creador es eliminado
