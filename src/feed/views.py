@@ -113,6 +113,14 @@ def perfil_publico(request, username):
     ).select_related('autor').order_by('-creado')
 
     es_propio = request.user == usuario_perfil
+    
+    borradores = []
+    if es_propio:
+        from src.materiales.models import Libro
+        borradores = Libro.objects.filter(
+            autor=usuario_perfil,
+            estado=Libro.BORRADOR,
+        ).order_by('-creado')
 
     contexto = {
         'usuario_perfil': usuario_perfil,
@@ -120,6 +128,7 @@ def perfil_publico(request, username):
         'cantidad_seguidores': cantidad_seguidores,
         'cantidad_seguidos': cantidad_seguidos,
         'publicaciones': publicaciones,
+        'borradores': borradores,
         'es_propio': es_propio,
     }
     return render(request, 'perfil/perfil_publico.html', contexto)
