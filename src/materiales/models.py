@@ -188,3 +188,122 @@ class Libro(models.Model):
                 self.refresh_from_db(fields=['republicaciones'])
                 
         return republicacion, created
+
+    def retirar(self):
+        """Retira (despublica) el libro de la plataforma.
+
+        Reglas de negocio aplicadas:
+        - RN-PUB-10: El autor puede retirar su propio material en cualquier momento.
+        - RN-ANO-08: Si un libro es retirado, las anotaciones asociadas se eliminan.
+        """
+        self.estado = self.RETIRADO
+        self.save()
+        # RN-ANO-08: Las anotaciones pierden sentido al retirar el libro
+        self.anotaciones.all().delete()
+
+    def fragmentos_anotados_por(self, usuario):
+        """Fragmentos con anotacion activa del usuario en este libro.
+
+        Regla de negocio aplicada:
+        - RN-ANO-05: Los fragmentos anotados deben mostrarse visualmente
+          diferenciados durante toda la lectura, no solo al crearse.
+        """
+        return list(
+            self.anotaciones.filter(usuario=usuario).values_list(
+                'fragmento_texto', flat=True
+            )
+        )
+
+
+LIMITE_CARACTERES_ANOTACION = 150
+
+
+class Anotacion(models.Model):
+    """Anotacion personal vinculada a un fragmento de texto o imagen de un libro.
+
+    Reglas de negocio aplicadas:
+    - RN-ANO-01: Las anotaciones son personales e intransferibles.
+    - RN-ANO-02: Se crean seleccionando un fragmento de texto o una imagen.
+    - RN-ANO-03: Limite maximo de 150 caracteres.
+    - RN-ANO-04: Un fragmento puede tener como maximo una anotacion activa por usuario.
+    """
+
+    TEXTO = 'texto'
+    IMAGEN = 'imagen'
+
+    TIPOS_FRAGMENTO = [
+        (TEXTO, 'Texto'),
+        (IMAGEN, 'Imagen'),
+    ]
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='anotaciones',
+    )
+    libro = models.ForeignKey(
+        Libro,
+        on_delete=models.CASCADE,
+        related_name='anotaciones',
+    )
+    fragmento_texto = models.CharField(max_length=500)
+    tipo_fragmento = models.CharField(
+        max_length=10,
+        choices=TIPOS_FRAGMENTO,
+        default=TEXTO,
+    )
+    contenido = models.CharField(max_length=LIMITE_CARACTERES_ANOTACION)
+    creado = models.DateTimeField(auto_now_add=True)
+    actualizado = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Anotacion'
+        verbose_name_plural = 'Anotaciones'
+        # RN-ANO-04: Solo una anotacion activa por fragmento y usuario
+        constraints = [
+            models.UniqueConstraint(
+                fields=['usuario', 'libro', 'fragmento_texto'],
+                name='unica_anotacion_por_fragmento_usuario',
+            ),
+        ]
+
+    def __str__(self):
+        return f'Anotacion de {self.usuario.username} en "{self.libro.titulo}"'
+
+    def esta_activa(self):
+        """Indica si la anotacion esta vigente para resaltado visual (RN-ANO-05)."""
+        return bool(self.pk and self.contenido)
+
+    def editar(self, nuevo_contenido):
+        """Actualiza el contenido de la anotacion respetando el limite de caracteres.
+
+        Reglas de negocio aplicadas:
+        - RN-ANO-03: Limite maximo de 150 caracteres.
+        - RN-ANO-06: El usuario puede editar sus propias anotaciones.
+        """
+        if len(nuevo_contenido) > LIMITE_CARACTERES_ANOTACION:
+            raise ValueError(
+                f"El contenido supera el limite de {LIMITE_CARACTERES_ANOTACION} caracteres."
+            )
+        self.contenido = nuevo_contenido
+        self.save()
+
+    def eliminar(self):
+        """Elimina la anotacion del sistema.
+
+        Regla de negocio aplicada:
+        - RN-ANO-06: El usuario puede eliminar sus propias anotaciones.
+        """
+        self.delete()
+
+    @classmethod
+    def para_fragmento(cls, usuario, libro, fragmento_texto):
+        """Recupera la anotacion del usuario asociada a un fragmento.
+
+        Regla de negocio aplicada:
+        - RN-ANO-06: Permite editar o eliminar la anotacion accediendo
+          directamente desde el fragmento resaltado durante la lectura.
+        """
+        return cls.objects.filter(
+            usuario=usuario, libro=libro, fragmento_texto=fragmento_texto
+        ).first()

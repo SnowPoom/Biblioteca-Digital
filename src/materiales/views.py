@@ -31,10 +31,112 @@ def detalle_libro(request, pk):
 
 def lectura_material(request, libro_id):
     libro = get_object_or_404(Libro, id=libro_id)
+    anotaciones = []
+    fragmentos_resaltados = []
+    if request.user.is_authenticated:
+        from .models import Anotacion
+        anotaciones = Anotacion.objects.filter(
+            usuario=request.user,
+            libro=libro,
+        )
+        # RN-ANO-05: fragmentos que deben mostrarse destacados durante la lectura
+        fragmentos_resaltados = libro.fragmentos_anotados_por(request.user)
     return render(request, 'materiales/lectura_material.html', {
         'libro': libro,
-        'notas': 'Sección de notas...',
+        'anotaciones': anotaciones,
+        'fragmentos_resaltados': fragmentos_resaltados,
     })
+
+
+@login_required(login_url='/auth/')
+def crear_anotacion(request, libro_id):
+    """Crea una anotacion via AJAX. Retorna JSON con los datos de la anotacion creada."""
+    from django.http import JsonResponse
+    from .models import Anotacion, LIMITE_CARACTERES_ANOTACION
+    import json
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Metodo no permitido'}, status=405)
+
+    libro = get_object_or_404(Libro, id=libro_id)
+    datos = json.loads(request.body)
+    fragmento = datos.get('fragmento_texto', '').strip()
+    contenido = datos.get('contenido', '').strip()
+    tipo = datos.get('tipo_fragmento', Anotacion.TEXTO)
+
+    if not fragmento or not contenido:
+        return JsonResponse({'error': 'Fragmento y contenido son obligatorios'}, status=400)
+
+    if len(contenido) > LIMITE_CARACTERES_ANOTACION:
+        return JsonResponse({'error': f'Limite de {LIMITE_CARACTERES_ANOTACION} caracteres'}, status=400)
+
+    # RN-ANO-04: Si ya existe una anotacion para este fragmento, redirigir a edicion
+    existente = Anotacion.objects.filter(
+        usuario=request.user, libro=libro, fragmento_texto=fragmento,
+    ).first()
+
+    if existente:
+        return JsonResponse({
+            'error': 'Ya existe una anotacion para este fragmento',
+            'anotacion_id': existente.pk,
+            'contenido': existente.contenido,
+        }, status=409)
+
+    anotacion = Anotacion.objects.create(
+        usuario=request.user,
+        libro=libro,
+        fragmento_texto=fragmento,
+        tipo_fragmento=tipo,
+        contenido=contenido,
+    )
+    return JsonResponse({
+        'id': anotacion.pk,
+        'fragmento_texto': anotacion.fragmento_texto,
+        'contenido': anotacion.contenido,
+        'tipo_fragmento': anotacion.tipo_fragmento,
+    }, status=201)
+
+
+@login_required(login_url='/auth/')
+def editar_anotacion(request, anotacion_id):
+    """Edita una anotacion propia via AJAX."""
+    from django.http import JsonResponse
+    from .models import Anotacion, LIMITE_CARACTERES_ANOTACION
+    import json
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Metodo no permitido'}, status=405)
+
+    anotacion = get_object_or_404(Anotacion, pk=anotacion_id, usuario=request.user)
+    datos = json.loads(request.body)
+    nuevo_contenido = datos.get('contenido', '').strip()
+
+    if not nuevo_contenido:
+        return JsonResponse({'error': 'El contenido no puede estar vacio'}, status=400)
+
+    if len(nuevo_contenido) > LIMITE_CARACTERES_ANOTACION:
+        return JsonResponse({'error': f'Limite de {LIMITE_CARACTERES_ANOTACION} caracteres'}, status=400)
+
+    anotacion.editar(nuevo_contenido)
+    return JsonResponse({
+        'id': anotacion.pk,
+        'contenido': anotacion.contenido,
+    })
+
+
+@login_required(login_url='/auth/')
+def eliminar_anotacion(request, anotacion_id):
+    """Elimina una anotacion propia via AJAX."""
+    from django.http import JsonResponse
+    from .models import Anotacion
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Metodo no permitido'}, status=405)
+
+    anotacion = get_object_or_404(Anotacion, pk=anotacion_id, usuario=request.user)
+    anotacion.eliminar()
+    return JsonResponse({'eliminado': True})
+
 
 
 @login_required(login_url='/auth/')
