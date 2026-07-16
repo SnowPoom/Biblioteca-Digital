@@ -32,6 +32,7 @@ class Libro(models.Model):
     contenido_texto = models.TextField(blank=True, default='')
     numero_paginas = models.PositiveIntegerField(default=0)
     republicaciones = models.PositiveIntegerField(default=0)
+    descargas = models.PositiveIntegerField(default=0)
     autor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -188,3 +189,68 @@ class Libro(models.Model):
                 self.refresh_from_db(fields=['republicaciones'])
                 
         return republicacion, created
+
+    def registrar_descarga(self):
+        """RN-EXP-05: Incrementa el contador de descargas como metrica de la publicacion."""
+        self.descargas += 1
+        self.save()
+
+    def generar_contenido_descarga(self):
+        """Genera un archivo PDF valido incluyendo metadatos de autoria original (RN-EXP-06)."""
+        nombre_autor = self.autor.get_full_name() or self.autor.username
+        fuente = "Biblioteca Digital"
+
+        lineas_texto = [
+            f"Autor original: {nombre_autor}",
+            f"Fuente: {fuente}",
+            f"Titulo: {self.titulo}",
+        ]
+
+        texto_pagina = "  ".join(lineas_texto)
+        stream = f"BT /F1 12 Tf 72 720 Td ({texto_pagina}) Tj ET"
+        largo_stream = len(stream)
+
+        objetos = []
+        objetos.append("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj")
+        objetos.append("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj")
+        objetos.append(
+            "3 0 obj\n<< /Type /Page /Parent 2 0 R "
+            "/MediaBox [0 0 612 792] "
+            "/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj"
+        )
+        objetos.append(
+            f"4 0 obj\n<< /Length {largo_stream} >>\n"
+            f"stream\n{stream}\nendstream\nendobj"
+        )
+        objetos.append(
+            "5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj"
+        )
+        objetos.append(
+            f"6 0 obj\n<< /Author ({nombre_autor}) "
+            f"/Title ({self.titulo}) "
+            f"/Producer ({fuente}) >>\nendobj"
+        )
+
+        cuerpo = "\n".join(objetos)
+        encabezado = "%PDF-1.4\n"
+
+        offset = len(encabezado)
+        offsets = []
+        for obj in objetos:
+            offsets.append(offset)
+            offset += len(obj) + 1
+
+        xref_inicio = offset
+        xref = "xref\n"
+        xref += f"0 {len(objetos) + 1}\n"
+        xref += "0000000000 65535 f \n"
+        for pos in offsets:
+            xref += f"{pos:010d} 00000 n \n"
+
+        trailer = (
+            f"trailer\n<< /Size {len(objetos) + 1} /Root 1 0 R /Info 6 0 R >>\n"
+            f"startxref\n{xref_inicio}\n%%EOF"
+        )
+
+        return (encabezado + cuerpo + "\n" + xref + trailer).encode('latin-1')
+

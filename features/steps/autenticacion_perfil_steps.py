@@ -130,7 +130,11 @@ def step_usuario_intenta_utilizar(context):
 @then('el sistema rechaza la operación')
 def step_sistema_rechaza_operacion(context):
     if hasattr(context, 'response'):
-        context.test.assertEqual(context.response.status_code, 200)
+        # RN-EXP-01: Para descargas se rechaza con 403; para otros flujos se renderiza con 200
+        context.test.assertIn(
+            context.response.status_code, [200, 403],
+            "Se esperaba que el sistema rechazara la operación."
+        )
     elif hasattr(context, 'resultado'):
         context.test.assertFalse(
             context.resultado,

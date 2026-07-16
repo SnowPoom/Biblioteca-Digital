@@ -13,4 +13,5 @@ urlpatterns = [
     path('materiales/autoguardar/', views.autoguardar_borrador, name='autoguardar_borrador_nuevo'),
     path('materiales/autoguardar/<int:pk>/', views.autoguardar_borrador, name='autoguardar_borrador'),
     path('materiales/republicar/<int:pk>/', views.republicar_libro, name='republicar_libro'),
+    path('materiales/<int:libro_id>/descargar/', views.descargar_libro, name='descargar_libro'),
 ]

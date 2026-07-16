@@ -1,4 +1,5 @@
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
 from django.shortcuts import redirect, render, get_object_or_404
 
 from .forms import PublicacionLibroFormulario
@@ -180,3 +181,29 @@ def republicar_libro(request, pk):
         return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/'))
         
     return redirect('materiales:inicio')
+
+
+@login_required(login_url='/auth/')
+def descargar_libro(request, libro_id):
+    libro = get_object_or_404(Libro, pk=libro_id)
+    perfil = request.user.perfil
+
+    # RN-EXP-05: La descarga se registra como metrica sin importar si supera la cuota
+    libro.registrar_descarga()
+
+    # RN-EXP-01: Solo se permite la descarga si las paginas no exceden la cuota disponible
+    if not perfil.puede_descargar(libro.numero_paginas):
+        return HttpResponse(
+            "no tiene suficientes páginas en su cuota",
+            status=403,
+            content_type='text/plain',
+        )
+
+    perfil.reducir_cuota(libro.numero_paginas)
+
+    # RN-EXP-06: El archivo generado incluye metadatos del autor original y la fuente
+    contenido = libro.generar_contenido_descarga()
+
+    respuesta = HttpResponse(contenido, content_type='application/pdf')
+    respuesta['Content-Disposition'] = f'attachment; filename="{libro.titulo}.pdf"'
+    return respuesta

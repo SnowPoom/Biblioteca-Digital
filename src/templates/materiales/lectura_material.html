@@ -276,7 +276,10 @@
                     <span id="page-indicator" style="font-size: 18px; font-weight: 600;">Portada</span>
                     <button id="btn-next" class="print-btn">&rarr;</button>
                 </div>
-                <button class="print-btn" type="button" style="width: 100%; margin-top: 20px;">Imprimir</button>
+                <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
+                    <a href="{% url 'materiales:descargar_libro' libro.id %}" class="print-btn" style="text-decoration: none;">Descargar</a>
+                    <button class="print-btn" type="button">Imprimir</button>
+                </div>
             </div>
         </section>
 

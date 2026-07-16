@@ -5,35 +5,23 @@ from src.login.models import PerfilUsuario
 
 User = get_user_model()
 
-@given('que el usuario ha iniciado sesión en la plataforma')
-def step_usuario_iniciado_sesion(context):
-    user = User.objects.create_user(
-        username='lector',
-        email='lector@ejemplo.com',
-        password='password123',
-        first_name='Lector'
-    )
-    # Suponiendo que el modelo PerfilUsuario tendrá cuota, la inicializamos
-    perfil = PerfilUsuario.objects.create(usuario=user, rol=PerfilUsuario.ESTUDIANTE)
-    context.user = user
-    context.perfil = perfil
-    context.test.client.login(username='lector', password='password123')
+# El step 'que el usuario ha iniciado sesion en la plataforma' se define
+# en feed_actividad_steps.py y es compartido por todos los features.
 
 @given('que el usuario tiene una cuota de descarga mensual disponible')
 def step_usuario_cuota_disponible(context):
-    # Definimos que el usuario tiene 500 páginas de cuota
-    context.perfil.cuota_descarga = 500
-    context.perfil.save()
+    perfil = context.usuario_principal.perfil
+    perfil.cuota_descarga = 500
+    perfil.save()
+    context.perfil = perfil
 
 @given('la cantidad de páginas del libro no excede dicha cuota')
 def step_paginas_no_excede(context):
     from src.materiales.models import Libro
-    # Crear un libro de 300 páginas
     context.libro = Libro.objects.create(
         titulo='Libro Corto',
-        paginas=300,
-        autor=context.user,
-        archivo_formato='PDF'
+        numero_paginas=300,
+        autor=context.usuario_principal,
     )
 
 @when('el usuario descarga un libro')
@@ -48,7 +36,7 @@ def step_usuario_intenta_descargar(context):
 
 @then('el libro queda disponible para acceso sin conexión')
 def step_libro_disponible_offline(context):
-    context.test.assertEqual(context.response.status_code, 200, "La descarga falló.")
+    context.test.assertEqual(context.response.status_code, 200, "La descarga fallo.")
     context.test.assertEqual(context.response['Content-Type'], 'application/pdf')
 
 @then('la cuota del usuario se reduce según el número de páginas descargadas')
@@ -62,9 +50,8 @@ def step_paginas_excede_cuota(context):
     from src.materiales.models import Libro
     context.libro = Libro.objects.create(
         titulo='Libro Largo',
-        paginas=800, # Excede los 500
-        autor=context.user,
-        archivo_formato='PDF'
+        numero_paginas=800,
+        autor=context.usuario_principal,
     )
 
 @then('el sistema le informa que no tiene suficientes páginas en su cuota')
@@ -81,12 +68,13 @@ def step_descarga_libro_otro_usuario_formato(context):
     autor_otro = User.objects.create_user(username='autor2', password='123')
     context.libro = Libro.objects.create(
         titulo='Libro de Autor',
-        paginas=100,
+        numero_paginas=100,
         autor=autor_otro,
-        archivo_formato='PDF'
     )
-    context.perfil.cuota_descarga = 500
-    context.perfil.save()
+    perfil = context.usuario_principal.perfil
+    perfil.cuota_descarga = 500
+    perfil.save()
+    context.perfil = perfil
     url = reverse('materiales:descargar_libro', args=[context.libro.id])
     context.response = context.test.client.get(url)
 
@@ -114,8 +102,8 @@ def step_cuota_aumenta_100_paginas(context):
 def step_usuario_visualiza_libro(context):
     pass
 
-@when('el usuario solicita imprimir {porcion}')
-def step_usuario_solicita_imprimir(context, porcion):
+@when('el usuario solicita descargar {porcion}')
+def step_usuario_solicita_descargar(context, porcion):
     pass
 
 @then('el sistema genera el documento correspondiente a {porcion} listo para impresión')
