@@ -380,23 +380,48 @@
                         </section>
 
                         <section id="collections-view" class="view-panel hidden">
-                            {% for pub in recomendaciones %}
-                            {% if pub.tipo == 'coleccion' %}
-                            <div class="collection-card" data-publicacion-id="{{ pub.pk }}">
-                                <button class="boton-descartar" type="button" title="No me interesa" aria-label="Descartar recomendacion" onclick="descartarRecomendacion(this)">&times;</button>
-                                <h3>{{ pub.titulo }}</h3>
-                                <p class="autor-original">Por {% firstof pub.autor.get_full_name pub.autor.username %}</p>
+                            {% if request.user.is_authenticated %}
+                                {% for pub in recomendaciones %}
+                                {% if pub.tipo == 'coleccion' %}
+                                <div class="collection-card" data-publicacion-id="{{ pub.pk }}">
+                                    <button class="boton-descartar" type="button" title="No me interesa" aria-label="Descartar recomendacion" onclick="descartarRecomendacion(this)">&times;</button>
+                                    <a href="{% url 'materiales:detalle_coleccion' pub.pk %}" style="text-decoration: none; color: inherit; display: block;">
+                                        <h3 style="display: flex; align-items: center; gap: 8px;">
+                                            <span style="font-size: 14px; color: #ff9800;">★ Recomendado</span>
+                                            {{ pub.titulo }}
+                                        </h3>
+                                        <p class="autor-original" style="margin-top: 5px;">Por {% firstof pub.autor.get_full_name pub.autor.username %}</p>
+                                        <div class="tags" style="margin-top: 10px;">
+                                            {% for categoria in pub.categorias.all %}
+                                            <span class="tag">{{ categoria.nombre }}</span>
+                                            {% empty %}
+                                            <span class="tag">Sin categoria</span>
+                                            {% endfor %}
+                                        </div>
+                                    </a>
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                            {% endif %}
+
+                            {% for col in colecciones %}
+                            <a href="{% url 'materiales:detalle_coleccion' col.id %}" style="text-decoration: none; color: inherit; display: block; margin-bottom: 20px;">
+                            <div class="collection-card">
+                                <h3>{{ col.nombre }}</h3>
+                                <div class="autor-original" style="margin-top: -10px; margin-bottom: 10px;">Por: {% firstof col.creador.get_full_name col.creador.username %}</div>
                                 <div class="tags">
-                                    {% for categoria in pub.categorias.all %}
-                                    <span class="tag">{{ categoria.nombre }}</span>
-                                    {% empty %}
-                                    <span class="tag">Sin categoria</span>
+                                    {% for cat in col.categorias.all %}
+                                    <span class="tag">{{ cat.nombre }}</span>
                                     {% endfor %}
                                 </div>
+                                <p style="font-size: 15px; color: #111; margin-bottom: 10px;">{{ col.descripcion|default:"Sin descripción proporcionada." }}</p>
+                                <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px;">
+                                    <span>Libros: {{ col.libros.count }}</span>
+                                </div>
                             </div>
-                            {% endif %}
+                            </a>
                             {% empty %}
-                            <p style="font-size: 18px; color: #555;">No hay colecciones recomendadas aun.</p>
+                            <p style="font-size: 18px; color: #555;">No hay colecciones públicas aún.</p>
                             {% endfor %}
                         </section>
             </div>

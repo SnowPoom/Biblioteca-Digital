@@ -397,3 +397,196 @@ def descargar_libro(request, libro_id, formato='pdf'):
     respuesta = HttpResponse(contenido, content_type=tipo_contenido)
     respuesta['Content-Disposition'] = f'attachment; filename="{libro.titulo}.{extension}"'
     return respuesta
+
+# -----------------------------------------------------------------------------
+# VISTAS DE COLECCIONES
+# -----------------------------------------------------------------------------
+from django.contrib.auth import get_user_model
+from django.contrib import messages
+from .models import Coleccion, ParticipacionColeccion, InvitacionColeccion, SolicitudAccesoColeccion
+
+User = get_user_model()
+
+@login_required
+def detalle_coleccion(request, coleccion_id):
+    coleccion = get_object_or_404(Coleccion, id=coleccion_id)
+    participaciones = coleccion.participaciones.select_related('usuario').all()
+    es_miembro = participaciones.filter(usuario=request.user).exists()
+    es_admin = participaciones.filter(usuario=request.user, rol=ParticipacionColeccion.ADMINISTRADOR).exists()
+    
+    # Si la coleccion es privada y no es miembro, denegar acceso
+    if coleccion.visibilidad == Coleccion.PRIVADA and not es_miembro:
+        return HttpResponse("Acceso denegado.", status=403)
+        
+    solicitudes = []
+    invitaciones = []
+    if es_admin:
+        solicitudes = coleccion.solicitudes.filter(estado=SolicitudAccesoColeccion.PENDIENTE)
+        invitaciones = coleccion.invitaciones.filter(estado=InvitacionColeccion.PENDIENTE)
+        
+    context = {
+        'coleccion': coleccion,
+        'participaciones': participaciones,
+        'es_miembro': es_miembro,
+        'es_admin': es_admin,
+        'solicitudes': solicitudes,
+        'invitaciones': invitaciones,
+    }
+    return render(request, 'materiales/detalle_coleccion.html', context)
+
+@login_required
+def invitar_a_coleccion(request, coleccion_id):
+    if request.method == 'POST':
+        coleccion = get_object_or_404(Coleccion, id=coleccion_id)
+        username = request.POST.get('username')
+        if username:
+            try:
+                usuario_invitado = User.objects.get(username=username)
+                exito, msg = coleccion.invitar_usuario(request.user, usuario_invitado)
+                if exito:
+                    messages.success(request, msg)
+                else:
+                    messages.error(request, msg)
+            except User.DoesNotExist:
+                messages.error(request, "El usuario especificado no existe.")
+            except PermissionError as e:
+                messages.error(request, str(e))
+    return redirect('materiales:detalle_coleccion', coleccion_id=coleccion_id)
+
+@login_required
+def solicitar_acceso_coleccion(request, coleccion_id):
+    if request.method == 'POST':
+        coleccion = get_object_or_404(Coleccion, id=coleccion_id)
+        try:
+            exito, msg = coleccion.solicitar_acceso(request.user)
+            if exito:
+                messages.success(request, msg)
+            else:
+                messages.error(request, msg)
+        except (PermissionError, ValueError) as e:
+            messages.error(request, str(e))
+    return redirect('materiales:detalle_coleccion', coleccion_id=coleccion_id)
+
+@login_required
+def retirar_de_coleccion(request, coleccion_id, participante_id):
+    if request.method == 'POST':
+        coleccion = get_object_or_404(Coleccion, id=coleccion_id)
+        participante = get_object_or_404(User, id=participante_id)
+        try:
+            if coleccion.retirar_participante(request.user, participante):
+                messages.success(request, "Participante retirado con éxito.")
+            else:
+                messages.error(request, "No se pudo retirar al participante.")
+        except Exception as e:
+            messages.error(request, str(e))
+    return redirect('materiales:detalle_coleccion', coleccion_id=coleccion_id)
+
+@login_required
+def abandonar_coleccion(request, coleccion_id):
+    if request.method == 'POST':
+        coleccion = get_object_or_404(Coleccion, id=coleccion_id)
+        if coleccion.abandonar(request.user):
+            messages.success(request, "Has abandonado la colección.")
+            return redirect('materiales:inicio')
+        else:
+            messages.error(request, "No eres parte de esta colección.")
+    return redirect('materiales:detalle_coleccion', coleccion_id=coleccion_id)
+
+@login_required
+def procesar_invitacion(request, invitacion_id, accion):
+    if request.method != 'POST':
+        return redirect('feed:notificaciones')
+        
+    invitacion = get_object_or_404(InvitacionColeccion, id=invitacion_id, estado=InvitacionColeccion.PENDIENTE)
+    try:
+        if accion == 'aceptar':
+            exito, msg = invitacion.aceptar(request.user)
+            if exito:
+                messages.success(request, msg)
+            else:
+                messages.error(request, msg)
+        elif accion == 'rechazar':
+            exito, msg = invitacion.rechazar(request.user)
+            if exito:
+                messages.success(request, msg)
+            else:
+                messages.error(request, msg)
+    except PermissionError as e:
+        messages.error(request, str(e))
+        
+    from django.utils.http import url_has_allowed_host_and_scheme
+    next_url = request.POST.get('next')
+    if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}):
+        return redirect(next_url)
+    return redirect('feed:notificaciones')
+
+@login_required
+def procesar_solicitud(request, solicitud_id, accion):
+    if request.method != 'POST':
+        return redirect('materiales:inicio')
+        
+    solicitud = get_object_or_404(SolicitudAccesoColeccion, id=solicitud_id, estado=SolicitudAccesoColeccion.PENDIENTE)
+    try:
+        if accion == 'aprobar':
+            if solicitud.aprobar(request.user):
+                messages.success(request, "Solicitud aprobada.")
+            else:
+                messages.error(request, "No se pudo aprobar (límite de participantes).")
+        elif accion == 'rechazar':
+            if solicitud.rechazar(request.user):
+                messages.success(request, "Solicitud rechazada.")
+    except PermissionError as e:
+        messages.error(request, str(e))
+        
+    from django.utils.http import url_has_allowed_host_and_scheme
+    next_url = request.POST.get('next')
+    if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}):
+        return redirect(next_url)
+    return redirect('materiales:detalle_coleccion', coleccion_id=solicitud.coleccion.id)
+
+@login_required
+def api_buscar_usuarios(request):
+    q = request.GET.get('q', '').strip()
+    if len(q) < 2:
+        from django.http import JsonResponse
+        return JsonResponse({'users': []})
+
+    from django.db.models import Q
+    from django.contrib.auth.models import User
+    from django.http import JsonResponse
+
+    usuarios = User.objects.filter(
+        Q(username__icontains=q) |
+        Q(first_name__icontains=q) |
+        Q(last_name__icontains=q)
+    ).exclude(id=request.user.id)[:10]
+
+    data = []
+    for u in usuarios:
+        data.append({
+            'username': u.username,
+            'full_name': u.get_full_name()
+        })
+    return JsonResponse({'users': data})
+
+@login_required
+def ajustar_limite(request, coleccion_id):
+    if request.method == 'POST':
+        coleccion = get_object_or_404(Coleccion, id=coleccion_id)
+        from src.materiales.models import ParticipacionColeccion
+        if not coleccion.participaciones.filter(usuario=request.user, rol=ParticipacionColeccion.ADMINISTRADOR).exists():
+            messages.error(request, "Solo los administradores pueden ajustar el límite.")
+            return redirect('materiales:detalle_coleccion', coleccion_id=coleccion_id)
+        
+        try:
+            nuevo_limite = int(request.POST.get('limite_libros', 20))
+            if 5 <= nuevo_limite <= 20:
+                coleccion.limite_libros = nuevo_limite
+                coleccion.save()
+                messages.success(request, f"Límite de libros actualizado a {nuevo_limite}.")
+            else:
+                messages.error(request, "El límite debe estar entre 5 y 20.")
+        except ValueError:
+            messages.error(request, "Límite inválido.")
+            
+    return redirect('materiales:detalle_coleccion', coleccion_id=coleccion_id)

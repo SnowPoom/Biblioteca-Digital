@@ -584,6 +584,7 @@
                 </div>
                 {% else %}
                 {% for col in colecciones %}
+                <a href="{% url 'materiales:detalle_coleccion' col.id %}" style="text-decoration: none; color: inherit; display: block;">
                 <article class="card" style="grid-template-columns: 1fr;">
                     <div class="card-content">
                         <h2>{{ col.nombre }}</h2>
@@ -598,9 +599,13 @@
                         {% if col.descripcion %}
                             <p style="margin-bottom: 10px;">{{ col.descripcion }}</p>
                         {% endif %}
-                        <p style="color: #666; font-size: 13px;">Límite de libros: {{ col.limite_libros }}</p>
+                        <div style="font-size: 14px; font-weight: 600; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e0d7d7; display: flex; justify-content: space-between;">
+                            <span>Libros: {{ col.libros.count }}</span>
+                            <span>Participantes: {{ col.participaciones.count }}</span>
+                        </div>
                     </div>
                 </article>
+                </a>
                 {% endfor %}
                 {% endif %}
             </div>
