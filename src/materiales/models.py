@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import models
-
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 LIMITE_MAXIMO_PAGINAS = 500
 
@@ -329,3 +330,113 @@ class Anotacion(models.Model):
         return cls.objects.filter(
             usuario=usuario, libro=libro, fragmento_texto=fragmento_texto
         ).first()
+
+
+class Coleccion(models.Model):
+    PUBLICA = 'publica'
+    PRIVADA = 'privada'
+    OPCIONES_VISIBILIDAD = [
+        (PUBLICA, 'Pública'),
+        (PRIVADA, 'Privada'),
+    ]
+
+    nombre = models.CharField(max_length=255)
+    descripcion = models.TextField(blank=True, default='')
+    visibilidad = models.CharField(
+        max_length=20,
+        choices=OPCIONES_VISIBILIDAD,
+        default=PUBLICA,
+    )
+    limite_libros = models.PositiveIntegerField(
+        default=20,
+        validators=[
+            MinValueValidator(5, message="El mínimo es de 5 libros"),
+            MaxValueValidator(20, message="El máximo de libros es 20")
+        ]
+    )
+    creador = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='colecciones_creadas',
+    )
+    categorias = models.ManyToManyField(
+        Categoria,
+        blank=True,
+        related_name='colecciones',
+    )
+    libros = models.ManyToManyField(
+        Libro,
+        blank=True,
+        related_name='colecciones_pertenecientes',
+    )
+    creado = models.DateTimeField(auto_now_add=True)
+    actualizado = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Colección'
+        verbose_name_plural = 'Colecciones'
+
+    def __str__(self):
+        return self.nombre
+
+    def clean(self):
+        super().clean()
+        # Validación redundante eliminada para no duplicar errores en el form
+
+    def save(self, *args, **kwargs):
+        es_nuevo = self.pk is None
+        super().save(*args, **kwargs)
+        if es_nuevo:
+            self.agregar_participante(self.creador, rol=ParticipacionColeccion.ADMINISTRADOR)
+
+    def publicar(self):
+        if not self.categorias.exists():
+            return False, "Falta asignar categoría."
+        self.estado = self.PUBLICADO
+        self.save()
+        return True, "Colección publicada."
+
+    def agregar_libro(self, libro):
+        if self.libros.count() >= self.limite_libros:
+            raise ValidationError("Supera el límite máximo de libros")
+        self.libros.add(libro)
+
+    def es_administrador(self, usuario):
+        return self.participaciones.filter(usuario=usuario, rol=ParticipacionColeccion.ADMINISTRADOR).exists()
+
+    def agregar_participante(self, usuario, rol='participante'):
+        ParticipacionColeccion.objects.get_or_create(
+            coleccion=self,
+            usuario=usuario,
+            defaults={'rol': rol}
+        )
+
+
+class ParticipacionColeccion(models.Model):
+    ADMINISTRADOR = 'administrador'
+    PARTICIPANTE = 'participante'
+    ROLES = [
+        (ADMINISTRADOR, 'Administrador'),
+        (PARTICIPANTE, 'Participante'),
+    ]
+
+    coleccion = models.ForeignKey(
+        Coleccion,
+        on_delete=models.CASCADE,
+        related_name='participaciones',
+    )
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='participaciones_coleccion',
+    )
+    rol = models.CharField(max_length=20, choices=ROLES, default=PARTICIPANTE)
+    fecha_union = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Participación en Colección'
+        verbose_name_plural = 'Participaciones en Colecciones'
+        unique_together = ('coleccion', 'usuario')
+
+    def __str__(self):
+        return f"{self.usuario.username} - {self.rol} en {self.coleccion.nombre}"

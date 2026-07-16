@@ -376,7 +376,8 @@
             <a href="{% url 'busqueda:busqueda' %}">Buscar</a>
             <a href="{% url 'materiales:inicio' %}">Para ti</a>
             <a href="{% url 'feed:feed' %}">Siguiendo</a>
-            <a href="{% url 'materiales:creacion_material' %}">Crear Material</a>
+            <a href="{% url 'materiales:creacion_material' %}">Crear material</a>
+            <a href="{% url 'colecciones:crear_coleccion' %}">Crear colección</a>
         </nav>
     </aside>
 
@@ -569,6 +570,41 @@
                 {% endif %}
             </div>
             {% endif %}
+            <hr class="separador">
+            <h3 class="seccion-titulo">Colecciones</h3>
+            <div class="main">
+                {% if not colecciones %}
+                <div class="estado-vacio">
+                    <strong>Sin colecciones</strong>
+                    {% if es_propio %}
+                    No has creado ninguna colección todavía.
+                    {% else %}
+                    Este usuario no tiene colecciones públicas.
+                    {% endif %}
+                </div>
+                {% else %}
+                {% for col in colecciones %}
+                <article class="card" style="grid-template-columns: 1fr;">
+                    <div class="card-content">
+                        <h2>{{ col.nombre }}</h2>
+                        <div class="tags">
+                            {% for cat in col.categorias.all %}
+                            <span class="tag">{{ cat.nombre }}</span>
+                            {% endfor %}
+                            <span class="tag" style="background: var(--bg); border: 1px solid var(--accent); color: var(--accent);">
+                                {{ col.get_visibilidad_display }}
+                            </span>
+                        </div>
+                        {% if col.descripcion %}
+                            <p style="margin-bottom: 10px;">{{ col.descripcion }}</p>
+                        {% endif %}
+                        <p style="color: #666; font-size: 13px;">Límite de libros: {{ col.limite_libros }}</p>
+                    </div>
+                </article>
+                {% endfor %}
+                {% endif %}
+            </div>
+
         </div>
     </div>
 </body>

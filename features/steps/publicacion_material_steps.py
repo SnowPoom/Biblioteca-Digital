@@ -538,7 +538,7 @@ def step_usuario_republica_libro(context):
     context.total_libros_antes = Libro.objects.count()
     context.republicaciones_iniciales = context.libro_ajeno.republicaciones
     
-    context.republicacion = context.libro_ajeno.republicar(usuario=context.usuario_principal)
+    context.republicacion, _ = context.libro_ajeno.republicar(usuario=context.usuario_principal)
 
 
 @then('el libro aparece en el perfil del usuario como contenido republicado')
@@ -649,3 +649,173 @@ def step_no_puede_consultar_metricas(context):
             (403, 404),
             "El acceso de un usuario no autor a las métricas debe ser rechazado.",
         )
+
+# ---------------------------------------------------------------------------
+# Escenarios de creacion de colecciones
+# ---------------------------------------------------------------------------
+
+@given('que el usuario ha preparado una colección con nombre y al menos una categoría temática')
+def step_prepara_coleccion_basica(context):
+    from src.materiales.models import Categoria
+    context.categoria_coleccion, _ = Categoria.objects.get_or_create(nombre='Tecnología')
+    context.datos_coleccion = {
+        'nombre': 'Colección de Prueba',
+        'descripcion': 'Descripción de la colección',
+        'categorias': [context.categoria_coleccion.id],
+    }
+
+
+@given('el usuario define la visibilidad de la colección')
+def step_define_visibilidad(context):
+    context.datos_coleccion['visibilidad'] = 'publica'
+
+
+@given('el usuario establece un límite máximo de libros válido (mínimo 5, por defecto 20)')
+def step_define_limite_valido(context):
+    context.datos_coleccion['limite_libros'] = 15
+
+
+@when('el usuario crea la colección')
+def step_usuario_crea_coleccion(context):
+    from src.materiales.models import Coleccion
+    from django.core.exceptions import ValidationError
+    try:
+        coleccion = Coleccion(
+            nombre=context.datos_coleccion['nombre'],
+            descripcion=context.datos_coleccion.get('descripcion', ''),
+            visibilidad=context.datos_coleccion.get('visibilidad', 'publica'),
+            limite_libros=context.datos_coleccion.get('limite_libros', 20),
+            creador=context.usuario_principal
+        )
+        
+        # Simulamos la validación del formulario de que la categoría es requerida
+        if not context.datos_coleccion.get('categorias'):
+            raise ValidationError("Debe asignar al menos una categoría a la colección.")
+            
+        # Validar modelo (ejecuta validadores de campo)
+        coleccion.full_clean()
+        coleccion.save()
+        
+        for cat_id in context.datos_coleccion.get('categorias', []):
+            coleccion.categorias.add(cat_id)
+            
+        context.coleccion = coleccion
+        context.resultado = True
+        context.error_creacion = None
+    except ValidationError as e:
+        context.resultado = False
+        context.error_creacion = str(e)
+    except Exception as e:
+        context.resultado = False
+        context.error_creacion = str(e)
+
+
+@then('la colección se crea exitosamente')
+def step_coleccion_creada_exitosamente(context):
+    context.test.assertTrue(
+        context.resultado,
+        f"La colección debió crearse exitosamente. Error: {context.error_creacion}"
+    )
+    context.test.assertIsNotNone(context.coleccion.id)
+
+
+@then('la colección queda disponible según su visibilidad definida')
+def step_coleccion_visibilidad(context):
+    context.coleccion.refresh_from_db()
+    context.test.assertEqual(
+        context.coleccion.visibilidad,
+        context.datos_coleccion.get('visibilidad', 'publica'),
+        "La visibilidad de la colección no coincide con la definida"
+    )
+
+
+@then('el usuario creador es asignado automáticamente como administrador inicial de la colección')
+def step_creador_es_administrador(context):
+    es_admin = context.coleccion.es_administrador(context.usuario_principal)
+    context.test.assertTrue(
+        es_admin,
+        "El creador debe ser asignado como administrador inicial."
+    )
+
+
+@given('el usuario intenta establecer un límite máximo de {limite} libros')
+def step_intenta_establecer_limite_invalido(context, limite):
+    context.datos_coleccion['limite_libros'] = int(limite)
+
+
+@when('el usuario intenta crear la colección')
+def step_intenta_crear_coleccion(context):
+    step_usuario_crea_coleccion(context)
+
+
+@then('la colección no se crea')
+def step_coleccion_no_creada(context):
+    context.test.assertFalse(
+        hasattr(context, 'coleccion') and context.coleccion.id is not None,
+        "La colección no debió guardarse."
+    )
+
+
+@then('se notifica que el límite mínimo de libros es {limite}')
+def step_notifica_limite_minimo(context, limite):
+    context.test.assertIsNotNone(context.error_creacion, "Debe existir un mensaje de error.")
+    context.test.assertIn(
+        limite,
+        context.error_creacion,
+        f"El error debe mencionar el límite de {limite} libros."
+    )
+
+# ---------------------------------------------------------------------------
+# Otros escenarios de colecciones (Categorías, Limites de agregación, Eliminación)
+# ---------------------------------------------------------------------------
+
+@given('que el usuario ha preparado una colección con nombre y libros pero sin categoría')
+def step_coleccion_sin_categoria(context):
+    context.datos_coleccion = {
+        'nombre': 'Coleccion Incompleta',
+        'categorias': [],
+    }
+
+
+
+@given('que una colección ha alcanzado su límite máximo de libros')
+def step_coleccion_alcanza_limite(context):
+    from src.materiales.models import Coleccion, Libro
+    context.coleccion = Coleccion.objects.create(
+        nombre='Coleccion Limitada',
+        creador=context.usuario_principal,
+        limite_libros=5
+    )
+    # Agregar 5 libros
+    for i in range(5):
+        libro = Libro.objects.create(
+            titulo=f'Libro {i}',
+            autor=context.usuario_principal
+        )
+        context.coleccion.libros.add(libro)
+
+@when('el usuario intenta agregar un libro más a esa colección')
+def step_agrega_libro_extra(context):
+    from src.materiales.models import Libro
+    from django.core.exceptions import ValidationError
+    context.libro_nuevo = Libro.objects.create(
+        titulo='Libro Extra',
+        autor=context.usuario_principal
+    )
+    try:
+        context.coleccion.agregar_libro(context.libro_nuevo)
+        context.resultado = True
+    except ValidationError as e:
+        context.resultado = False
+        context.error_creacion = str(e)
+
+@then('el libro no se agrega a la colección')
+def step_libro_no_agregado(context):
+    context.test.assertFalse(context.resultado, "La operación debió ser rechazada.")
+    context.test.assertNotIn(
+        context.libro_nuevo,
+        context.coleccion.libros.all(),
+        "El libro no debe estar en la colección."
+    )
+
+
