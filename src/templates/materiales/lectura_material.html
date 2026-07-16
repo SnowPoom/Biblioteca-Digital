@@ -397,8 +397,8 @@
                         Descargar &#9662;
                     </button>
                     <div id="download-menu" class="download-menu">
-                        <a href="{% url 'materiales:descargar_libro' libro.id 'pdf' %}">📄 Descargar PDF</a>
-                        <a href="{% url 'materiales:descargar_libro' libro.id 'epub' %}">📕 Descargar EPUB</a>
+                        <a href="{% url 'materiales:confirmar_descarga' libro.id 'pdf' %}">📄 Descargar PDF</a>
+                        <a href="{% url 'materiales:confirmar_descarga' libro.id 'epub' %}">📕 Descargar EPUB</a>
                     </div>
                 </div>
             </div>

@@ -223,7 +223,7 @@ Regula la descarga y uso offline del material didáctico.
 *   **Criterios de Aceptación:**
     *   La descarga es exitosa únicamente si la cantidad de páginas del libro no excede la cuota de descarga mensual disponible del usuario.
     *   La descarga reduce las páginas de la cuota disponible.
-    *   El sistema registra la descarga como métrica del libro, sin importar si el usuario superó su cuota (esta métrica alimenta el contador de descargas del libro).
+    *   El sistema registra la descarga como métrica del libro (esta métrica alimenta el contador de descargas del libro).
     *   Los archivos descargados (PDF/EPUB) incluyen de forma mandatoria los metadatos del autor original y la fuente.
 *   **Prioridad:** Alta
 *   **Estimación:** L
