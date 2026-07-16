@@ -16,4 +16,6 @@ urlpatterns = [
     path('materiales/lectura/<int:libro_id>/anotacion/crear/', views.crear_anotacion, name='crear_anotacion'),
     path('materiales/anotacion/<int:anotacion_id>/editar/', views.editar_anotacion, name='editar_anotacion'),
     path('materiales/anotacion/<int:anotacion_id>/eliminar/', views.eliminar_anotacion, name='eliminar_anotacion'),
-]
+    path('materiales/<int:libro_id>/descargar/confirmar/<str:formato>/', views.confirmar_descarga, name='confirmar_descarga'),
+    path('materiales/<int:libro_id>/descargar/<str:formato>/', views.descargar_libro, name='descargar_libro'),
+]

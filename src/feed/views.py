@@ -133,6 +133,12 @@ def perfil_publico(request, username):
             estado=Libro.BORRADOR,
         ).order_by('-creado')
 
+    from src.materiales.models import Coleccion
+    if es_propio:
+        colecciones = Coleccion.objects.filter(creador=usuario_perfil).order_by('-creado')
+    else:
+        colecciones = Coleccion.objects.filter(creador=usuario_perfil, visibilidad=Coleccion.PUBLICA).order_by('-creado')
+
     contexto = {
         'usuario_perfil': usuario_perfil,
         'ya_sigue': ya_sigue,
@@ -140,6 +146,7 @@ def perfil_publico(request, username):
         'cantidad_seguidos': cantidad_seguidos,
         'publicaciones': publicaciones,
         'borradores': borradores,
+        'colecciones': colecciones,
         'es_propio': es_propio,
     }
     return render(request, 'perfil/perfil_publico.html', contexto)

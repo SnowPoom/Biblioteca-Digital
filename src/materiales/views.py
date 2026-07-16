@@ -1,4 +1,5 @@
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
 from django.shortcuts import redirect, render, get_object_or_404
 
 from .forms import PublicacionLibroFormulario
@@ -263,6 +264,12 @@ def autoguardar_borrador(request, pk=None):
 
         titulo = request.POST.get('titulo', '').strip()
         contenido_texto = request.POST.get('contenido_texto', '')
+        categorias_str = request.POST.get('categorias', '').strip()
+        
+        # Validación para evitar guardar borradores en blanco
+        es_categorias_vacio = not categorias_str or categorias_str == '[]'
+        if not pk and not titulo and not contenido_texto.strip() and not 'portada' in request.FILES and es_categorias_vacio:
+            return JsonResponse({'success': False, 'msg': 'Borrador vacío, no se guardará.'})
         
         if not titulo and not pk:
             libro.titulo = '(Sin título)'
@@ -315,3 +322,74 @@ def republicar_libro(request, pk):
         return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/'))
         
     return redirect('materiales:inicio')
+
+
+@login_required(login_url='/auth/')
+def confirmar_descarga(request, libro_id, formato='pdf'):
+    libro = get_object_or_404(Libro, pk=libro_id)
+    perfil = request.user.perfil
+
+    formato = formato.lower()
+    if formato not in ('pdf', 'epub'):
+        formato = 'pdf'
+
+    # RN-EXP-02: Renovar la cuota si han pasado 30 dias antes de validarla
+    perfil.renovar_cuota_si_corresponde()
+
+    cuota_actual = perfil.cuota_descarga
+    paginas_libro = libro.numero_paginas
+    cuota_restante = cuota_actual - paginas_libro
+    puede_descargar = perfil.puede_descargar(paginas_libro)
+
+    # RN-EXP-02: Calcular la fecha de proxima renovacion para informar al usuario
+    fecha_renovacion = perfil.fecha_proxima_renovacion()
+
+    return render(request, 'materiales/confirmar_descarga.html', {
+        'libro': libro,
+        'formato': formato,
+        'cuota_actual': cuota_actual,
+        'paginas_libro': paginas_libro,
+        'cuota_restante': cuota_restante,
+        'puede_descargar': puede_descargar,
+        'fecha_renovacion': fecha_renovacion,
+    })
+
+
+@login_required(login_url='/auth/')
+def descargar_libro(request, libro_id, formato='pdf'):
+    libro = get_object_or_404(Libro, pk=libro_id)
+    perfil = request.user.perfil
+
+    formato = formato.lower()
+    if formato not in ('pdf', 'epub'):
+        formato = 'pdf'
+
+    # RN-EXP-05: La descarga se registra como metrica sin importar si supera la cuota
+    libro.registrar_descarga()
+
+    # RN-EXP-02: Renovar la cuota si han pasado 30 dias antes de intentar usarla
+    perfil.renovar_cuota_si_corresponde()
+
+    # RN-EXP-01: Solo se permite la descarga si las paginas no exceden la cuota disponible
+    if not perfil.puede_descargar(libro.numero_paginas):
+        return HttpResponse(
+            "no tiene suficientes páginas en su cuota",
+            status=403,
+            content_type='text/plain',
+        )
+
+    perfil.reducir_cuota(libro.numero_paginas)
+
+    # RN-EXP-06: El archivo generado incluye metadatos del autor original y la fuente
+    contenido = libro.generar_contenido_descarga(formato)
+
+    if formato == 'epub':
+        tipo_contenido = 'application/epub+zip'
+        extension = 'epub'
+    else:
+        tipo_contenido = 'application/pdf'
+        extension = 'pdf'
+
+    respuesta = HttpResponse(contenido, content_type=tipo_contenido)
+    respuesta['Content-Disposition'] = f'attachment; filename="{libro.titulo}.{extension}"'
+    return respuesta

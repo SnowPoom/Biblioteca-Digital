@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,7 +14,10 @@
             --border: #000000;
         }
 
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
             font-family: 'Roboto', Arial, sans-serif;
@@ -53,8 +57,13 @@
             transition: opacity 0.15s ease;
         }
 
-        .sidebar-nav a:hover { opacity: 0.55; }
-        .sidebar-nav .activo { font-weight: 600; }
+        .sidebar-nav a:hover {
+            opacity: 0.55;
+        }
+
+        .sidebar-nav .activo {
+            font-weight: 600;
+        }
 
         /* Icono de campana */
         .notificacion-link {
@@ -70,7 +79,9 @@
             position: relative;
         }
 
-        .notificacion-link:hover { opacity: 0.55; }
+        .notificacion-link:hover {
+            opacity: 0.55;
+        }
 
         .notificacion-link svg {
             width: 22px;
@@ -132,17 +143,18 @@
             background: var(--surface);
             width: 100%;
             /* La altura se controla por JS dependiendo si es portada o texto */
-            padding: 0; 
+            padding: 0;
             display: flex;
             flex-direction: column;
             align-items: stretch;
             justify-content: flex-start;
-            overflow: hidden; 
+            overflow: hidden;
             position: relative;
-            box-shadow: 0 6px 16px rgba(0,0,0,0.25); /* Sombreado solicitado */
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+            /* Sombreado solicitado */
             border: 1px solid #ddd;
         }
-        
+
         .page-scaler {
             width: 816px;
             height: 1056px;
@@ -154,7 +166,7 @@
             font-size: 12pt;
             line-height: 1.5;
         }
-        
+
         .page-scaler img {
             max-width: 100%;
             height: auto;
@@ -192,28 +204,64 @@
             font-weight: 600;
             cursor: pointer;
         }
-        
+
         .nav-controls {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-top: 20px;
         }
-        
+
         .nav-controls button {
             margin: 0;
             padding: 10px 20px;
             font-size: 20px;
         }
-        
+
         .nav-controls button:disabled {
             background: #ccc;
             cursor: not-allowed;
         }
 
         @media (max-width: 980px) {
-            .reader { grid-template-columns: 1fr; }
-            .title { margin-left: 0; }
+            .reader {
+                grid-template-columns: 1fr;
+            }
+
+            .title {
+                margin-left: 0;
+            }
+        }
+
+        .download-menu {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            right: 0;
+            margin-bottom: 8px;
+            background: #fff;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 10;
+            min-width: 200px;
+        }
+
+        .download-menu.show {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .download-menu a {
+            padding: 14px 20px;
+            text-decoration: none;
+            color: var(--text);
+            font-size: 18px;
+            font-weight: 500;
+            transition: background 0.15s;
+        }
+
+        .download-menu a:hover {
+            background: #f0f4ff;
         }
 
         /* RN-ANO-05: resaltado visual de fragmentos con anotacion guardada */
@@ -248,13 +296,15 @@
         #menu-fragmento-anotado .opcion-eliminar { color: #c00; }
     </style>
 </head>
+
 <body>
     <aside class="sidebar-frame">
         <nav class="sidebar-nav" aria-label="Navegacion principal">
             <a href="{% url 'feed:notificaciones' %}" class="notificacion-link" aria-label="Notificaciones">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                 </svg>
                 {% if unread_notifications_count > 0 %}
                 <span class="badge">{{ unread_notifications_count }}</span>
@@ -263,14 +313,15 @@
             <a href="{% url 'busqueda:busqueda' %}">Buscar</a>
             <a href="{% url 'materiales:inicio' %}">Para ti</a>
             <a href="{% url 'feed:feed' %}">Siguiendo</a>
-            <a href="{% url 'materiales:creacion_material' %}">Crear Material</a>
+            <a href="{% url 'materiales:creacion_material' %}">Crear material</a>
+            <a href="{% url 'colecciones:crear_coleccion' %}">Crear colección</a>
         </nav>
     </aside>
 
     <div class="content-frame-page">
         <h1 class="title">{{ libro.titulo }}</h1>
         <a href="{% url 'feed:perfil_publico' request.user.username %}" style="text-decoration:none; color:inherit;">
-        <div class="avatar" aria-label="Perfil"></div>
+            <div class="avatar" aria-label="Perfil"></div>
         </a>
 
         <section class="reader">
@@ -279,7 +330,7 @@
             </div>
             <div>
                 <div class="notes" id="panel-anotaciones">
-                    <h2>Mis Anotaciones</h2>
+                    <h2>Mis anotaciones</h2>
 
                     <!-- Formulario de anotacion -->
                     <div id="form-anotacion" style="display:none; margin-bottom: 18px; padding: 12px; border: 1px solid #ccc; background: #f9f9f9;">
@@ -334,16 +385,26 @@
                     <button type="button" class="opcion-editar">Editar</button>
                     <button type="button" class="opcion-eliminar">Eliminar</button>
                 </div>
-                
+
                 <div class="nav-controls">
                     <button id="btn-prev" class="print-btn" disabled>&larr;</button>
                     <span id="page-indicator" style="font-size: 18px; font-weight: 600;">Portada</span>
                     <button id="btn-next" class="print-btn">&rarr;</button>
                 </div>
-                <button class="print-btn" type="button" style="width: 100%; margin-top: 20px;">Imprimir</button>
+                <div class="download-wrapper"
+                    style="position: relative; margin-top: 20px; display: flex; justify-content: flex-end;">
+                    <button class="print-btn" type="button" id="btn-descargar"
+                        onclick="document.getElementById('download-menu').classList.toggle('show')">
+                        Descargar &#9662;
+                    </button>
+                    <div id="download-menu" class="download-menu">
+                        <a href="{% url 'materiales:confirmar_descarga' libro.id 'pdf' %}">📄 Descargar PDF</a>
+                        <a href="{% url 'materiales:confirmar_descarga' libro.id 'epub' %}">📕 Descargar EPUB</a>
+                    </div>
+                </div>
             </div>
         </section>
-        
+
         <!-- Contenedor oculto con todo el texto crudo del editor -->
         <div id="raw-content" style="display: none;">
             {{ libro.contenido_texto|safe }}
@@ -353,27 +414,27 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const rawContentDiv = document.getElementById('raw-content');
             const pageDisplay = document.getElementById('page-display');
             const btnPrev = document.getElementById('btn-prev');
             const btnNext = document.getElementById('btn-next');
             const pageIndicator = document.getElementById('page-indicator');
-            
+
             const pages = [];
-            
+
             // Portada como primera pagina (height auto para que encaje su proporcion real)
             {% if libro.portada %}
             pages.push('<img style="width: 100%; height: auto; display: block;" src="{{ libro.portada.url }}" alt="Portada">');
             {% else %}
             pages.push('<div style="text-align: center; padding-top: 200px; font-size: 32px; color: #888;">Sin Portada</div>');
             {% endif %}
-            
+
             const temp = document.createElement('div');
             temp.innerHTML = rawContentDiv.innerHTML;
-            
+
             let currentChunk = document.createElement('div');
-            
+
             Array.from(temp.children).forEach(child => {
                 if (child.classList && child.classList.contains('page-gap')) {
                     if (currentChunk.innerHTML.trim() !== '') {
@@ -385,16 +446,16 @@
                     currentChunk.appendChild(child.cloneNode(true));
                 }
             });
-            
+
             if (currentChunk.innerHTML.trim() !== '') {
                 pages.push('<div class="page-scaler">' + currentChunk.innerHTML + '</div>');
             }
-            
+
             let currentPageIndex = 0;
-            
+
             function scaleContent() {
                 const cardWidth = pageDisplay.clientWidth;
-                
+
                 if (currentPageIndex === 0) {
                     // Para la portada, dejamos que la imagen defina la altura naturalmente
                     pageDisplay.style.height = 'auto';
@@ -411,40 +472,49 @@
                     }
                 }
             }
-            
+
             function renderPage() {
                 pageDisplay.innerHTML = pages[currentPageIndex];
-                
+
                 if (currentPageIndex === 0) {
                     pageIndicator.textContent = "Portada";
                 } else {
                     pageIndicator.textContent = "Página " + currentPageIndex + " de " + (pages.length - 1);
                 }
-                
+
                 btnPrev.disabled = currentPageIndex === 0;
                 btnNext.disabled = currentPageIndex === pages.length - 1;
-                
+
                 scaleContent();
             }
-            
+
             btnPrev.addEventListener('click', () => {
                 if (currentPageIndex > 0) {
                     currentPageIndex--;
                     renderPage();
                 }
             });
-            
+
             btnNext.addEventListener('click', () => {
                 if (currentPageIndex < pages.length - 1) {
                     currentPageIndex++;
                     renderPage();
                 }
             });
-            
+
             window.addEventListener('resize', scaleContent);
-            
+
             // Inicializar
             renderPage();
+
+            // Cerrar menu de descarga al hacer clic fuera
+            document.addEventListener('click', function (e) {
+                var menu = document.getElementById('download-menu');
+                var btn = document.getElementById('btn-descargar');
+                if (menu && btn && !btn.contains(e.target) && !menu.contains(e.target)) {
+                    menu.classList.remove('show');
+                }
+            });
         });
     </script>
 
@@ -715,4 +785,5 @@
     </script>
     {% endif %}
 </body>
+
 </html>
