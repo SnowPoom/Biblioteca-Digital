@@ -18,13 +18,11 @@ class Categoria(models.Model):
 
 class Libro(models.Model):
     BORRADOR = 'borrador'
-    EN_REVISION = 'en_revision'
     PUBLICADO = 'publicado'
     RETIRADO = 'retirado'
 
     ESTADOS = [
         (BORRADOR, 'Borrador'),
-        (EN_REVISION, 'En Revisión'),
         (PUBLICADO, 'Publicado'),
         (RETIRADO, 'Retirado'),
     ]
@@ -33,6 +31,7 @@ class Libro(models.Model):
     portada = models.ImageField(upload_to='portadas/', blank=True)
     contenido_texto = models.TextField(blank=True, default='')
     numero_paginas = models.PositiveIntegerField(default=0)
+    republicaciones = models.PositiveIntegerField(default=0)
     autor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -150,3 +149,42 @@ class Libro(models.Model):
             self.estado = self.BORRADOR
             
         self.save()
+
+    def republicar(self, usuario):
+        """Republica un libro preservando la autoría original.
+        
+        Reglas de negocio aplicadas:
+        - RN-PUB-12: La republicación preserva la autoría original y no crea una copia independiente.
+        - RN-PUB-13: Se incrementa el contador de republicaciones.
+        """
+        if self.estado != self.PUBLICADO:
+            raise ValueError("Solo los libros publicados pueden ser republicados.")
+            
+        from django.db import transaction
+        from django.db.models import F
+        from src.feed.models import Publicacion, Republicacion
+        
+        with transaction.atomic():
+            pub, pub_created = Publicacion.objects.get_or_create(
+                pk=self.pk,
+                defaults={
+                    'autor': self.autor,
+                    'titulo': self.titulo,
+                    'tipo': Publicacion.LIBRO,
+                }
+            )
+            if not pub_created:
+                pub.titulo = self.titulo
+                pub.save(update_fields=['titulo'])
+                
+            republicacion, created = Republicacion.objects.get_or_create(
+                publicacion=pub,
+                republicado_por=usuario
+            )
+            
+            if created:
+                self.republicaciones = F('republicaciones') + 1
+                self.save(update_fields=['republicaciones'])
+                self.refresh_from_db(fields=['republicaciones'])
+                
+        return republicacion, created

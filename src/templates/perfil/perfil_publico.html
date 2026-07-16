@@ -272,6 +272,18 @@
             font-weight: 600;
         }
 
+        .republicacion-header {
+            font-size: 13px;
+            font-weight: 600;
+            color: #444;
+            margin-bottom: -14px;
+            padding-left: 4px;
+        }
+
+        .republicacion-header span {
+            color: #000;
+        }
+
         .autor-original {
             font-size: 13px;
             color: #555;
@@ -438,28 +450,82 @@
                 </div>
                 {% else %}
                 {% for item in publicaciones %}
-                <a href="{% url 'materiales:detalle_libro' item.pk %}" style="text-decoration:none; color:inherit; display:block;">
-                    <article class="card" aria-label="{{ item.titulo }}">
-                        {% if item.portada_url %}
-                            <img src="{{ item.portada_url }}" alt="Portada de {{ item.titulo }}" class="image-placeholder" style="object-fit: cover;">
-                        {% else %}
-                            <div class="image-placeholder" aria-hidden="true">Sin Portada</div>
-                        {% endif %}
-                        <div class="card-content">
-                            <h2>{{ item.titulo }}</h2>
-                            <div class="tags">
-                                {% for cat in item.categorias.all %}
-                                <span class="tag">{{ cat.nombre }}</span>
-                                {% empty %}
-                                <span class="tag">{{ item.get_tipo_display }}</span>
-                                {% endfor %}
-                            </div>
-                            {% if item.descripcion %}
-                            <p>{{ item.descripcion|truncatewords:40 }}</p>
-                            {% endif %}
+                    {% if item.titulo %}
+                        <!-- Es una Publicacion normal (Libro) -->
+                        <div style="margin-bottom:28px;">
+                            <article class="card" aria-label="{{ item.titulo }}">
+                                <a href="{% url 'materiales:detalle_libro' item.pk %}" style="text-decoration:none; color:inherit; display:block;">
+                                    {% if item.portada_url %}
+                                        <img src="{{ item.portada_url }}" alt="Portada de {{ item.titulo }}" class="image-placeholder" style="object-fit: cover;">
+                                    {% else %}
+                                        <div class="image-placeholder" aria-hidden="true">Imagen</div>
+                                    {% endif %}
+                                </a>
+                                <div class="card-content">
+                                    <h2><a href="{% url 'materiales:detalle_libro' item.pk %}" style="text-decoration:none; color:inherit;">{{ item.titulo }}</a></h2>
+                                    <p class="autor-original">Por {% firstof item.autor.get_full_name item.autor.username %}</p>
+                                    <div class="tags">
+                                        {% for cat in item.categorias.all %}
+                                        <span class="tag">{{ cat.nombre }}</span>
+                                        {% empty %}
+                                        <span class="tag">{{ item.get_tipo_display }}</span>
+                                        {% endfor %}
+                                    </div>
+                                    {% if item.descripcion %}
+                                    <p>{{ item.descripcion|truncatewords:40 }}</p>
+                                    {% endif %}
+                                    
+                                    {% if user.is_authenticated and item.autor != request.user %}
+                                    <form action="{% url 'materiales:republicar_libro' item.pk %}" method="post" style="margin-top: 14px;">
+                                        {% csrf_token %}
+                                        <button type="submit" style="padding: 6px 16px; font-size: 14px; font-weight: 600; background: var(--accent); color: #000; border: 1px solid var(--border); cursor: pointer;">
+                                            Republicar
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </article>
                         </div>
-                    </article>
-                </a>
+                    {% else %}
+                        <!-- Es una Republicacion -->
+                        <div style="margin-bottom:28px;">
+                            <p class="republicacion-header">
+                                Republicado por <span>{% firstof item.republicado_por.get_full_name item.republicado_por.username %}</span>
+                            </p>
+                            <article class="card" aria-label="{{ item.publicacion.titulo }} (republicado)">
+                                <a href="{% url 'materiales:detalle_libro' item.publicacion.pk %}" style="text-decoration:none; color:inherit; display:block;">
+                                    {% if item.publicacion.portada_url %}
+                                        <img src="{{ item.publicacion.portada_url }}" alt="Portada de {{ item.publicacion.titulo }}" class="image-placeholder" style="object-fit: cover;">
+                                    {% else %}
+                                        <div class="image-placeholder" aria-hidden="true">Imagen</div>
+                                    {% endif %}
+                                </a>
+                                <div class="card-content">
+                                    <h2><a href="{% url 'materiales:detalle_libro' item.publicacion.pk %}" style="text-decoration:none; color:inherit;">{{ item.publicacion.titulo }}</a></h2>
+                                    <p class="autor-original">Autor original: {% firstof item.publicacion.autor.get_full_name item.publicacion.autor.username %}</p>
+                                    <div class="tags">
+                                        {% for cat in item.publicacion.categorias.all %}
+                                        <span class="tag">{{ cat.nombre }}</span>
+                                        {% empty %}
+                                        <span class="tag">{{ item.publicacion.get_tipo_display }}</span>
+                                        {% endfor %}
+                                    </div>
+                                    {% if item.publicacion.descripcion %}
+                                    <p>{{ item.publicacion.descripcion|truncatewords:40 }}</p>
+                                    {% endif %}
+
+                                    {% if user.is_authenticated and item.publicacion.autor != request.user %}
+                                    <form action="{% url 'materiales:republicar_libro' item.publicacion.pk %}" method="post" style="margin-top: 14px;">
+                                        {% csrf_token %}
+                                        <button type="submit" style="padding: 6px 16px; font-size: 14px; font-weight: 600; background: var(--accent); color: #000; border: 1px solid var(--border); cursor: pointer;">
+                                            Republicar
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </article>
+                        </div>
+                    {% endif %}
                 {% endfor %}
                 {% endif %}
             </div>

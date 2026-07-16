@@ -445,3 +445,48 @@ def step_usuario_intenta_modificar_libro_ajeno(context):
         context.resultado = True
     except PermissionError:
         context.resultado = False
+
+
+
+
+# ---------------------------------------------------------------------------
+# Escenario: Republicar el material de otro usuario preserva la autoría original
+# ---------------------------------------------------------------------------
+
+@when('el usuario republica ese libro en su perfil')
+def step_usuario_republica_libro(context):
+    context.total_libros_antes = Libro.objects.count()
+    context.republicaciones_iniciales = context.libro_ajeno.republicaciones
+    
+    context.republicacion = context.libro_ajeno.republicar(usuario=context.usuario_principal)
+
+
+@then('el libro aparece en el perfil del usuario como contenido republicado')
+def step_libro_aparece_republicado(context):
+    context.test.assertEqual(
+        Libro.objects.count(),
+        context.total_libros_antes,
+        "No se debe crear un nuevo registro de Libro al republicar (evita duplicación)."
+    )
+    
+    context.libro_ajeno.refresh_from_db()
+    context.test.assertEqual(
+        context.libro_ajeno.republicaciones,
+        context.republicaciones_iniciales + 1,
+        "El contador de republicaciones del libro original debe incrementar en 1."
+    )
+    
+    context.test.assertEqual(
+        context.republicacion.republicado_por,
+        context.usuario_principal,
+        "La republicación debe registrarse para el usuario que la realiza."
+    )
+
+
+@then('la autoría original del libro se conserva visible')
+def step_autoria_conserva_visible(context):
+    context.test.assertEqual(
+        context.republicacion.publicacion.autor,
+        context.libro_ajeno.autor,
+        "La republicación debe mantener intacta la referencia al autor original."
+    )

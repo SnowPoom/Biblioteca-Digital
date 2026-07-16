@@ -212,6 +212,12 @@
             max-width: 760px;
         }
 
+        .autor-original {
+            font-size: 13px;
+            color: #555;
+            margin: 0 0 10px;
+        }
+
         .collection-card {
             background: var(--surface);
             padding: 24px 24px 28px;
@@ -283,6 +289,7 @@
                                 {% endif %}
                                 <div class="content">
                                     <h2><a href="{% url 'materiales:lectura_material' libro.id %}" style="text-decoration: none; color: inherit;">{{ libro.titulo }}</a></h2>
+                                    <p class="autor-original">Por {% firstof libro.autor.get_full_name libro.autor.username %}</p>
                                     <div class="tags">
                                         {% for categoria in libro.categorias.all %}
                                         <span class="tag">{{ categoria.nombre }}</span>
@@ -290,6 +297,14 @@
                                         <span class="tag">Sin categoría</span>
                                         {% endfor %}
                                     </div>
+                                    {% if user.is_authenticated and libro.autor != request.user %}
+                                    <form action="{% url 'materiales:republicar_libro' libro.id %}" method="post" style="margin-top: 10px;">
+                                        {% csrf_token %}
+                                        <button type="submit" style="padding: 6px 16px; font-size: 14px; font-weight: 600; background: var(--accent); color: #000; border: 1px solid var(--border); cursor: pointer;">
+                                            Republicar
+                                        </button>
+                                    </form>
+                                    {% endif %}
                                 </div>
                             </div>
                             {% empty %}

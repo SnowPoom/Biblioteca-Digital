@@ -161,3 +161,22 @@ def autoguardar_borrador(request, pk=None):
         return JsonResponse({'success': True, 'libro_id': libro.pk})
         
     return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+
+@login_required(login_url='/auth/')
+def republicar_libro(request, pk):
+    from django.contrib import messages
+    from django.http import HttpResponseRedirect
+    
+    if request.method == 'POST':
+        libro = get_object_or_404(Libro, pk=pk, estado=Libro.PUBLICADO)
+        if libro.autor != request.user:
+            republicacion, created = libro.republicar(usuario=request.user)
+            if created:
+                messages.success(request, f'Has republicado "{libro.titulo}" en tu perfil.')
+        else:
+            messages.error(request, 'No puedes republicar tu propio material.')
+            
+        return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/'))
+        
+    return redirect('materiales:inicio')
