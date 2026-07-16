@@ -135,3 +135,18 @@ class Libro(models.Model):
                 mensaje=resultado['mensaje'],
             )
             return False, resultado['mensaje']
+
+    def editar(self, usuario_editor):
+        """Aplica las reglas de negocio al editar un libro.
+        
+        Reglas de negocio aplicadas:
+        - RN-PUB-11: Un usuario no puede editar ni eliminar material publicado por otro usuario.
+        - RN-PUB-09: Si el autor edita un libro ya publicado, el material debe volver a pasar la validacion.
+        """
+        if self.autor != usuario_editor:
+            raise PermissionError("No tiene permisos para editar este libro.")
+        
+        if self.estado == self.PUBLICADO:
+            self.estado = self.BORRADOR
+            
+        self.save()

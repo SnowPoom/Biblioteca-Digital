@@ -406,6 +406,7 @@
                     const gap = editor.getDoc().createElement('div');
                     gap.className = 'page-gap auto-page-gap';
                     gap.contentEditable = 'false';
+                    gap.innerHTML = '&nbsp;';
                     body.insertBefore(gap, node);
                     
                     pageSum = nodeHeight + nodeMargin;
@@ -497,9 +498,14 @@
                     icon: 'page-break',
                     tooltip: 'Insertar Salto de Página',
                     onAction: function() {
-                        editor.insertContent('<div class="page-gap manual-page-gap" contenteditable="false"></div><p><br></p>');
+                        editor.insertContent('<div class="page-gap manual-page-gap" contenteditable="false">&nbsp;</div><p><br></p>');
                         enforcePagination(editor);
                     }
+                });
+
+                // Ejecutar paginacion al cargar (para edicion de libros publicados)
+                editor.on('init', function() {
+                    enforcePagination(editor);
                 });
 
                 // Auto paginador al tipear

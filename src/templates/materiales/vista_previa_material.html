@@ -258,7 +258,12 @@
                     <a href="{% url 'materiales:lectura_material' libro.pk %}" style="text-decoration:none; display:block; width:100%; max-width:404px;">
                         <button class="primary-btn" style="width:100%; max-width:none;" type="button">Leer</button>
                     </a>
-                    <button class="secondary-btn" type="button">Añadir a la colección</button>
+                    <button class="secondary-btn" type="button" style="margin-top: 10px;">Añadir a la colección</button>
+                    {% if request.user == libro.autor %}
+                    <a href="{% url 'materiales:edicion_material' libro.pk %}" style="text-decoration:none; display:block; width:100%; max-width:404px; margin-top: 10px;">
+                        <button class="secondary-btn" style="width:100%; max-width:none;" type="button">Editar</button>
+                    </a>
+                    {% endif %}
                     <div class="collection-toggle"><span class="caret">V</span><span>colección</span></div>
                 </div>
         </section>
