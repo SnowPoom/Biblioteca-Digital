@@ -134,10 +134,16 @@ def perfil_publico(request, username):
         ).order_by('-creado')
 
     from src.materiales.models import Coleccion
+    from django.db.models import Q
     if es_propio:
-        colecciones = Coleccion.objects.filter(creador=usuario_perfil).order_by('-creado')
+        colecciones = Coleccion.objects.filter(
+            Q(creador=usuario_perfil) | Q(participaciones__usuario=usuario_perfil)
+        ).distinct().order_by('-creado')
     else:
-        colecciones = Coleccion.objects.filter(creador=usuario_perfil, visibilidad=Coleccion.PUBLICA).order_by('-creado')
+        colecciones = Coleccion.objects.filter(
+            Q(creador=usuario_perfil) | Q(participaciones__usuario=usuario_perfil),
+            visibilidad=Coleccion.PUBLICA
+        ).distinct().order_by('-creado')
 
     contexto = {
         'usuario_perfil': usuario_perfil,

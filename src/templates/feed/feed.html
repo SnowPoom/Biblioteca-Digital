@@ -503,10 +503,10 @@
                             </div>
                             {% else %}
                             {% for coleccion in colecciones %}
-                            <a href="{% url 'materiales:detalle_libro' coleccion.pk %}" style="text-decoration:none; color:inherit; display:block; margin-bottom:28px;">
-                                <article class="collection-card" aria-label="{{ coleccion.titulo }}">
-                                    <h3>{{ coleccion.titulo }}</h3>
-                                    <p class="autor-original">Por {% firstof coleccion.autor.get_full_name coleccion.autor.username %}</p>
+                            <a href="{% url 'materiales:detalle_coleccion' coleccion.pk %}" style="text-decoration:none; color:inherit; display:block; margin-bottom:28px;">
+                                <article class="collection-card" aria-label="{{ coleccion.nombre }}">
+                                    <h3>{{ coleccion.nombre }}</h3>
+                                    <p class="autor-original">Por {% firstof coleccion.creador.get_full_name coleccion.creador.username %}</p>
                                     <div class="tags">
                                         {% for cat in coleccion.categorias.all %}
                                         <span class="tag">{{ cat.nombre }}</span>

@@ -107,6 +107,9 @@ class Libro(models.Model):
             self.estado = self.PUBLICADO
             self.save()
 
+            # RN-EXP-03: Incrementar la cuota del autor por cada libro publicado
+            self.autor.perfil.incrementar_cuota_por_publicacion()
+
             # Crear o actualizar la publicación para el feed
             from src.feed.models import Publicacion, Categoria as FeedCategoria
             pub, created = Publicacion.objects.get_or_create(
@@ -208,6 +211,192 @@ class Libro(models.Model):
         # elimina para que deje de mostrarse en feeds y republicaciones ajenas.
         from src.feed.models import Publicacion
         Publicacion.objects.filter(pk=self.pk).delete()
+
+    def registrar_descarga(self):
+        """RN-EXP-05: Incrementa el contador de descargas como metrica de la publicacion."""
+        self.descargas += 1
+        self.save()
+
+    def generar_contenido_descarga(self, formato='pdf'):
+        """Genera un archivo en formato PDF o EPUB con el contenido del libro
+        y metadatos de autoria original (RN-EXP-06)."""
+        if formato == 'epub':
+            return self._generar_epub()
+        return self._generar_pdf()
+
+    def _extraer_texto_plano(self):
+        """Extrae texto plano del contenido HTML del libro."""
+        import re
+        texto = self.contenido_texto or ''
+        # Reemplazar saltos de parrafo/divs con saltos de linea
+        texto = re.sub(r'<br\s*/?>', '\n', texto)
+        texto = re.sub(r'</p>', '\n', texto)
+        texto = re.sub(r'</div>', '\n', texto)
+        texto = re.sub(r'<[^>]+>', '', texto)
+        # Decodificar entidades HTML basicas
+        texto = texto.replace('&amp;', '&')
+        texto = texto.replace('&lt;', '<')
+        texto = texto.replace('&gt;', '>')
+        texto = texto.replace('&nbsp;', ' ')
+        texto = texto.replace('&quot;', '"')
+        return texto.strip()
+
+    def _generar_pdf(self):
+        """Genera un PDF valido con el contenido real del libro y metadatos obligatorios."""
+        nombre_autor = self.autor.get_full_name() or self.autor.username
+        fuente = "Biblioteca Digital"
+        texto_contenido = self._extraer_texto_plano()
+
+        linea_meta = f"Autor original: {nombre_autor}  |  Fuente: {fuente}"
+        lineas = [linea_meta, f"Titulo: {self.titulo}", ""]
+        for parrafo in texto_contenido.split('\n'):
+            parrafo = parrafo.strip()
+            if not parrafo:
+                lineas.append("")
+                continue
+            while len(parrafo) > 80:
+                corte = parrafo.rfind(' ', 0, 80)
+                if corte == -1:
+                    corte = 80
+                lineas.append(parrafo[:corte])
+                parrafo = parrafo[corte:].strip()
+            if parrafo:
+                lineas.append(parrafo)
+
+        y_inicio = 740
+        interlineado = 14
+        comandos = ["/F1 11 Tf"]
+        y = y_inicio
+        for linea in lineas:
+            linea_safe = linea.replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+            comandos.append(f"BT 60 {y} Td ({linea_safe}) Tj ET")
+            y -= interlineado
+            if y < 50:
+                break
+
+        stream = "\n".join(comandos)
+        largo_stream = len(stream)
+
+        objetos = []
+        objetos.append("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj")
+        objetos.append("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj")
+        objetos.append(
+            "3 0 obj\n<< /Type /Page /Parent 2 0 R "
+            "/MediaBox [0 0 612 792] "
+            "/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj"
+        )
+        objetos.append(
+            f"4 0 obj\n<< /Length {largo_stream} >>\n"
+            f"stream\n{stream}\nendstream\nendobj"
+        )
+        objetos.append(
+            "5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj"
+        )
+        objetos.append(
+            f"6 0 obj\n<< /Author ({nombre_autor}) "
+            f"/Title ({self.titulo}) "
+            f"/Producer ({fuente}) >>\nendobj"
+        )
+
+        cuerpo = "\n".join(objetos)
+        encabezado = "%PDF-1.4\n"
+        offset = len(encabezado)
+        offsets = []
+        for obj in objetos:
+            offsets.append(offset)
+            offset += len(obj) + 1
+
+        xref_inicio = offset
+        xref = "xref\n"
+        xref += f"0 {len(objetos) + 1}\n"
+        xref += "0000000000 65535 f \n"
+        for pos in offsets:
+            xref += f"{pos:010d} 00000 n \n"
+
+        trailer = (
+            f"trailer\n<< /Size {len(objetos) + 1} /Root 1 0 R /Info 6 0 R >>\n"
+            f"startxref\n{xref_inicio}\n%%EOF"
+        )
+
+        return (encabezado + cuerpo + "\n" + xref + trailer).encode('latin-1')
+
+    def _generar_epub(self):
+        """Genera un EPUB valido con el contenido real del libro y metadatos obligatorios."""
+        import io
+        import zipfile
+
+        nombre_autor = self.autor.get_full_name() or self.autor.username
+        fuente = "Biblioteca Digital"
+        contenido_html = self.contenido_texto or '<p>Sin contenido.</p>'
+        mimetype = 'application/epub+zip'
+        container_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">\n'
+            '  <rootfiles>\n'
+            '    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>\n'
+            '  </rootfiles>\n'
+            '</container>'
+        )
+        content_opf = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid">\n'
+            '  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">\n'
+            f'    <dc:title>{self.titulo}</dc:title>\n'
+            f'    <dc:creator>{nombre_autor}</dc:creator>\n'
+            f'    <dc:publisher>{fuente}</dc:publisher>\n'
+            f'    <dc:source>{fuente}</dc:source>\n'
+            '    <dc:language>es</dc:language>\n'
+            f'    <dc:identifier id="uid">libro-{self.pk}</dc:identifier>\n'
+            '    <meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>\n'
+            '  </metadata>\n'
+            '  <manifest>\n'
+            '    <item id="chapter1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>\n'
+            '    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>\n'
+            '  </manifest>\n'
+            '  <spine>\n'
+            '    <itemref idref="chapter1"/>\n'
+            '  </spine>\n'
+            '</package>'
+        )
+        nav_xhtml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<!DOCTYPE html>\n'
+            '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">\n'
+            '<head><title>Navegacion</title></head>\n'
+            '<body>\n'
+            '<nav epub:type="toc">\n'
+            '  <ol><li><a href="chapter1.xhtml">Contenido</a></li></ol>\n'
+            '</nav>\n'
+            '</body></html>'
+        )
+        chapter_xhtml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<!DOCTYPE html>\n'
+            '<html xmlns="http://www.w3.org/1999/xhtml">\n'
+            '<head>\n'
+            f'  <title>{self.titulo}</title>\n'
+            '  <style>body { font-family: serif; margin: 2em; } '
+            '.metadata { color: #555; border-bottom: 1px solid #ccc; padding-bottom: 1em; margin-bottom: 2em; }</style>\n'
+            '</head>\n'
+            '<body>\n'
+            f'  <div class="metadata">\n'
+            f'    <p><strong>Autor original:</strong> {nombre_autor}</p>\n'
+            f'    <p><strong>Fuente:</strong> {fuente}</p>\n'
+            f'  </div>\n'
+            f'  <h1>{self.titulo}</h1>\n'
+            f'  {contenido_html}\n'
+            '</body></html>'
+        )
+
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as epub:
+            epub.writestr('mimetype', mimetype, compress_type=zipfile.ZIP_STORED)
+            epub.writestr('META-INF/container.xml', container_xml)
+            epub.writestr('OEBPS/content.opf', content_opf)
+            epub.writestr('OEBPS/nav.xhtml', nav_xhtml)
+            epub.writestr('OEBPS/chapter1.xhtml', chapter_xhtml)
+
+        return buffer.getvalue()
 
     def metricas_para(self, usuario):
         """Devuelve las métricas acumuladas del libro si el usuario es el autor.
@@ -356,7 +545,8 @@ class Coleccion(models.Model):
     )
     creador = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
         related_name='colecciones_creadas',
     )
     categorias = models.ManyToManyField(
@@ -381,25 +571,17 @@ class Coleccion(models.Model):
 
     def clean(self):
         super().clean()
-        # Validación redundante eliminada para no duplicar errores en el form
 
     def save(self, *args, **kwargs):
         es_nuevo = self.pk is None
         super().save(*args, **kwargs)
-        if es_nuevo:
+        if es_nuevo and self.creador:
             self.agregar_participante(self.creador, rol=ParticipacionColeccion.ADMINISTRADOR)
 
     def publicar(self):
         if not self.categorias.exists():
-            return False, "Falta asignar categoría."
-        self.visibilidad = self.PUBLICA
-        self.save()
-        return True, "Colección publicada."
-
-    def agregar_libro(self, libro):
-        if self.libros.count() >= self.limite_libros:
-            raise ValidationError("Supera el límite máximo de libros")
-        self.libros.add(libro)
+            return False, "La colección debe tener al menos una categoría"
+        return True, "Colección publicada"
 
     def es_administrador(self, usuario):
         return self.participaciones.filter(usuario=usuario, rol=ParticipacionColeccion.ADMINISTRADOR).exists()
@@ -411,11 +593,106 @@ class Coleccion(models.Model):
             defaults={'rol': rol}
         )
 
+    def invitar_usuario(self, admin, usuario_invitado):
+        if not self.es_administrador(admin):
+            raise PermissionError("Solo el administrador puede invitar usuarios.")
+        
+        if self.participaciones.count() >= 15:
+            return False, "Se ha alcanzado el límite máximo de 15 participantes."
+            
+        invitacion, created = InvitacionColeccion.objects.get_or_create(
+            coleccion=self,
+            usuario_invitado=usuario_invitado,
+            defaults={'estado': InvitacionColeccion.PENDIENTE}
+        )
+        
+        if created:
+            from src.feed.models import Notificacion
+            Notificacion.objects.create(
+                usuario=usuario_invitado,
+                mensaje=f"{admin.username} te ha invitado a colaborar en la colección '{self.nombre}'.",
+                tipo='invitacion_coleccion',
+                extra_data={'invitacion_id': invitacion.id, 'coleccion_id': self.id, 'estado': InvitacionColeccion.PENDIENTE}
+            )
+        return True, "Invitación enviada."
+
+    def solicitar_acceso(self, usuario_solicitante):
+        if self.visibilidad != self.PUBLICA:
+            return False, "No se puede solicitar acceso a una colección privada."
+            
+        if self.participaciones.count() >= 15:
+            return False, "Se ha alcanzado el límite máximo de 15 participantes."
+            
+        solicitud, created = SolicitudAccesoColeccion.objects.get_or_create(
+            coleccion=self,
+            usuario_solicitante=usuario_solicitante,
+            defaults={'estado': SolicitudAccesoColeccion.PENDIENTE}
+        )
+        
+        if created and self.creador:
+            from src.feed.models import Notificacion
+            Notificacion.objects.create(
+                usuario=self.creador,
+                mensaje=f"{usuario_solicitante.username} ha solicitado acceso para colaborar en tu colección '{self.nombre}'.",
+                tipo='solicitud_acceso_coleccion',
+                extra_data={'solicitud_id': solicitud.id, 'coleccion_id': self.id, 'estado': SolicitudAccesoColeccion.PENDIENTE}
+            )
+        return True, "Solicitud enviada."
+        
+    def retirar_participante(self, admin_usuario, participante_usuario):
+        if not self.participaciones.filter(usuario=admin_usuario, rol=ParticipacionColeccion.ADMINISTRADOR).exists():
+            raise PermissionError("Solo un administrador puede retirar participantes.")
+        if self.creador == participante_usuario:
+            raise PermissionError("No se puede retirar al creador de la colección.")
+            
+        participacion = self.participaciones.filter(usuario=participante_usuario).first()
+        if participacion:
+            participacion.delete()
+            from src.feed.models import Notificacion
+            Notificacion.objects.create(
+                usuario=participante_usuario,
+                tipo='sistema',
+                mensaje=f'Has sido retirado de la colección "{self.nombre}".',
+                extra_data={'coleccion_id': self.id}
+            )
+            return True
+        return False
+        
+    def abandonar(self, usuario):
+        participacion = self.participaciones.filter(usuario=usuario).first()
+        if not participacion:
+            return False
+            
+        if participacion.rol == ParticipacionColeccion.ADMINISTRADOR:
+            otros_miembros = self.participaciones.exclude(usuario=usuario)
+            if otros_miembros.exists():
+                nuevo_admin = otros_miembros.first()
+                nuevo_admin.rol = ParticipacionColeccion.ADMINISTRADOR
+                nuevo_admin.save()
+                self.creador = nuevo_admin.usuario
+                self.save()
+            else:
+                self.creador = None
+                self.save()
+                
+        participacion.delete()
+        
+        if self.creador and self.creador != usuario:
+            from src.feed.models import Notificacion
+            Notificacion.objects.create(
+                usuario=self.creador,
+                tipo='sistema',
+                mensaje=f'{usuario.username} ha abandonado la colección "{self.nombre}".',
+                extra_data={'coleccion_id': self.id}
+            )
+            
+        return True
 
 class ParticipacionColeccion(models.Model):
     ADMINISTRADOR = 'administrador'
     PARTICIPANTE = 'participante'
-    ROLES = [
+
+    OPCIONES_ROL = [
         (ADMINISTRADOR, 'Administrador'),
         (PARTICIPANTE, 'Participante'),
     ]
@@ -430,7 +707,11 @@ class ParticipacionColeccion(models.Model):
         on_delete=models.CASCADE,
         related_name='participaciones_coleccion',
     )
-    rol = models.CharField(max_length=20, choices=ROLES, default=PARTICIPANTE)
+    rol = models.CharField(
+        max_length=20,
+        choices=OPCIONES_ROL,
+        default=PARTICIPANTE,
+    )
     fecha_union = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -439,4 +720,135 @@ class ParticipacionColeccion(models.Model):
         unique_together = ('coleccion', 'usuario')
 
     def __str__(self):
-        return f"{self.usuario.username} - {self.rol} en {self.coleccion.nombre}"
+        return f"{self.usuario.username} - {self.coleccion.nombre} ({self.rol})"
+
+class InvitacionColeccion(models.Model):
+    PENDIENTE = 'pendiente'
+    ACEPTADA = 'aceptada'
+    RECHAZADA = 'rechazada'
+    ESTADOS = [
+        (PENDIENTE, 'Pendiente'),
+        (ACEPTADA, 'Aceptada'),
+        (RECHAZADA, 'Rechazada'),
+    ]
+
+    coleccion = models.ForeignKey(Coleccion, on_delete=models.CASCADE, related_name='invitaciones')
+    usuario_invitado = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='invitaciones_recibidas')
+    estado = models.CharField(max_length=20, choices=ESTADOS, default=PENDIENTE)
+    creada_en = models.DateTimeField(auto_now_add=True)
+
+    def aceptar(self, usuario):
+        if self.usuario_invitado != usuario:
+            raise PermissionError("No puedes aceptar una invitación dirigida a otro usuario.")
+        if self.coleccion.participaciones.count() >= 15:
+            return False, "La colección ya ha alcanzado el límite máximo de participantes."
+        self.estado = self.ACEPTADA
+        self.save()
+        self.coleccion.agregar_participante(usuario, rol=ParticipacionColeccion.PARTICIPANTE)
+        self._actualizar_notificaciones()
+        from src.feed.models import Notificacion
+        Notificacion.objects.create(
+            usuario=self.coleccion.creador,
+            tipo='sistema',
+            mensaje=f'{usuario.username} aceptó tu invitación a la colección "{self.coleccion.nombre}".',
+            extra_data={'coleccion_id': self.coleccion.id}
+        )
+        return True, "Invitación aceptada."
+
+    def rechazar(self, usuario):
+        if self.usuario_invitado != usuario:
+            raise PermissionError("No puedes rechazar una invitación dirigida a otro usuario.")
+        self.estado = self.RECHAZADA
+        self.save()
+        self._actualizar_notificaciones()
+        from src.feed.models import Notificacion
+        Notificacion.objects.create(
+            usuario=self.coleccion.creador,
+            tipo='sistema',
+            mensaje=f'{usuario.username} rechazó tu invitación a la colección "{self.coleccion.nombre}".',
+            extra_data={'coleccion_id': self.coleccion.id}
+        )
+        return True, "Invitación rechazada."
+        
+    def _actualizar_notificaciones(self):
+        from src.feed.models import Notificacion
+        notifs = Notificacion.objects.filter(usuario=self.usuario_invitado, tipo='invitacion_coleccion')
+        for n in notifs:
+            if n.extra_data.get('invitacion_id') == self.id:
+                n.extra_data['estado'] = self.estado
+                n.save()
+
+
+class SolicitudAccesoColeccion(models.Model):
+    PENDIENTE = 'pendiente'
+    APROBADA = 'aprobada'
+    RECHAZADA = 'rechazada'
+    ESTADOS = [
+        (PENDIENTE, 'Pendiente'),
+        (APROBADA, 'Aprobada'),
+        (RECHAZADA, 'Rechazada'),
+    ]
+
+    coleccion = models.ForeignKey(Coleccion, on_delete=models.CASCADE, related_name='solicitudes')
+    usuario_solicitante = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='solicitudes_acceso')
+    estado = models.CharField(max_length=20, choices=ESTADOS, default=PENDIENTE)
+    creada_en = models.DateTimeField(auto_now_add=True)
+
+    def aprobar(self, admin_usuario):
+        if not self.coleccion.participaciones.filter(usuario=admin_usuario, rol=ParticipacionColeccion.ADMINISTRADOR).exists():
+            raise PermissionError("Solo un administrador puede aprobar solicitudes.")
+        if self.coleccion.participaciones.count() >= 15:
+            return False, "La colección ya ha alcanzado el límite de participantes."
+        self.estado = self.APROBADA
+        self.save()
+        self.coleccion.agregar_participante(self.usuario_solicitante, rol=ParticipacionColeccion.PARTICIPANTE)
+        self._actualizar_notificaciones(admin_usuario)
+        from src.feed.models import Notificacion
+        Notificacion.objects.create(
+            usuario=self.usuario_solicitante,
+            tipo='sistema',
+            mensaje=f'Tu solicitud para unirte a la colección "{self.coleccion.nombre}" ha sido aprobada.',
+            extra_data={'coleccion_id': self.coleccion.id}
+        )
+        return True
+
+    def rechazar(self, admin_usuario):
+        if not self.coleccion.participaciones.filter(usuario=admin_usuario, rol=ParticipacionColeccion.ADMINISTRADOR).exists():
+            raise PermissionError("Solo un administrador puede rechazar solicitudes.")
+        self.estado = self.RECHAZADA
+        self.save()
+        self._actualizar_notificaciones(admin_usuario)
+        from src.feed.models import Notificacion
+        Notificacion.objects.create(
+            usuario=self.usuario_solicitante,
+            tipo='sistema',
+            mensaje=f'Tu solicitud para unirte a la colección "{self.coleccion.nombre}" ha sido rechazada.',
+            extra_data={'coleccion_id': self.coleccion.id}
+        )
+        return True
+        
+    def _actualizar_notificaciones(self, admin):
+        from src.feed.models import Notificacion
+        notifs = Notificacion.objects.filter(usuario=admin, tipo='solicitud_acceso_coleccion')
+        for n in notifs:
+            if n.extra_data.get('solicitud_id') == self.id:
+                n.extra_data['estado'] = self.estado
+                n.save()
+
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
+
+@receiver(post_delete, sender=ParticipacionColeccion)
+def reasingar_creador_al_eliminar_participacion(sender, instance, **kwargs):
+    coleccion = instance.coleccion
+    if coleccion.creador == instance.usuario:
+        otros = coleccion.participaciones.exclude(usuario=instance.usuario)
+        if otros.exists():
+            nuevo_admin = otros.first()
+            nuevo_admin.rol = ParticipacionColeccion.ADMINISTRADOR
+            nuevo_admin.save()
+            coleccion.creador = nuevo_admin.usuario
+            coleccion.save()
+        else:
+            coleccion.creador = None
+            coleccion.save()
