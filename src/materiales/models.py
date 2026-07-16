@@ -32,6 +32,8 @@ class Libro(models.Model):
     contenido_texto = models.TextField(blank=True, default='')
     numero_paginas = models.PositiveIntegerField(default=0)
     republicaciones = models.PositiveIntegerField(default=0)
+    visualizaciones = models.PositiveIntegerField(default=0)
+    descargas = models.PositiveIntegerField(default=0)
     autor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -205,6 +207,21 @@ class Libro(models.Model):
         # elimina para que deje de mostrarse en feeds y republicaciones ajenas.
         from src.feed.models import Publicacion
         Publicacion.objects.filter(pk=self.pk).delete()
+
+    def metricas_para(self, usuario):
+        """Devuelve las métricas acumuladas del libro si el usuario es el autor.
+
+        Regla de negocio aplicada:
+        - RN-PUB-13: El sistema registra métricas de visualizaciones,
+          republicaciones y descargas, visibles únicamente para el autor.
+        """
+        if usuario != self.autor:
+            return None
+        return {
+            'visualizaciones': self.visualizaciones,
+            'republicaciones': self.republicaciones,
+            'descargas': self.descargas,
+        }
 
     def fragmentos_anotados_por(self, usuario):
         """Fragmentos con anotacion activa del usuario en este libro.

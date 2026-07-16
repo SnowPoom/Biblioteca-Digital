@@ -570,3 +570,82 @@ def step_autoria_conserva_visible(context):
         context.libro_ajeno.autor,
         "La republicación debe mantener intacta la referencia al autor original."
     )
+
+
+# ---------------------------------------------------------------------------
+# Escenarios: Visualizacion de metricas de interaccion (US-08)
+# ---------------------------------------------------------------------------
+
+@given('que el usuario tiene al menos un libro publicado')
+def step_usuario_tiene_al_menos_un_libro_publicado(context):
+    # Reutiliza la preparacion del libro publicado ya definida para los
+    # escenarios de edicion/retiro, evitando duplicar la creacion del libro.
+    step_usuario_libro_publicado(context)
+
+
+@when('el usuario accede al detalle de ese libro')
+def step_usuario_accede_detalle_libro(context):
+    from django.urls import reverse
+    context.test.client.force_login(context.usuario_principal)
+    context.response = context.test.client.get(
+        reverse('materiales:detalle_libro', kwargs={'pk': context.libro.pk})
+    )
+
+
+@then('puede consultar el número de visualizaciones, republicaciones y descargas')
+def step_puede_consultar_metricas(context):
+    context.test.assertEqual(
+        context.response.status_code,
+        200,
+        "El autor debe poder acceder al detalle de su propio libro.",
+    )
+
+    context.libro.refresh_from_db()
+    metricas = context.response.context.get('metricas') if context.response.context else None
+    context.test.assertIsNotNone(
+        metricas,
+        "El detalle del libro debe exponer las métricas de interacción al autor.",
+    )
+    context.test.assertEqual(
+        metricas.get('visualizaciones'),
+        context.libro.visualizaciones,
+        "Las visualizaciones mostradas deben coincidir con el total acumulado del libro.",
+    )
+    context.test.assertEqual(
+        metricas.get('republicaciones'),
+        context.libro.republicaciones,
+        "Las republicaciones mostradas deben coincidir con el total acumulado del libro.",
+    )
+    context.test.assertEqual(
+        metricas.get('descargas'),
+        context.libro.descargas,
+        "Las descargas mostradas deben coincidir con el total acumulado del libro.",
+    )
+
+
+@when('otro usuario distinto al autor accede al detalle de ese libro')
+def step_otro_usuario_accede_detalle_libro(context):
+    from django.urls import reverse
+    context.usuario_no_autor = User.objects.create_user(
+        username='usuario_no_autor', password='password123',
+    )
+    context.test.client.force_login(context.usuario_no_autor)
+    context.response = context.test.client.get(
+        reverse('materiales:detalle_libro', kwargs={'pk': context.libro.pk})
+    )
+
+
+@then('no puede consultar las métricas de visualizaciones, republicaciones y descargas')
+def step_no_puede_consultar_metricas(context):
+    if context.response.status_code == 200:
+        metricas = context.response.context.get('metricas') if context.response.context else None
+        context.test.assertIsNone(
+            metricas,
+            "Un usuario distinto al autor no debe recibir las métricas del libro.",
+        )
+    else:
+        context.test.assertIn(
+            context.response.status_code,
+            (403, 404),
+            "El acceso de un usuario no autor a las métricas debe ser rechazado.",
+        )
