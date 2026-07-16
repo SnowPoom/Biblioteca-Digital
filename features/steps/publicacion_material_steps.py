@@ -394,6 +394,18 @@ def step_usuario_libro_publicado(context):
     )
     context.libro.categorias.add(context.categoria)
 
+    # Un libro publicado ya cuenta con su entrada en el feed, tal como la
+    # crearia Libro.publicar(). Se replica aqui para no depender de ese metodo.
+    from src.feed.models import Publicacion
+    Publicacion.objects.get_or_create(
+        pk=context.libro.pk,
+        defaults={
+            'autor': context.libro.autor,
+            'titulo': context.libro.titulo,
+            'tipo': Publicacion.LIBRO,
+        }
+    )
+
 
 @when('el usuario modifica los metadatos del libro')
 def step_usuario_modifica_metadatos(context):
@@ -424,6 +436,74 @@ def step_libro_no_visible(context):
 def step_usuario_modifica_contenido(context):
     context.libro.contenido_texto = 'Nuevo contenido actualizado'
     context.libro.editar(usuario_editor=context.usuario_principal)
+
+
+# ---------------------------------------------------------------------------
+# Escenario: Retirar un libro publicado lo hace invisible para otros usuarios
+# ---------------------------------------------------------------------------
+
+@when('el usuario retira la publicación del libro')
+def step_usuario_retira_publicacion(context):
+    context.libro.retirar()
+
+
+@then('el libro deja de estar disponible para el resto de la comunidad')
+def step_libro_no_disponible_comunidad(context):
+    context.libro.refresh_from_db()
+    context.test.assertEqual(
+        context.libro.estado,
+        Libro.RETIRADO,
+        "El libro debe quedar en estado 'Retirado' tras retirarlo.",
+    )
+
+    from django.urls import reverse
+    response = context.test.client.get(reverse('materiales:inicio'))
+    libros_visibles = list(response.context['libros'])
+    context.test.assertNotIn(
+        context.libro,
+        libros_visibles,
+        "El libro retirado no debe aparecer en la biblioteca general.",
+    )
+
+
+@then('el libro deja de aparecer en el feed de los usuarios que siguen al autor')
+def step_libro_no_aparece_en_feed(context):
+    from django.urls import reverse
+    from src.feed.models import Publicacion, Seguimiento
+
+    seguidor = User.objects.create_user(username='seguidor_del_autor', password='123')
+    Seguimiento.objects.create(seguidor=seguidor, seguido=context.usuario_principal)
+
+    context.test.assertFalse(
+        Publicacion.objects.filter(pk=context.libro.pk).exists(),
+        "La publicación del libro retirado debe eliminarse para que no pueda mostrarse en ningún feed.",
+    )
+
+    context.test.client.force_login(seguidor)
+    response = context.test.client.get(reverse('feed:feed'))
+
+    if response.status_code == 200:
+        material_feed = list(response.context.get('material_feed', []))
+        ids_en_feed = [item.pk for item in material_feed if hasattr(item, 'titulo')]
+        context.test.assertNotIn(
+            context.libro.pk,
+            ids_en_feed,
+            "El libro retirado no debe aparecer en el feed de sus seguidores.",
+        )
+
+    context.test.client.force_login(context.usuario_principal)
+
+
+@then('el usuario puede seguir accediendo a él desde su propio perfil')
+def step_usuario_accede_propio_perfil(context):
+    libro_accesible = Libro.objects.filter(
+        pk=context.libro.pk,
+        autor=context.usuario_principal,
+    ).exists()
+    context.test.assertTrue(
+        libro_accesible,
+        "El autor debe poder seguir accediendo a su libro retirado desde su perfil.",
+    )
 
 
 @given('que el usuario está visualizando un libro publicado por otro usuario')
@@ -490,3 +570,82 @@ def step_autoria_conserva_visible(context):
         context.libro_ajeno.autor,
         "La republicación debe mantener intacta la referencia al autor original."
     )
+
+
+# ---------------------------------------------------------------------------
+# Escenarios: Visualizacion de metricas de interaccion (US-08)
+# ---------------------------------------------------------------------------
+
+@given('que el usuario tiene al menos un libro publicado')
+def step_usuario_tiene_al_menos_un_libro_publicado(context):
+    # Reutiliza la preparacion del libro publicado ya definida para los
+    # escenarios de edicion/retiro, evitando duplicar la creacion del libro.
+    step_usuario_libro_publicado(context)
+
+
+@when('el usuario accede al detalle de ese libro')
+def step_usuario_accede_detalle_libro(context):
+    from django.urls import reverse
+    context.test.client.force_login(context.usuario_principal)
+    context.response = context.test.client.get(
+        reverse('materiales:detalle_libro', kwargs={'pk': context.libro.pk})
+    )
+
+
+@then('puede consultar el número de visualizaciones, republicaciones y descargas')
+def step_puede_consultar_metricas(context):
+    context.test.assertEqual(
+        context.response.status_code,
+        200,
+        "El autor debe poder acceder al detalle de su propio libro.",
+    )
+
+    context.libro.refresh_from_db()
+    metricas = context.response.context.get('metricas') if context.response.context else None
+    context.test.assertIsNotNone(
+        metricas,
+        "El detalle del libro debe exponer las métricas de interacción al autor.",
+    )
+    context.test.assertEqual(
+        metricas.get('visualizaciones'),
+        context.libro.visualizaciones,
+        "Las visualizaciones mostradas deben coincidir con el total acumulado del libro.",
+    )
+    context.test.assertEqual(
+        metricas.get('republicaciones'),
+        context.libro.republicaciones,
+        "Las republicaciones mostradas deben coincidir con el total acumulado del libro.",
+    )
+    context.test.assertEqual(
+        metricas.get('descargas'),
+        context.libro.descargas,
+        "Las descargas mostradas deben coincidir con el total acumulado del libro.",
+    )
+
+
+@when('otro usuario distinto al autor accede al detalle de ese libro')
+def step_otro_usuario_accede_detalle_libro(context):
+    from django.urls import reverse
+    context.usuario_no_autor = User.objects.create_user(
+        username='usuario_no_autor', password='password123',
+    )
+    context.test.client.force_login(context.usuario_no_autor)
+    context.response = context.test.client.get(
+        reverse('materiales:detalle_libro', kwargs={'pk': context.libro.pk})
+    )
+
+
+@then('no puede consultar las métricas de visualizaciones, republicaciones y descargas')
+def step_no_puede_consultar_metricas(context):
+    if context.response.status_code == 200:
+        metricas = context.response.context.get('metricas') if context.response.context else None
+        context.test.assertIsNone(
+            metricas,
+            "Un usuario distinto al autor no debe recibir las métricas del libro.",
+        )
+    else:
+        context.test.assertIn(
+            context.response.status_code,
+            (403, 404),
+            "El acceso de un usuario no autor a las métricas debe ser rechazado.",
+        )

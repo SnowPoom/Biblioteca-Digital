@@ -21,11 +21,17 @@ def detalle_libro(request, pk):
     from src.feed.models import Publicacion
     from django.shortcuts import get_object_or_404
     libro = get_object_or_404(Publicacion, pk=pk)
+
+    # RN-PUB-13: Las métricas del material solo se exponen al autor.
+    material = Libro.objects.filter(pk=pk).first()
+    metricas = material.metricas_para(request.user) if material else None
+
     return render(request, 'materiales/vista_previa_material.html', {
         'libro': libro,
         'titulo': libro.titulo,
         'autor': libro.autor,
         'descripcion': libro.descripcion,
+        'metricas': metricas,
     })
 
 
