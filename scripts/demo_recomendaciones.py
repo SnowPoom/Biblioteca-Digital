@@ -25,7 +25,8 @@ User = get_user_model()
 # 1. Asegurar que existan Colecciones en la base de datos
 # ---------------------------------------------------------
 autor_demo = User.objects.filter(username='prof_garcia').first()
-if not autor_demo:
+usuario = User.objects.filter(username='usuario_prueba').first()
+if not autor_demo or not usuario:
     print("Por favor, ejecuta primero 'python manage.py shell < scripts/poblar_libros.py'")
     exit()
 
@@ -39,21 +40,23 @@ colecciones_data = [
 for titulo, categorias in colecciones_data:
     pub, created = Publicacion.objects.get_or_create(
         titulo=titulo,
+        tipo=Publicacion.COLECCION,
         defaults={
             'autor': autor_demo,
-            'tipo': Publicacion.COLECCION,
         }
     )
-    if created:
-        for cat_nombre in categorias:
-            fcat = FeedCategoria.objects.filter(nombre=cat_nombre).first()
-            if fcat:
-                pub.categorias.add(fcat)
+    
+    # Sincronizar categorías siempre (idempotencia)
+    feed_cats = []
+    for cat_nombre in categorias:
+        fcat = FeedCategoria.objects.filter(nombre=cat_nombre).first()
+        if fcat:
+            feed_cats.append(fcat)
+    pub.categorias.set(feed_cats)
 
 # ---------------------------------------------------------
 # 2. Obtener el usuario de prueba y su motor
 # ---------------------------------------------------------
-usuario = User.objects.get(username='usuario_prueba')
 motor = MotorRecomendaciones(usuario)
 
 def imprimir_estado_actual(titulo_bloque):

@@ -3,7 +3,7 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from src.feed.models import Publicacion
-from src.materiales.models import Libro
+from src.materiales.models import Libro, Coleccion
 from .models import HistorialLectura, DescarteRecomendacion
 
 
@@ -148,35 +148,65 @@ class MotorRecomendaciones:
 
         return pesos_categorias
 
-    def _puntuacion_publicacion(self, publicacion, pesos_categorias):
-        """Calcula la puntuacion de relevancia de una publicacion candidata.
-
-        Combina dos senales:
-        1. Afinidad tematica: suma de pesos de las categorias que coinciden
-           con las exploradas por el usuario (RN-REC-01, RN-REC-08).
-        2. Popularidad colectiva: combinacion ponderada de visualizaciones,
-           descargas y republicaciones del material original (RN-REC-02).
+    def _construir_queryset_anotado(self, candidatas, pesos_categorias=None):
+        """Construye las consultas a la base de datos para libros y colecciones
+        anotando su relevancia y popularidad.
         """
-        # Senal 1: afinidad tematica
-        afinidad = 0.0
-        for categoria in publicacion.categorias.all():
-            afinidad += pesos_categorias.get(categoria.nombre, 0.0)
+        from django.db.models import Subquery, OuterRef, FloatField, Value, F, Case, When, Sum
+        from django.db.models.functions import Coalesce
+        from src.materiales.models import Libro, Coleccion
 
-        # Senal 2: popularidad colectiva obtenida desde el Libro original
-        popularidad = 0.0
-        if publicacion.tipo == Publicacion.LIBRO:
-            libro = Libro.objects.filter(pk=publicacion.pk).first()
-            if libro:
-                popularidad = (
-                    libro.visualizaciones * PESO_VISUALIZACIONES
-                    + libro.descargas * PESO_DESCARGAS
-                    + libro.republicaciones * PESO_REPUBLICACIONES
-                )
+        # Expresion para calcular popularidad de un libro
+        pop_expr = (
+            F('visualizaciones') * Value(PESO_VISUALIZACIONES) +
+            F('descargas') * Value(PESO_DESCARGAS) +
+            F('republicaciones') * Value(PESO_REPUBLICACIONES)
+        )
 
-        # Se normaliza la popularidad para no dominar la afinidad
-        popularidad_normalizada = popularidad / 100.0 if popularidad else 0.0
+        # 1. Subconsulta para popularidad de Libros
+        libro_qs = Libro.objects.filter(pk=OuterRef('pk')).annotate(
+            pop_calc=ExpressionWrapper(pop_expr, output_field=FloatField())
+        )
+        subq_libro_pop = Subquery(libro_qs.values('pop_calc')[:1], output_field=FloatField())
 
-        return afinidad + popularidad_normalizada
+        # 2. Subconsulta para popularidad de Colecciones (suma de los libros que contiene)
+        coleccion_qs = Coleccion.objects.filter(pk=OuterRef('pk')).annotate(
+            pop_total=Sum(
+                F('libros__visualizaciones') * Value(PESO_VISUALIZACIONES) +
+                F('libros__descargas') * Value(PESO_DESCARGAS) +
+                F('libros__republicaciones') * Value(PESO_REPUBLICACIONES),
+                output_field=FloatField()
+            )
+        )
+        subq_coleccion_pop = Subquery(coleccion_qs.values('pop_total')[:1], output_field=FloatField())
+
+        # 3. Expresion para afinidad tematica (solo si hay pesos)
+        if pesos_categorias:
+            whens = [When(categorias__nombre=nombre, then=Value(peso)) 
+                     for nombre, peso in pesos_categorias.items()]
+            if whens:
+                afinidad_expr = Coalesce(Sum(Case(*whens, default=Value(0.0), output_field=FloatField())), Value(0.0))
+            else:
+                afinidad_expr = Value(0.0)
+        else:
+            afinidad_expr = Value(0.0)
+
+        # 4. Separar querysets y anotar
+        qs_libros = candidatas.filter(tipo=Publicacion.LIBRO).annotate(
+            popularidad_bruta=Coalesce(subq_libro_pop, Value(0.0)),
+            afinidad=afinidad_expr
+        ).annotate(
+            puntuacion=F('afinidad') + (F('popularidad_bruta') / 100.0)
+        ).order_by('-puntuacion')[:10]
+
+        qs_colecciones = candidatas.filter(tipo=Publicacion.COLECCION).annotate(
+            popularidad_bruta=Coalesce(subq_coleccion_pop, Value(0.0)),
+            afinidad=afinidad_expr
+        ).annotate(
+            puntuacion=F('afinidad') + (F('popularidad_bruta') / 100.0)
+        ).order_by('-puntuacion')[:10]
+
+        return qs_libros, qs_colecciones
 
     def _recomendaciones_personalizadas(self, tipo=None):
         """Genera recomendaciones basadas en el perfil del usuario."""
@@ -187,38 +217,20 @@ class MotorRecomendaciones:
             pk__in=ids_excluidos
         ).prefetch_related('categorias')
 
-        if tipo == 'libros':
-            candidatas = candidatas.filter(tipo=Publicacion.LIBRO)
-        elif tipo == 'colecciones':
-            candidatas = candidatas.filter(tipo=Publicacion.COLECCION)
+        qs_libros, qs_colecciones = self._construir_queryset_anotado(candidatas, pesos_categorias)
 
-        # Calcular puntuacion y ordenar
-        puntuadas = []
-        for pub in candidatas:
-            puntuacion = self._puntuacion_publicacion(pub, pesos_categorias)
-            puntuadas.append((puntuacion, pub))
+        # Ejecutar las consultas limitadas a 10 cada una
+        libros = list(qs_libros) if tipo in (None, 'libros') else []
+        colecciones = list(qs_colecciones) if tipo in (None, 'colecciones') else []
 
-        # Orden descendente por puntuacion
-        puntuadas.sort(key=lambda par: par[0], reverse=True)
-
-        # Aplicar el limite de 10 libros y 10 colecciones
-        libros_agregados = 0
-        colecciones_agregadas = 0
-        resultado_final = []
-
-        for _, pub in puntuadas:
-            if pub.tipo == Publicacion.LIBRO and libros_agregados < 10:
-                resultado_final.append(pub)
-                libros_agregados += 1
-            elif pub.tipo == Publicacion.COLECCION and colecciones_agregadas < 10:
-                resultado_final.append(pub)
-                colecciones_agregadas += 1
+        # Mezclar y ordenar en Python (maximo 20 elementos)
+        resultado_final = libros + colecciones
+        resultado_final.sort(key=lambda pub: pub.puntuacion, reverse=True)
 
         return resultado_final
 
     def _recomendaciones_arranque_frio(self, tipo=None):
         """Contenido de mayor consumo general para usuarios sin historial (RN-REC-05).
-
         Se ordena por las metricas colectivas de los libros asociados.
         """
         ids_excluidos = self._ids_excluidos()
@@ -227,38 +239,13 @@ class MotorRecomendaciones:
             pk__in=ids_excluidos
         ).prefetch_related('categorias')
 
-        if tipo == 'libros':
-            candidatas = candidatas.filter(tipo=Publicacion.LIBRO)
-        elif tipo == 'colecciones':
-            candidatas = candidatas.filter(tipo=Publicacion.COLECCION)
+        # Para arranque en frio, no hay afinidad tematica (pesos_categorias=None)
+        qs_libros, qs_colecciones = self._construir_queryset_anotado(candidatas, None)
 
-        # Para arranque en frio, se ordenan por popularidad pura
-        resultados = []
-        for pub in candidatas:
-            popularidad = 0.0
-            if pub.tipo == Publicacion.LIBRO:
-                libro = Libro.objects.filter(pk=pub.pk).first()
-                if libro:
-                    popularidad = (
-                        libro.visualizaciones * PESO_VISUALIZACIONES
-                        + libro.descargas * PESO_DESCARGAS
-                        + libro.republicaciones * PESO_REPUBLICACIONES
-                    )
-            resultados.append((popularidad, pub))
+        libros = list(qs_libros) if tipo in (None, 'libros') else []
+        colecciones = list(qs_colecciones) if tipo in (None, 'colecciones') else []
 
-        resultados.sort(key=lambda par: par[0], reverse=True)
-
-        # Aplicar el limite de 10 libros y 10 colecciones
-        libros_agregados = 0
-        colecciones_agregadas = 0
-        resultado_final = []
-
-        for _, pub in resultados:
-            if pub.tipo == Publicacion.LIBRO and libros_agregados < 10:
-                resultado_final.append(pub)
-                libros_agregados += 1
-            elif pub.tipo == Publicacion.COLECCION and colecciones_agregadas < 10:
-                resultado_final.append(pub)
-                colecciones_agregadas += 1
+        resultado_final = libros + colecciones
+        resultado_final.sort(key=lambda pub: pub.puntuacion, reverse=True)
 
         return resultado_final

@@ -111,21 +111,24 @@ for titulo, autor_idx, cats, paginas, vistas, descargas, repubs in libros_data:
         }
     )
 
-    if created:
-        for cat_nombre in cats:
-            libro.categorias.add(categorias[cat_nombre])
+    # Sincronización idempotente de categorías para el libro
+    libro.categorias.set([categorias[cat_nombre] for cat_nombre in cats])
 
-        # Crear Publicacion espejo en el feed
-        pub, _ = Publicacion.objects.get_or_create(
-            pk=libro.pk,
-            defaults={
-                'autor': autor,
-                'titulo': titulo,
-                'tipo': Publicacion.LIBRO,
-            }
-        )
-        for cat_nombre in cats:
-            pub.categorias.add(feed_categorias[cat_nombre])
+    # Crear o actualizar Publicacion espejo en el feed
+    pub, pub_created = Publicacion.objects.get_or_create(
+        pk=libro.pk,
+        defaults={
+            'autor': autor,
+            'titulo': titulo,
+            'tipo': Publicacion.LIBRO,
+        }
+    )
+    if not pub_created:
+        pub.titulo = titulo
+        pub.save(update_fields=['titulo'])
+
+    # Sincronización idempotente de categorías para la publicación espejo
+    pub.categorias.set([feed_categorias[cat_nombre] for cat_nombre in cats])
 
     libros_creados.append(libro)
 
@@ -169,5 +172,5 @@ for titulo in libros_leidos_titulos:
             )
 
 print(f'Historial de lectura creado para "{usuario_prueba.username}".')
-print(f'Credenciales: usuario_prueba / password123')
+print('Credenciales: usuario_prueba / password123')
 print('Poblamiento completado.')

@@ -555,6 +555,12 @@ def step_muestra_feed_recomendaciones(context):
     )
 
     recomendaciones = list(response_inicio.context.get('recomendaciones', []))
+    ids_recomendados = [pub.pk for pub in recomendaciones]
+    context.test.assertIn(
+        context.libro_popular_feed_vacio.pk,
+        ids_recomendados,
+        'El libro popular predeterminado no se encuentra en las recomendaciones del feed vacio.',
+    )
     context.test.assertGreater(
         len(recomendaciones),
         0,

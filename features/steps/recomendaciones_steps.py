@@ -268,14 +268,18 @@ def step_incluye_publicaciones_alta_actividad(context):
     )
 
     # El libro popular debe aparecer antes que el poco popular
-    if context.libro_poco_popular.pk in ids_recomendados:
-        indice_popular = ids_recomendados.index(context.libro_popular.pk)
-        indice_poco_popular = ids_recomendados.index(context.libro_poco_popular.pk)
-        context.test.assertLess(
-            indice_popular,
-            indice_poco_popular,
-            'El libro popular no tiene mayor prioridad que el poco popular en las recomendaciones.',
-        )
+    context.test.assertIn(
+        context.libro_poco_popular.pk,
+        ids_recomendados,
+        'El libro poco popular no aparece en las recomendaciones para ser comparado.',
+    )
+    indice_popular = ids_recomendados.index(context.libro_popular.pk)
+    indice_poco_popular = ids_recomendados.index(context.libro_poco_popular.pk)
+    context.test.assertLess(
+        indice_popular,
+        indice_poco_popular,
+        'El libro popular no tiene mayor prioridad que el poco popular en las recomendaciones.',
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -370,14 +374,18 @@ def step_presenta_contenido_mayor_consumo(context):
     )
 
     # El contenido de alto consumo debe aparecer antes que el de bajo consumo
-    if context.libro_bajo_consumo.pk in ids_recomendados:
-        indice_alto = ids_recomendados.index(context.libro_alto_consumo.pk)
-        indice_bajo = ids_recomendados.index(context.libro_bajo_consumo.pk)
-        context.test.assertLess(
-            indice_alto,
-            indice_bajo,
-            'El contenido de mayor consumo no tiene prioridad sobre el de menor consumo en arranque en frio.',
-        )
+    context.test.assertIn(
+        context.libro_bajo_consumo.pk,
+        ids_recomendados,
+        'El contenido de bajo consumo no aparece en las recomendaciones de arranque en frio.',
+    )
+    indice_alto = ids_recomendados.index(context.libro_alto_consumo.pk)
+    indice_bajo = ids_recomendados.index(context.libro_bajo_consumo.pk)
+    context.test.assertLess(
+        indice_alto,
+        indice_bajo,
+        'El contenido de mayor consumo no tiene prioridad sobre el de menor consumo en arranque en frio.',
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -664,22 +672,23 @@ def step_prioriza_actividad_reciente(context):
     )
 
     # El candidato de Filosofia (reciente) debe aparecer antes que el de Matematicas (antiguo)
-    if (context.libro_candidato_fil.pk in ids_recomendados and
-            context.libro_candidato_mat.pk in ids_recomendados):
-        indice_filosofia = ids_recomendados.index(context.libro_candidato_fil.pk)
-        indice_matematicas = ids_recomendados.index(context.libro_candidato_mat.pk)
-        context.test.assertLess(
-            indice_filosofia,
-            indice_matematicas,
-            'Las recomendaciones de la actividad reciente no tienen mayor prioridad que las antiguas.',
-        )
-    else:
-        # Al menos el candidato de la categoria reciente debe estar presente
-        context.test.assertIn(
-            context.libro_candidato_fil.pk,
-            ids_recomendados,
-            'El candidato de la categoria reciente (Filosofia) no aparece en las recomendaciones.',
-        )
+    context.test.assertIn(
+        context.libro_candidato_fil.pk,
+        ids_recomendados,
+        'El candidato de la categoria reciente (Filosofia) no aparece en las recomendaciones.',
+    )
+    context.test.assertIn(
+        context.libro_candidato_mat.pk,
+        ids_recomendados,
+        'El candidato de la categoria antigua (Matematicas) no aparece en las recomendaciones.',
+    )
+    indice_filosofia = ids_recomendados.index(context.libro_candidato_fil.pk)
+    indice_matematicas = ids_recomendados.index(context.libro_candidato_mat.pk)
+    context.test.assertLess(
+        indice_filosofia,
+        indice_matematicas,
+        'Las recomendaciones de la actividad reciente no tienen mayor prioridad que las antiguas.',
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -759,8 +768,15 @@ def step_muestra_unicamente_tipo(context, tipo_contenido):
     )
 
     recomendaciones = list(context.response.context['recomendaciones'])
+    ids_recomendados = [pub.pk for pub in recomendaciones]
 
     tipo_esperado = Publicacion.LIBRO if tipo_contenido == 'libros' else Publicacion.COLECCION
+    
+    # Primero verificar que el elemento esperado por el filtro esta presente
+    if tipo_esperado == Publicacion.LIBRO:
+        context.test.assertIn(context.libro_recomendable.pk, ids_recomendados)
+    else:
+        context.test.assertIn(context.coleccion_recomendable.pk, ids_recomendados)
 
     for pub in recomendaciones:
         context.test.assertEqual(
