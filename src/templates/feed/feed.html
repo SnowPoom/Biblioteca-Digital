@@ -231,15 +231,16 @@
         }
 
         .image-placeholder {
-            width: 147px;
-            height: 161px;
+            width: 120px;
+            height: 180px;
             background: var(--surface-soft);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 25px;
+            font-size: 20px;
             font-weight: 600;
             border: 1px solid #e0d7d7;
+            border-radius: 4px;
         }
 
         .card-content h2 {
@@ -412,7 +413,11 @@
                                 <!-- Es una Publicacion normal (Libro) -->
                                 <a href="{% url 'materiales:detalle_libro' item.pk %}" style="text-decoration:none; color:inherit; display:block; margin-bottom:28px;">
                                     <article class="card" aria-label="{{ item.titulo }}">
-                                        <div class="image-placeholder" aria-hidden="true">Imagen</div>
+                                        {% if item.portada_url %}
+                                            <img src="{{ item.portada_url }}" alt="Portada de {{ item.titulo }}" class="image-placeholder" style="object-fit: cover;">
+                                        {% else %}
+                                            <div class="image-placeholder" aria-hidden="true">Imagen</div>
+                                        {% endif %}
                                         <div class="card-content">
                                             <h2>{{ item.titulo }}</h2>
                                             <p class="autor-original">Por {% firstof item.autor.get_full_name item.autor.username %}</p>
@@ -438,7 +443,11 @@
                                     <a href="{% url 'materiales:detalle_libro' item.publicacion.pk %}" style="text-decoration:none; color:inherit; display:block;">
                                         <article class="card"
                                             aria-label="{{ item.publicacion.titulo }} (republicado)">
-                                            <div class="image-placeholder" aria-hidden="true">Imagen</div>
+                                            {% if item.publicacion.portada_url %}
+                                                <img src="{{ item.publicacion.portada_url }}" alt="Portada de {{ item.publicacion.titulo }}" class="image-placeholder" style="object-fit: cover;">
+                                            {% else %}
+                                                <div class="image-placeholder" aria-hidden="true">Imagen</div>
+                                            {% endif %}
                                             <div class="card-content">
                                                 <h2>{{ item.publicacion.titulo }}</h2>
                                                 <p class="autor-original">Autor original: {% firstof item.publicacion.autor.get_full_name item.publicacion.autor.username %}</p>
