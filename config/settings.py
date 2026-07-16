@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'src.materiales',
     'src.login',
     'src.feed',
+    'src.recomendaciones',
 ]
 
 MIDDLEWARE = [
