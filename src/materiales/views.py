@@ -437,7 +437,7 @@ def solicitar_acceso_coleccion(request, coleccion_id):
                 messages.success(request, msg)
             else:
                 messages.error(request, msg)
-        except Exception as e:
+        except (PermissionError, ValueError) as e:
             messages.error(request, str(e))
     return redirect('materiales:detalle_coleccion', coleccion_id=coleccion_id)
 
@@ -447,8 +447,10 @@ def retirar_de_coleccion(request, coleccion_id, participante_id):
         coleccion = get_object_or_404(Coleccion, id=coleccion_id)
         participante = get_object_or_404(User, id=participante_id)
         try:
-            coleccion.retirar_participante(request.user, participante)
-            messages.success(request, "Participante retirado con éxito.")
+            if coleccion.retirar_participante(request.user, participante):
+                messages.success(request, "Participante retirado con éxito.")
+            else:
+                messages.error(request, "No se pudo retirar al participante.")
         except Exception as e:
             messages.error(request, str(e))
     return redirect('materiales:detalle_coleccion', coleccion_id=coleccion_id)
@@ -466,48 +468,53 @@ def abandonar_coleccion(request, coleccion_id):
 
 @login_required
 def procesar_invitacion(request, invitacion_id, accion):
-    if request.method == 'POST':
-        invitacion = get_object_or_404(InvitacionColeccion, id=invitacion_id)
-        try:
-            if accion == 'aceptar':
-                exito, msg = invitacion.aceptar(request.user)
-                if exito:
-                    messages.success(request, msg)
-                else:
-                    messages.error(request, msg)
-            elif accion == 'rechazar':
-                exito, msg = invitacion.rechazar(request.user)
-                if exito:
-                    messages.success(request, msg)
-                else:
-                    messages.error(request, msg)
-        except PermissionError as e:
-            messages.error(request, str(e))
-            
-    # Intentar volver a donde venía (Notificaciones o vista de colección)
+    if request.method != 'POST':
+        return redirect('feed:notificaciones')
+        
+    invitacion = get_object_or_404(InvitacionColeccion, id=invitacion_id, estado=InvitacionColeccion.PENDIENTE)
+    try:
+        if accion == 'aceptar':
+            exito, msg = invitacion.aceptar(request.user)
+            if exito:
+                messages.success(request, msg)
+            else:
+                messages.error(request, msg)
+        elif accion == 'rechazar':
+            exito, msg = invitacion.rechazar(request.user)
+            if exito:
+                messages.success(request, msg)
+            else:
+                messages.error(request, msg)
+    except PermissionError as e:
+        messages.error(request, str(e))
+        
+    from django.utils.http import url_has_allowed_host_and_scheme
     next_url = request.POST.get('next')
-    if next_url:
+    if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}):
         return redirect(next_url)
     return redirect('feed:notificaciones')
 
 @login_required
 def procesar_solicitud(request, solicitud_id, accion):
-    if request.method == 'POST':
-        solicitud = get_object_or_404(SolicitudAccesoColeccion, id=solicitud_id)
-        try:
-            if accion == 'aprobar':
-                if solicitud.aprobar(request.user):
-                    messages.success(request, "Solicitud aprobada.")
-                else:
-                    messages.error(request, "No se pudo aprobar (límite de participantes).")
-            elif accion == 'rechazar':
-                if solicitud.rechazar(request.user):
-                    messages.success(request, "Solicitud rechazada.")
-        except PermissionError as e:
-            messages.error(request, str(e))
-            
+    if request.method != 'POST':
+        return redirect('materiales:inicio')
+        
+    solicitud = get_object_or_404(SolicitudAccesoColeccion, id=solicitud_id, estado=SolicitudAccesoColeccion.PENDIENTE)
+    try:
+        if accion == 'aprobar':
+            if solicitud.aprobar(request.user):
+                messages.success(request, "Solicitud aprobada.")
+            else:
+                messages.error(request, "No se pudo aprobar (límite de participantes).")
+        elif accion == 'rechazar':
+            if solicitud.rechazar(request.user):
+                messages.success(request, "Solicitud rechazada.")
+    except PermissionError as e:
+        messages.error(request, str(e))
+        
+    from django.utils.http import url_has_allowed_host_and_scheme
     next_url = request.POST.get('next')
-    if next_url:
+    if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}):
         return redirect(next_url)
     return redirect('materiales:detalle_coleccion', coleccion_id=solicitud.coleccion.id)
 

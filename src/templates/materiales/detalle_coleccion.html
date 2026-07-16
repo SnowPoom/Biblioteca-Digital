@@ -347,7 +347,7 @@
                 {% endfor %}
             </div>
 
-            {% if not es_participante and coleccion.visibilidad == 'PUBLICA' %}
+            {% if not es_miembro and coleccion.visibilidad == 'PUBLICA' %}
             <div style="text-align: center; margin-top: 40px; padding-top: 40px; border-top: 1px solid var(--border);">
                 <form action="{% url 'materiales:solicitar_acceso_coleccion' coleccion.pk %}" method="post">
                     {% csrf_token %}

@@ -25,19 +25,6 @@ class Migration(migrations.Migration):
             field=models.PositiveIntegerField(default=20, validators=[django.core.validators.MinValueValidator(5, message='El mínimo es de 5 libros'), django.core.validators.MaxValueValidator(20, message='El máximo de libros es 20')]),
         ),
         migrations.CreateModel(
-            name='HistorialColeccion',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('accion', models.CharField(max_length=255)),
-                ('fecha', models.DateTimeField(auto_now_add=True)),
-                ('coleccion', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='historial', to='materiales.coleccion')),
-                ('usuario', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL)),
-            ],
-            options={
-                'ordering': ['-fecha'],
-            },
-        ),
-        migrations.CreateModel(
             name='InvitacionColeccion',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -46,6 +33,9 @@ class Migration(migrations.Migration):
                 ('coleccion', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='invitaciones', to='materiales.coleccion')),
                 ('usuario_invitado', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='invitaciones_recibidas', to=settings.AUTH_USER_MODEL)),
             ],
+            options={
+                'unique_together': {('coleccion', 'usuario_invitado')},
+            },
         ),
         migrations.CreateModel(
             name='SolicitudAccesoColeccion',
@@ -56,5 +46,8 @@ class Migration(migrations.Migration):
                 ('coleccion', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='solicitudes', to='materiales.coleccion')),
                 ('usuario_solicitante', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='solicitudes_acceso', to=settings.AUTH_USER_MODEL)),
             ],
+            options={
+                'unique_together': {('coleccion', 'usuario_solicitante')},
+            },
         ),
     ]
