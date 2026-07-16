@@ -101,11 +101,11 @@ Característica: Publicación de material educativo
     Cuando otro usuario distinto al autor accede al detalle de ese libro
     Entonces no puede consultar las métricas de visualizaciones, republicaciones y descargas
 
-  Escenario: No se puede publicar una colección sin categoría
+  Escenario: No se puede crear una colección sin categoría
     Dado que el usuario ha preparado una colección con nombre y libros pero sin categoría
-    Cuando el usuario intenta publicar la colección
+    Cuando el usuario intenta crear la colección
     Entonces el sistema rechaza la operación
-    Y la colección no queda publicada
+    Y la colección no se crea
 
   Escenario: Una colección no puede superar el límite de libros configurado
     Dado que una colección ha alcanzado su límite máximo de libros
@@ -118,3 +118,25 @@ Característica: Publicación de material educativo
     Cuando el usuario elimina ese libro de la colección
     Entonces el libro desaparece de la colección
     Y el libro sigue disponible para cualquier usuario en la biblioteca general
+
+  Esquema del escenario: Crear una colección con visibilidad y límite de libros válido
+    Dado que el usuario ha preparado una colección con nombre y al menos una categoría temática
+    Y el usuario define la visibilidad de la colección como "<visibilidad>"
+    Y el usuario establece un límite máximo de <limite> libros
+    Cuando el usuario crea la colección
+    Entonces la colección se crea exitosamente
+    Y la colección queda disponible según su visibilidad definida
+    Y el usuario creador es asignado automáticamente como administrador inicial de la colección
+
+    Ejemplos:
+      | visibilidad | limite |
+      | publica     | 5      |
+      | privada     | 20     |
+
+  Escenario: No se puede crear una colección con un límite de libros menor a 5
+    Dado que el usuario ha preparado una colección con nombre y al menos una categoría temática
+    Y el usuario intenta establecer un límite máximo de 4 libros
+    Cuando el usuario intenta crear la colección
+    Entonces el sistema rechaza la operación
+    Y la colección no se crea
+    Y se notifica que el límite mínimo de libros es 5
