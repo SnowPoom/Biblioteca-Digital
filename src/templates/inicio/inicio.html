@@ -280,6 +280,36 @@
             </div>
             <div class="main">
                         <section id="material-view" class="view-panel">
+                            {% for pub in recomendaciones %}
+                            {% if pub.tipo == 'libro' %}
+                            <div class="card">
+                                {% if pub.portada_url %}
+                                    <div class="image-placeholder" style="background-image: url('{{ pub.portada_url }}'); background-size: cover; background-position: center; color: transparent;">Imagen</div>
+                                {% else %}
+                                    <div class="image-placeholder">Sin Portada</div>
+                                {% endif %}
+                                <div class="content">
+                                    <h2><a href="{% url 'materiales:lectura_material' pub.pk %}" style="text-decoration: none; color: inherit;">{{ pub.titulo }}</a></h2>
+                                    <p class="autor-original">Por {% firstof pub.autor.get_full_name pub.autor.username %}</p>
+                                    <div class="tags">
+                                        {% for categoria in pub.categorias.all %}
+                                        <span class="tag">{{ categoria.nombre }}</span>
+                                        {% empty %}
+                                        <span class="tag">Sin categoria</span>
+                                        {% endfor %}
+                                    </div>
+                                    {% if user.is_authenticated and pub.autor != request.user %}
+                                    <form action="{% url 'materiales:republicar_libro' pub.pk %}" method="post" style="margin-top: 10px;">
+                                        {% csrf_token %}
+                                        <button type="submit" style="padding: 6px 16px; font-size: 14px; font-weight: 600; background: var(--accent); color: #000; border: 1px solid var(--border); cursor: pointer;">
+                                            Republicar
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% empty %}
                             {% for libro in libros %}
                             <div class="card">
                                 {% if libro.portada %}
@@ -294,42 +324,35 @@
                                         {% for categoria in libro.categorias.all %}
                                         <span class="tag">{{ categoria.nombre }}</span>
                                         {% empty %}
-                                        <span class="tag">Sin categoría</span>
+                                        <span class="tag">Sin categoria</span>
                                         {% endfor %}
                                     </div>
-                                    {% if user.is_authenticated and libro.autor != request.user %}
-                                    <form action="{% url 'materiales:republicar_libro' libro.id %}" method="post" style="margin-top: 10px;">
-                                        {% csrf_token %}
-                                        <button type="submit" style="padding: 6px 16px; font-size: 14px; font-weight: 600; background: var(--accent); color: #000; border: 1px solid var(--border); cursor: pointer;">
-                                            Republicar
-                                        </button>
-                                    </form>
-                                    {% endif %}
                                 </div>
                             </div>
                             {% empty %}
-                            <p style="font-size: 18px; color: #555;">No hay libros publicados aún.</p>
+                            <p style="font-size: 18px; color: #555;">No hay libros publicados aun.</p>
+                            {% endfor %}
                             {% endfor %}
                         </section>
 
                         <section id="collections-view" class="view-panel hidden">
+                            {% for pub in recomendaciones %}
+                            {% if pub.tipo == 'coleccion' %}
                             <div class="collection-card">
-                                <h3>Título de la colección</h3>
+                                <h3>{{ pub.titulo }}</h3>
+                                <p class="autor-original">Por {% firstof pub.autor.get_full_name pub.autor.username %}</p>
                                 <div class="tags">
-                                    <span class="tag">categoria</span>
-                                    <span class="tag">categoria</span>
-                                    <span class="tag">categoria</span>
+                                    {% for categoria in pub.categorias.all %}
+                                    <span class="tag">{{ categoria.nombre }}</span>
+                                    {% empty %}
+                                    <span class="tag">Sin categoria</span>
+                                    {% endfor %}
                                 </div>
                             </div>
-
-                            <div class="collection-card">
-                                <h3>Título de la colección</h3>
-                                <div class="tags">
-                                    <span class="tag">categoria</span>
-                                    <span class="tag">categoria</span>
-                                    <span class="tag">categoria</span>
-                                </div>
-                            </div>
+                            {% endif %}
+                            {% empty %}
+                            <p style="font-size: 18px; color: #555;">No hay colecciones recomendadas aun.</p>
+                            {% endfor %}
                         </section>
             </div>
         </div>
