@@ -26,12 +26,12 @@ def step_paginas_no_excede(context):
 
 @when('el usuario descarga un libro')
 def step_usuario_descarga_libro_cuando(context):
-    url = reverse('materiales:descargar_libro', args=[context.libro.id])
+    url = reverse('materiales:descargar_libro', args=[context.libro.id, 'pdf'])
     context.response = context.test.client.get(url)
 
 @when('el usuario intenta descargar un libro')
 def step_usuario_intenta_descargar(context):
-    url = reverse('materiales:descargar_libro', args=[context.libro.id])
+    url = reverse('materiales:descargar_libro', args=[context.libro.id, 'pdf'])
     context.response = context.test.client.get(url)
 
 @then('el libro queda disponible para acceso sin conexión')
@@ -70,12 +70,13 @@ def step_descarga_libro_otro_usuario_formato(context):
         titulo='Libro de Autor',
         numero_paginas=100,
         autor=autor_otro,
+        contenido_texto='<p>Contenido del libro de prueba.</p>',
     )
     perfil = context.usuario_principal.perfil
     perfil.cuota_descarga = 500
     perfil.save()
     context.perfil = perfil
-    url = reverse('materiales:descargar_libro', args=[context.libro.id])
+    url = reverse('materiales:descargar_libro', args=[context.libro.id, 'pdf'])
     context.response = context.test.client.get(url)
 
 @when('el usuario abre el archivo descargado')

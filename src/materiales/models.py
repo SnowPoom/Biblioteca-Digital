@@ -32,6 +32,7 @@ class Libro(models.Model):
     contenido_texto = models.TextField(blank=True, default='')
     numero_paginas = models.PositiveIntegerField(default=0)
     republicaciones = models.PositiveIntegerField(default=0)
+    visualizaciones = models.PositiveIntegerField(default=0)
     descargas = models.PositiveIntegerField(default=0)
     autor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -190,67 +191,141 @@ class Libro(models.Model):
                 
         return republicacion, created
 
-    def registrar_descarga(self):
-        """RN-EXP-05: Incrementa el contador de descargas como metrica de la publicacion."""
-        self.descargas += 1
+    def retirar(self):
+        """Retira (despublica) el libro de la plataforma.
+
+        Reglas de negocio aplicadas:
+        - RN-PUB-10: El autor puede retirar su propio material en cualquier momento.
+        - RN-ANO-08: Si un libro es retirado, las anotaciones asociadas se eliminan.
+        """
+        self.estado = self.RETIRADO
         self.save()
+        # RN-ANO-08: Las anotaciones pierden sentido al retirar el libro
+        self.anotaciones.all().delete()
 
-    def generar_contenido_descarga(self):
-        """Genera un archivo PDF valido incluyendo metadatos de autoria original (RN-EXP-06)."""
-        nombre_autor = self.autor.get_full_name() or self.autor.username
-        fuente = "Biblioteca Digital"
+        # RN-PUB-10: El libro comparte PK con su Publicacion en el feed; se
+        # elimina para que deje de mostrarse en feeds y republicaciones ajenas.
+        from src.feed.models import Publicacion
+        Publicacion.objects.filter(pk=self.pk).delete()
 
-        lineas_texto = [
-            f"Autor original: {nombre_autor}",
-            f"Fuente: {fuente}",
-            f"Titulo: {self.titulo}",
+    def metricas_para(self, usuario):
+        """Devuelve las métricas acumuladas del libro si el usuario es el autor.
+
+        Regla de negocio aplicada:
+        - RN-PUB-13: El sistema registra métricas de visualizaciones,
+          republicaciones y descargas, visibles únicamente para el autor.
+        """
+        if usuario != self.autor:
+            return None
+        return {
+            'visualizaciones': self.visualizaciones,
+            'republicaciones': self.republicaciones,
+            'descargas': self.descargas,
+        }
+
+    def fragmentos_anotados_por(self, usuario):
+        """Fragmentos con anotacion activa del usuario en este libro.
+
+        Regla de negocio aplicada:
+        - RN-ANO-05: Los fragmentos anotados deben mostrarse visualmente
+          diferenciados durante toda la lectura, no solo al crearse.
+        """
+        return list(
+            self.anotaciones.filter(usuario=usuario).values_list(
+                'fragmento_texto', flat=True
+            )
+        )
+
+
+LIMITE_CARACTERES_ANOTACION = 150
+
+
+class Anotacion(models.Model):
+    """Anotacion personal vinculada a un fragmento de texto o imagen de un libro.
+
+    Reglas de negocio aplicadas:
+    - RN-ANO-01: Las anotaciones son personales e intransferibles.
+    - RN-ANO-02: Se crean seleccionando un fragmento de texto o una imagen.
+    - RN-ANO-03: Limite maximo de 150 caracteres.
+    - RN-ANO-04: Un fragmento puede tener como maximo una anotacion activa por usuario.
+    """
+
+    TEXTO = 'texto'
+    IMAGEN = 'imagen'
+
+    TIPOS_FRAGMENTO = [
+        (TEXTO, 'Texto'),
+        (IMAGEN, 'Imagen'),
+    ]
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='anotaciones',
+    )
+    libro = models.ForeignKey(
+        Libro,
+        on_delete=models.CASCADE,
+        related_name='anotaciones',
+    )
+    fragmento_texto = models.CharField(max_length=500)
+    tipo_fragmento = models.CharField(
+        max_length=10,
+        choices=TIPOS_FRAGMENTO,
+        default=TEXTO,
+    )
+    contenido = models.CharField(max_length=LIMITE_CARACTERES_ANOTACION)
+    creado = models.DateTimeField(auto_now_add=True)
+    actualizado = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Anotacion'
+        verbose_name_plural = 'Anotaciones'
+        # RN-ANO-04: Solo una anotacion activa por fragmento y usuario
+        constraints = [
+            models.UniqueConstraint(
+                fields=['usuario', 'libro', 'fragmento_texto'],
+                name='unica_anotacion_por_fragmento_usuario',
+            ),
         ]
 
-        texto_pagina = "  ".join(lineas_texto)
-        stream = f"BT /F1 12 Tf 72 720 Td ({texto_pagina}) Tj ET"
-        largo_stream = len(stream)
+    def __str__(self):
+        return f'Anotacion de {self.usuario.username} en "{self.libro.titulo}"'
 
-        objetos = []
-        objetos.append("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj")
-        objetos.append("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj")
-        objetos.append(
-            "3 0 obj\n<< /Type /Page /Parent 2 0 R "
-            "/MediaBox [0 0 612 792] "
-            "/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj"
-        )
-        objetos.append(
-            f"4 0 obj\n<< /Length {largo_stream} >>\n"
-            f"stream\n{stream}\nendstream\nendobj"
-        )
-        objetos.append(
-            "5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj"
-        )
-        objetos.append(
-            f"6 0 obj\n<< /Author ({nombre_autor}) "
-            f"/Title ({self.titulo}) "
-            f"/Producer ({fuente}) >>\nendobj"
-        )
+    def esta_activa(self):
+        """Indica si la anotacion esta vigente para resaltado visual (RN-ANO-05)."""
+        return bool(self.pk and self.contenido)
 
-        cuerpo = "\n".join(objetos)
-        encabezado = "%PDF-1.4\n"
+    def editar(self, nuevo_contenido):
+        """Actualiza el contenido de la anotacion respetando el limite de caracteres.
 
-        offset = len(encabezado)
-        offsets = []
-        for obj in objetos:
-            offsets.append(offset)
-            offset += len(obj) + 1
+        Reglas de negocio aplicadas:
+        - RN-ANO-03: Limite maximo de 150 caracteres.
+        - RN-ANO-06: El usuario puede editar sus propias anotaciones.
+        """
+        if len(nuevo_contenido) > LIMITE_CARACTERES_ANOTACION:
+            raise ValueError(
+                f"El contenido supera el limite de {LIMITE_CARACTERES_ANOTACION} caracteres."
+            )
+        self.contenido = nuevo_contenido
+        self.save()
 
-        xref_inicio = offset
-        xref = "xref\n"
-        xref += f"0 {len(objetos) + 1}\n"
-        xref += "0000000000 65535 f \n"
-        for pos in offsets:
-            xref += f"{pos:010d} 00000 n \n"
+    def eliminar(self):
+        """Elimina la anotacion del sistema.
 
-        trailer = (
-            f"trailer\n<< /Size {len(objetos) + 1} /Root 1 0 R /Info 6 0 R >>\n"
-            f"startxref\n{xref_inicio}\n%%EOF"
-        )
+        Regla de negocio aplicada:
+        - RN-ANO-06: El usuario puede eliminar sus propias anotaciones.
+        """
+        self.delete()
 
-        return (encabezado + cuerpo + "\n" + xref + trailer).encode('latin-1')
+    @classmethod
+    def para_fragmento(cls, usuario, libro, fragmento_texto):
+        """Recupera la anotacion del usuario asociada a un fragmento.
 
+        Regla de negocio aplicada:
+        - RN-ANO-06: Permite editar o eliminar la anotacion accediendo
+          directamente desde el fragmento resaltado durante la lectura.
+        """
+        return cls.objects.filter(
+            usuario=usuario, libro=libro, fragmento_texto=fragmento_texto
+        ).first()

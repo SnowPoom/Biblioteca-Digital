@@ -22,20 +22,128 @@ def detalle_libro(request, pk):
     from src.feed.models import Publicacion
     from django.shortcuts import get_object_or_404
     libro = get_object_or_404(Publicacion, pk=pk)
+
+    # RN-PUB-13: Las métricas del material solo se exponen al autor.
+    material = Libro.objects.filter(pk=pk).first()
+    metricas = material.metricas_para(request.user) if material else None
+
     return render(request, 'materiales/vista_previa_material.html', {
         'libro': libro,
         'titulo': libro.titulo,
         'autor': libro.autor,
         'descripcion': libro.descripcion,
+        'metricas': metricas,
     })
 
 
 def lectura_material(request, libro_id):
     libro = get_object_or_404(Libro, id=libro_id)
+    anotaciones = []
+    fragmentos_resaltados = []
+    if request.user.is_authenticated:
+        from .models import Anotacion
+        anotaciones = Anotacion.objects.filter(
+            usuario=request.user,
+            libro=libro,
+        )
+        # RN-ANO-05: fragmentos que deben mostrarse destacados durante la lectura
+        fragmentos_resaltados = libro.fragmentos_anotados_por(request.user)
     return render(request, 'materiales/lectura_material.html', {
         'libro': libro,
-        'notas': 'Sección de notas...',
+        'anotaciones': anotaciones,
+        'fragmentos_resaltados': fragmentos_resaltados,
     })
+
+
+@login_required(login_url='/auth/')
+def crear_anotacion(request, libro_id):
+    """Crea una anotacion via AJAX. Retorna JSON con los datos de la anotacion creada."""
+    from django.http import JsonResponse
+    from .models import Anotacion, LIMITE_CARACTERES_ANOTACION
+    import json
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Metodo no permitido'}, status=405)
+
+    libro = get_object_or_404(Libro, id=libro_id)
+    datos = json.loads(request.body)
+    fragmento = datos.get('fragmento_texto', '').strip()
+    contenido = datos.get('contenido', '').strip()
+    tipo = datos.get('tipo_fragmento', Anotacion.TEXTO)
+
+    if not fragmento or not contenido:
+        return JsonResponse({'error': 'Fragmento y contenido son obligatorios'}, status=400)
+
+    if len(contenido) > LIMITE_CARACTERES_ANOTACION:
+        return JsonResponse({'error': f'Limite de {LIMITE_CARACTERES_ANOTACION} caracteres'}, status=400)
+
+    # RN-ANO-04: Si ya existe una anotacion para este fragmento, redirigir a edicion
+    existente = Anotacion.objects.filter(
+        usuario=request.user, libro=libro, fragmento_texto=fragmento,
+    ).first()
+
+    if existente:
+        return JsonResponse({
+            'error': 'Ya existe una anotacion para este fragmento',
+            'anotacion_id': existente.pk,
+            'contenido': existente.contenido,
+        }, status=409)
+
+    anotacion = Anotacion.objects.create(
+        usuario=request.user,
+        libro=libro,
+        fragmento_texto=fragmento,
+        tipo_fragmento=tipo,
+        contenido=contenido,
+    )
+    return JsonResponse({
+        'id': anotacion.pk,
+        'fragmento_texto': anotacion.fragmento_texto,
+        'contenido': anotacion.contenido,
+        'tipo_fragmento': anotacion.tipo_fragmento,
+    }, status=201)
+
+
+@login_required(login_url='/auth/')
+def editar_anotacion(request, anotacion_id):
+    """Edita una anotacion propia via AJAX."""
+    from django.http import JsonResponse
+    from .models import Anotacion, LIMITE_CARACTERES_ANOTACION
+    import json
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Metodo no permitido'}, status=405)
+
+    anotacion = get_object_or_404(Anotacion, pk=anotacion_id, usuario=request.user)
+    datos = json.loads(request.body)
+    nuevo_contenido = datos.get('contenido', '').strip()
+
+    if not nuevo_contenido:
+        return JsonResponse({'error': 'El contenido no puede estar vacio'}, status=400)
+
+    if len(nuevo_contenido) > LIMITE_CARACTERES_ANOTACION:
+        return JsonResponse({'error': f'Limite de {LIMITE_CARACTERES_ANOTACION} caracteres'}, status=400)
+
+    anotacion.editar(nuevo_contenido)
+    return JsonResponse({
+        'id': anotacion.pk,
+        'contenido': anotacion.contenido,
+    })
+
+
+@login_required(login_url='/auth/')
+def eliminar_anotacion(request, anotacion_id):
+    """Elimina una anotacion propia via AJAX."""
+    from django.http import JsonResponse
+    from .models import Anotacion
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Metodo no permitido'}, status=405)
+
+    anotacion = get_object_or_404(Anotacion, pk=anotacion_id, usuario=request.user)
+    anotacion.eliminar()
+    return JsonResponse({'eliminado': True})
+
 
 
 @login_required(login_url='/auth/')
@@ -184,9 +292,13 @@ def republicar_libro(request, pk):
 
 
 @login_required(login_url='/auth/')
-def descargar_libro(request, libro_id):
+def descargar_libro(request, libro_id, formato='pdf'):
     libro = get_object_or_404(Libro, pk=libro_id)
     perfil = request.user.perfil
+
+    formato = formato.lower()
+    if formato not in ('pdf', 'epub'):
+        formato = 'pdf'
 
     # RN-EXP-05: La descarga se registra como metrica sin importar si supera la cuota
     libro.registrar_descarga()
@@ -202,8 +314,15 @@ def descargar_libro(request, libro_id):
     perfil.reducir_cuota(libro.numero_paginas)
 
     # RN-EXP-06: El archivo generado incluye metadatos del autor original y la fuente
-    contenido = libro.generar_contenido_descarga()
+    contenido = libro.generar_contenido_descarga(formato)
 
-    respuesta = HttpResponse(contenido, content_type='application/pdf')
-    respuesta['Content-Disposition'] = f'attachment; filename="{libro.titulo}.pdf"'
+    if formato == 'epub':
+        tipo_contenido = 'application/epub+zip'
+        extension = 'epub'
+    else:
+        tipo_contenido = 'application/pdf'
+        extension = 'pdf'
+
+    respuesta = HttpResponse(contenido, content_type=tipo_contenido)
+    respuesta['Content-Disposition'] = f'attachment; filename="{libro.titulo}.{extension}"'
     return respuesta
