@@ -96,6 +96,11 @@ Característica: Publicación de material educativo
     Cuando el usuario accede al detalle de ese libro
     Entonces puede consultar el número de visualizaciones, republicaciones y descargas
 
+  Escenario: Un usuario distinto al autor no puede ver las métricas de un libro
+    Dado que el usuario tiene al menos un libro publicado
+    Cuando otro usuario distinto al autor accede al detalle de ese libro
+    Entonces no puede consultar las métricas de visualizaciones, republicaciones y descargas
+
   Escenario: No se puede publicar una colección sin categoría
     Dado que el usuario ha preparado una colección con nombre y libros pero sin categoría
     Cuando el usuario intenta publicar la colección
