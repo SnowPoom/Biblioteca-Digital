@@ -129,6 +129,8 @@ class Notificacion(models.Model):
         related_name='notificaciones',
     )
     mensaje = models.CharField(max_length=255)
+    tipo = models.CharField(max_length=50, default='info')
+    extra_data = models.JSONField(default=dict, blank=True)
     leida = models.BooleanField(default=False)
     creado = models.DateTimeField(auto_now_add=True)
 

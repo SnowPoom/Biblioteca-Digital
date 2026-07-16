@@ -169,6 +169,40 @@
             grid-template-columns: 160px 1fr;
             gap: 24px;
             align-items: start;
+            position: relative;
+        }
+
+        .boton-descartar {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 28px;
+            height: 28px;
+            border: 1px solid #999;
+            border-radius: 50%;
+            background: var(--surface-soft);
+            color: #555;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s ease, color 0.2s ease;
+            line-height: 1;
+            padding: 0;
+        }
+
+        .boton-descartar:hover {
+            background: #e74c4c;
+            color: #fff;
+            border-color: #e74c4c;
+        }
+
+        .card.descartando {
+            opacity: 0;
+            transform: translateX(30px);
+            transition: opacity 0.35s ease, transform 0.35s ease;
         }
 
         .image-placeholder {
@@ -224,6 +258,13 @@
             display: flex;
             flex-direction: column;
             gap: 14px;
+            position: relative;
+        }
+
+        .collection-card.descartando {
+            opacity: 0;
+            transform: translateX(30px);
+            transition: opacity 0.35s ease, transform 0.35s ease;
         }
 
         .collection-card h3 {
@@ -249,6 +290,7 @@
     </style>
 </head>
 <body>
+    {% csrf_token %}
     <aside class="sidebar-frame">
         <nav class="sidebar-nav" aria-label="Navegacion principal">
             <a href="{% url 'feed:notificaciones' %}" class="notificacion-link" aria-label="Notificaciones">
@@ -281,6 +323,37 @@
             </div>
             <div class="main">
                         <section id="material-view" class="view-panel">
+                            {% for pub in recomendaciones %}
+                            {% if pub.tipo == 'libro' %}
+                            <div class="card" data-publicacion-id="{{ pub.pk }}">
+                                <button class="boton-descartar" type="button" title="No me interesa" aria-label="Descartar recomendacion" onclick="descartarRecomendacion(this)">&times;</button>
+                                {% if pub.portada_url %}
+                                    <div class="image-placeholder" style="background-image: url('{{ pub.portada_url }}'); background-size: cover; background-position: center; color: transparent;">Imagen</div>
+                                {% else %}
+                                    <div class="image-placeholder">Sin Portada</div>
+                                {% endif %}
+                                <div class="content">
+                                    <h2><a href="{% url 'materiales:lectura_material' pub.pk %}" style="text-decoration: none; color: inherit;">{{ pub.titulo }}</a></h2>
+                                    <p class="autor-original">Por {% firstof pub.autor.get_full_name pub.autor.username %}</p>
+                                    <div class="tags">
+                                        {% for categoria in pub.categorias.all %}
+                                        <span class="tag">{{ categoria.nombre }}</span>
+                                        {% empty %}
+                                        <span class="tag">Sin categoria</span>
+                                        {% endfor %}
+                                    </div>
+                                    {% if user.is_authenticated and pub.autor != request.user %}
+                                    <form action="{% url 'materiales:republicar_libro' pub.pk %}" method="post" style="margin-top: 10px;">
+                                        {% csrf_token %}
+                                        <button type="submit" style="padding: 6px 16px; font-size: 14px; font-weight: 600; background: var(--accent); color: #000; border: 1px solid var(--border); cursor: pointer;">
+                                            Republicar
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% empty %}
                             {% for libro in libros %}
                             <div class="card">
                                 {% if libro.portada %}
@@ -295,26 +368,44 @@
                                         {% for categoria in libro.categorias.all %}
                                         <span class="tag">{{ categoria.nombre }}</span>
                                         {% empty %}
-                                        <span class="tag">Sin categoría</span>
+                                        <span class="tag">Sin categoria</span>
                                         {% endfor %}
                                     </div>
-                                    {% if user.is_authenticated and libro.autor != request.user %}
-                                    <form action="{% url 'materiales:republicar_libro' libro.id %}" method="post" style="margin-top: 10px;">
-                                        {% csrf_token %}
-                                        <button type="submit" style="padding: 6px 16px; font-size: 14px; font-weight: 600; background: var(--accent); color: #000; border: 1px solid var(--border); cursor: pointer;">
-                                            Republicar
-                                        </button>
-                                    </form>
-                                    {% endif %}
                                 </div>
                             </div>
                             {% empty %}
-                            <p style="font-size: 18px; color: #555;">No hay libros publicados aún.</p>
+                            <p style="font-size: 18px; color: #555;">No hay libros publicados aun.</p>
+                            {% endfor %}
                             {% endfor %}
                         </section>
 
                         <section id="collections-view" class="view-panel hidden">
+                            {% if request.user.is_authenticated %}
+                                {% for pub in recomendaciones %}
+                                {% if pub.tipo == 'coleccion' %}
+                                <div class="collection-card" data-publicacion-id="{{ pub.pk }}">
+                                    <button class="boton-descartar" type="button" title="No me interesa" aria-label="Descartar recomendacion" onclick="descartarRecomendacion(this)">&times;</button>
+                                    <a href="{% url 'materiales:detalle_coleccion' pub.pk %}" style="text-decoration: none; color: inherit; display: block;">
+                                        <h3 style="display: flex; align-items: center; gap: 8px;">
+                                            <span style="font-size: 14px; color: #ff9800;">★ Recomendado</span>
+                                            {{ pub.titulo }}
+                                        </h3>
+                                        <p class="autor-original" style="margin-top: 5px;">Por {% firstof pub.autor.get_full_name pub.autor.username %}</p>
+                                        <div class="tags" style="margin-top: 10px;">
+                                            {% for categoria in pub.categorias.all %}
+                                            <span class="tag">{{ categoria.nombre }}</span>
+                                            {% empty %}
+                                            <span class="tag">Sin categoria</span>
+                                            {% endfor %}
+                                        </div>
+                                    </a>
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                            {% endif %}
+
                             {% for col in colecciones %}
+                            <a href="{% url 'materiales:detalle_coleccion' col.id %}" style="text-decoration: none; color: inherit; display: block; margin-bottom: 20px;">
                             <div class="collection-card">
                                 <h3>{{ col.nombre }}</h3>
                                 <div class="autor-original" style="margin-top: -10px; margin-bottom: 10px;">Por: {% firstof col.creador.get_full_name col.creador.username %}</div>
@@ -328,6 +419,7 @@
                                     <span>Libros: {{ col.libros.count }}</span>
                                 </div>
                             </div>
+                            </a>
                             {% empty %}
                             <p style="font-size: 18px; color: #555;">No hay colecciones públicas aún.</p>
                             {% endfor %}
@@ -355,6 +447,33 @@
                 }
             });
         });
+
+        /**
+         * Envia la peticion de descarte al servidor y oculta la tarjeta
+         * con una animacion de salida.
+         * RN-REC-04: El descarte se registra de forma permanente.
+         */
+        function descartarRecomendacion(boton) {
+            const tarjeta = boton.closest('[data-publicacion-id]');
+            const publicacionId = tarjeta.dataset.publicacionId;
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            fetch(`/recomendaciones/descartar/${publicacionId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then((respuesta) => {
+                if (respuesta.ok) {
+                    tarjeta.classList.add('descartando');
+                    tarjeta.addEventListener('transitionend', () => {
+                        tarjeta.remove();
+                    });
+                }
+            });
+        }
     </script>
 </body>
 </html>

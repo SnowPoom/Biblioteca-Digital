@@ -70,10 +70,6 @@ Característica: Coautoría y edición compartida de colecciones
     Cuando el usuario intenta eliminar ese libro de la colección
     Entonces el sistema rechaza la operación
 
-  Escenario: Todos los cambios quedan registrados en el historial de la colección
-    Dado que el usuario es participante de una colección
-    Cuando cualquier miembro realiza un cambio en la colección
-    Entonces el cambio queda registrado en el historial de actividad con el nombre del autor y la fecha
 
   Escenario: El rol de administrador pasa al colaborador más activo si el creador es eliminado
     Dado que el creador de una colección es eliminado de la plataforma

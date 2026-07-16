@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ coleccion.nombre }} - Colección</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text: #000000;
+            --accent: #3ff5a9;
+            --surface: #d9d9d9;
+            --surface-soft: #f4f4f4;
+            --border: #000000;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: 'Roboto', Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar-frame {
+            width: 180px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 28px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            align-self: flex-start;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .sidebar-nav a {
+            display: block;
+            padding: 14px 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+            text-decoration: none;
+            transition: opacity 0.15s ease;
+        }
+
+        .sidebar-nav a:hover { opacity: 0.55; }
+        .sidebar-nav .activo { font-weight: 600; }
+
+        .notificacion-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+            text-decoration: none;
+            transition: opacity 0.15s ease;
+            position: relative;
+        }
+        .notificacion-link:hover { opacity: 0.55; }
+        .notificacion-link svg { width: 22px; height: 22px; }
+        .badge {
+            background: #ff3b3b;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 5px;
+            position: absolute;
+            top: 10px;
+            left: 14px;
+        }
+
+        .content-frame {
+            flex: 1;
+            min-width: 0;
+            padding: 36px 40px 60px;
+            position: relative;
+        }
+
+        .title {
+            font-size: 48px;
+            font-weight: 600;
+            margin: 0;
+            letter-spacing: -0.48px;
+        }
+
+        .content-panel {
+            margin-top: 40px;
+            border: 1px solid var(--border);
+            padding: 24px 24px 36px;
+            min-height: 760px;
+        }
+
+        .seccion-titulo {
+            font-size: 25px;
+            font-weight: 600;
+            margin: 32px 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tags {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+            margin-bottom: 24px;
+        }
+
+        .tag {
+            background: var(--accent);
+            padding: 8px 18px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .tag-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            padding: 8px 18px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .card {
+            background: var(--surface);
+            padding: 24px;
+            border: 1px solid var(--border);
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-content h3 {
+            margin: 0 0 8px 0;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .card-content p {
+            margin: 0;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .btn {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-family: 'Roboto', sans-serif;
+            text-decoration: none;
+            color: var(--text);
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background: var(--surface-soft);
+        }
+
+        .btn-danger {
+            color: #ff3b3b;
+            border-color: #ff3b3b;
+        }
+        .btn-danger:hover {
+            background: #fff0f0;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 12px;
+            position: relative;
+        }
+
+        .form-input {
+            flex: 1;
+            padding: 12px 16px;
+            font-size: 16px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            font-family: 'Roboto', sans-serif;
+            outline: none;
+        }
+        .form-input:focus {
+            background: var(--surface-soft);
+        }
+
+        /* Dropdown autocomplete */
+        .autocomplete-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-top: none;
+            z-index: 10;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+        }
+        .autocomplete-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            font-size: 15px;
+        }
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        .autocomplete-item:hover {
+            background: var(--surface-soft);
+        }
+
+        .messages { margin-bottom: 24px; }
+        .alert {
+            padding: 16px;
+            border: 1px solid var(--border);
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+        .alert-success { background: #d1fae5; border-color: #065f46; color: #065f46; }
+        .alert-error { background: #fee2e2; border-color: #991b1b; color: #991b1b; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar-frame">
+        <nav class="sidebar-nav" aria-label="Navegacion principal">
+            <a href="{% url 'feed:notificaciones' %}" class="notificacion-link" aria-label="Notificaciones">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                {% if unread_notifications_count > 0 %}
+                <span class="badge">{{ unread_notifications_count }}</span>
+                {% endif %}
+            </a>
+            <a href="{% url 'busqueda:busqueda' %}">Buscar</a>
+            <a href="{% url 'materiales:inicio' %}">Para ti</a>
+            <a href="{% url 'feed:feed' %}">Siguiendo</a>
+            <a href="{% url 'materiales:creacion_material' %}">Crear material</a>
+            <a href="{% url 'colecciones:crear_coleccion' %}">Crear colección</a>
+        </nav>
+    </div>
+
+    <div class="content-frame">
+        <a href="javascript:history.back()" style="display:inline-block; margin-bottom: 20px; text-decoration: none; color: #555; font-weight: 600;">← Volver atrás</a>
+        
+        {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+            <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <h1 class="title">{{ coleccion.nombre }}</h1>
+        <p style="margin-top: 10px; font-size: 18px; color: #333;">{{ coleccion.descripcion }}</p>
+
+        <div class="tags" style="margin-bottom: 10px;">
+            <span class="tag-outline">Por {{ coleccion.creador.username }}</span>
+            <span class="tag">{{ coleccion.get_visibilidad_display }}</span>
+        </div>
+        
+        {% if coleccion.categorias.all %}
+        <div class="tags" style="margin-top: 0; margin-bottom: 10px;">
+            {% for cat in coleccion.categorias.all %}
+            <span class="tag">{{ cat.nombre }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="tags" style="margin-top: 0; align-items: center;">
+            {% if es_miembro or es_admin %}
+            <span class="tag-outline">{{ coleccion.libros.count }} de {{ coleccion.limite_libros }} libros permitidos</span>
+            {% if es_admin %}
+            <form action="{% url 'materiales:ajustar_limite' coleccion.pk %}" method="post" style="display: flex; gap: 10px; margin-left: 10px;">
+                {% csrf_token %}
+                <input type="number" name="limite_libros" min="5" max="20" value="{{ coleccion.limite_libros }}" style="padding: 5px; width: 60px; font-family: 'Roboto';" required>
+                <button type="submit" class="btn" style="padding: 5px 10px; font-size: 14px;">Actualizar Límite</button>
+            </form>
+            {% endif %}
+            {% else %}
+            <span class="tag-outline">{{ coleccion.libros.count }} libros</span>
+            {% endif %}
+        </div>
+
+        <div class="content-panel">
+            
+            {% if es_admin %}
+            <div style="margin-bottom: 32px; padding: 24px; background: var(--surface-soft); border: 1px solid var(--border);">
+                <h3 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600;">Invitar usuario</h3>
+                <form action="{% url 'materiales:invitar_a_coleccion' coleccion.pk %}" method="post" id="invite-form">
+                    {% csrf_token %}
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <input type="text" name="username" id="username-input" class="form-input" placeholder="Nombre de usuario" autocomplete="off" required>
+                        <button type="submit" class="btn">Enviar Invitación</button>
+                        <div id="autocomplete-results" class="autocomplete-results"></div>
+                    </div>
+                </form>
+            </div>
+            {% endif %}
+
+            <h2 class="seccion-titulo">Participantes ({{ participaciones|length }}/15)</h2>
+            <div style="margin-bottom: 32px;">
+                {% for participacion in participaciones %}
+                <div class="card">
+                    <div class="card-content">
+                        <h3>{{ participacion.usuario.get_full_name|default:participacion.usuario.username }}</h3>
+                        <p>@{{ participacion.usuario.username }} {% if participacion.usuario == coleccion.creador %}(Administrador){% endif %}</p>
+                    </div>
+                    {% if es_admin and participacion.usuario != coleccion.creador %}
+                    <form action="{% url 'materiales:retirar_de_coleccion' coleccion.pk participacion.usuario.id %}" method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">Retirar</button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <p>No hay otros participantes.</p>
+                {% endfor %}
+            </div>
+
+            {% if not es_miembro and coleccion.visibilidad == 'PUBLICA' %}
+            <div style="text-align: center; margin-top: 40px; padding-top: 40px; border-top: 1px solid var(--border);">
+                <form action="{% url 'materiales:solicitar_acceso_coleccion' coleccion.pk %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn" style="background: var(--accent);">Solicitar Unirse</button>
+                </form>
+            </div>
+            {% elif es_miembro and request.user != coleccion.creador %}
+            <div style="text-align: center; margin-top: 40px; padding-top: 40px; border-top: 1px solid var(--border);">
+                <form action="{% url 'materiales:abandonar_coleccion' coleccion.pk %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Abandonar Colección</button>
+                </form>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+    <script>
+        const input = document.getElementById('username-input');
+        const resultsBox = document.getElementById('autocomplete-results');
+
+        if (input && resultsBox) {
+            let debounceTimer;
+
+            input.addEventListener('input', function() {
+                clearTimeout(debounceTimer);
+                const query = this.value.trim();
+                
+                if (query.length < 2) {
+                    resultsBox.style.display = 'none';
+                    return;
+                }
+
+                debounceTimer = setTimeout(() => {
+                    fetch(`/api/buscar-usuarios/?q=${encodeURIComponent(query)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.users && data.users.length > 0) {
+                                resultsBox.innerHTML = '';
+                                data.users.forEach(user => {
+                                    const div = document.createElement('div');
+                                    div.className = 'autocomplete-item';
+                                    div.textContent = `${user.username} ${user.full_name ? `(${user.full_name})` : ''}`;
+                                    div.addEventListener('click', () => {
+                                        input.value = user.username;
+                                        resultsBox.style.display = 'none';
+                                    });
+                                    resultsBox.appendChild(div);
+                                });
+                                resultsBox.style.display = 'block';
+                            } else {
+                                resultsBox.style.display = 'none';
+                            }
+                        })
+                        .catch(err => console.error(err));
+                }, 300);
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!resultsBox.contains(e.target) && e.target !== input) {
+                    resultsBox.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html>
