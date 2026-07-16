@@ -49,7 +49,7 @@ Permite a los usuarios publicar y gestionar sus materiales de estudio originales
 *   **Criterios de Aceptación:**
     *   El libro debe tener un título, portada (imagen obligatoria), contenido de texto (no se permiten libros solo con imágenes) y pertenecer a al menos una categoría temática.
     *   El libro no debe exceder las 500 páginas.
-    *   Al guardarse para publicación, el estado inicial debe ser "En Revisión" para validación automatizada.
+    *   Al guardarse para publicación, el estado inicial debe ser "Borrador" para validación automatizada.
 *   **Prioridad:** Alta
 *   **Estimación:** M
 *   **Reglas de Negocio asociadas:** RN-PUB-01, RN-PUB-03, RN-PUB-04, RN-PUB-05, RN-PUB-07
@@ -66,8 +66,7 @@ Permite a los usuarios publicar y gestionar sus materiales de estudio originales
 ### [US-05] Edición de Metadatos y Contenido de Libros
 *   **Descripción:** Como autor de un libro, quiero editar la información y el contenido de mi libro publicado para mantenerlo actualizado.
 *   **Criterios de Aceptación:**
-    *   El autor puede modificar el título, descripción, categoría y portada sin perder visibilidad inmediata del libro.
-    *   Si el autor modifica el contenido textual, el libro vuelve automáticamente al estado "En Revisión" (oculto a otros usuarios) hasta pasar la validación automática.
+    *   Si el autor modifica el título, contenido, categoría o portada del libro, este vuelve automáticamente al estado "Borrador" (oculto a otros usuarios) hasta pasar la validación automática.
     *   Un usuario no puede editar el libro de otro usuario.
 *   **Prioridad:** Alta
 *   **Estimación:** M

@@ -20,24 +20,92 @@
             font-family: 'Roboto', Arial, sans-serif;
             background: var(--bg);
             color: var(--text);
-        }
-
-        .page {
-            min-height: 100vh;
-            padding: 36px 40px 60px;
             display: flex;
-            justify-content: center;
+            min-height: 100vh;
         }
 
-        .shell {
-            width: min(1400px, 100%);
+        .sidebar-frame {
+            width: 180px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 28px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            align-self: flex-start;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .sidebar-nav a {
+            display: block;
+            padding: 14px 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+            text-decoration: none;
+            transition: opacity 0.15s ease;
+        }
+
+        .sidebar-nav a:hover { opacity: 0.55; }
+        .sidebar-nav .activo { font-weight: 600; }
+
+        /* Icono de campana */
+        .notificacion-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+            text-decoration: none;
+            transition: opacity 0.15s ease;
+            position: relative;
+        }
+
+        .notificacion-link:hover { opacity: 0.55; }
+
+        .notificacion-link svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .badge {
+            background: #ff3b3b;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 5px;
+            position: absolute;
+            top: 10px;
+            left: 14px;
+        }
+
+        .content-frame {
+            flex: 1;
+            min-width: 0;
+            padding: 36px 40px 60px;
             position: relative;
         }
 
         .title {
             font-size: 48px;
             font-weight: 600;
-            margin: 16px 0 0 220px;
+            margin: 0 0 0 0;
             letter-spacing: -0.48px;
         }
 
@@ -81,41 +149,17 @@
             background: #ffffff;
             cursor: pointer;
             transition: background 0.2s ease;
+            font-family: 'Roboto', Arial, sans-serif;
         }
 
-        .mode-button.active {
-            background: var(--surface);
-        }
-
-        .mode-button:first-child {
-            border-right: 0;
-        }
-
-        .layout {
-            display: grid;
-            grid-template-columns: 160px 1fr;
-            gap: 28px;
-            margin-top: 24px;
-        }
-
-        .sidebar {
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-            padding-top: 60px;
-            font-size: 25px;
-            font-weight: 600;
-        }
-
-        .sidebar a {
-            color: var(--text);
-            text-decoration: none;
-        }
+        .mode-button.active { background: var(--surface); }
+        .mode-button:first-child { border-right: 1px solid var(--border); }
 
         .main {
             display: flex;
             flex-direction: column;
             gap: 28px;
+            margin-top: 24px;
         }
 
         .card {
@@ -128,15 +172,16 @@
         }
 
         .image-placeholder {
-            width: 147px;
-            height: 161px;
+            width: 120px;
+            height: 180px; /* Aspecto 2:3 tipico de libro */
             background: var(--surface-soft);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 25px;
+            font-size: 20px;
             font-weight: 600;
             border: 1px solid #e0d7d7;
+            border-radius: 4px;
         }
 
         .content h2 {
@@ -165,6 +210,12 @@
             line-height: 1.5;
             color: #111;
             max-width: 760px;
+        }
+
+        .autor-original {
+            font-size: 13px;
+            color: #555;
+            margin: 0 0 10px;
         }
 
         .collection-card {
@@ -198,53 +249,67 @@
     </style>
 </head>
 <body>
-    <div class="page">
-        <div class="shell">
-            <div class="title">Para ti</div>
-            <div class="avatar" aria-label="Perfil"></div>
+    <aside class="sidebar-frame">
+        <nav class="sidebar-nav" aria-label="Navegacion principal">
+            <a href="{% url 'feed:notificaciones' %}" class="notificacion-link" aria-label="Notificaciones">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                {% if unread_notifications_count > 0 %}
+                <span class="badge">{{ unread_notifications_count }}</span>
+                {% endif %}
+            </a>
+            <a href="{% url 'busqueda:busqueda' %}">Buscar</a>
+            <a class="activo" href="{% url 'materiales:inicio' %}">Para ti</a>
+            <a href="{% url 'feed:feed' %}">Siguiendo</a>
+            <a href="{% url 'materiales:creacion_material' %}">Crear Material</a>
+        </nav>
+    </aside>
 
-            <div class="content-panel">
-                <div class="header-bar">
-                    <div class="mode-switch" role="tablist" aria-label="Seleccionar vista">
-                        <button class="mode-button active" data-view="material" type="button">Material</button>
-                        <button class="mode-button" data-view="collections" type="button">Colecciones</button>
-                    </div>
-                </div>
+    <div class="content-frame">
+        <h1 class="title">Para ti</h1>
+        <a href="{% url 'feed:perfil_publico' request.user.username %}" style="text-decoration:none; color:inherit;">
+        <div class="avatar" aria-label="Perfil"></div>
+        </a>
 
-                <div class="layout">
-                    <nav class="sidebar" aria-label="Navegación lateral">
-                        <a href="#">Buscar</a>
-                        <a href="#">Para ti</a>
-                        <a href="#">Siguiendo</a>
-                    </nav>
-
-                    <div class="main">
+        <div class="content-panel">
+            <div class="mode-switch" role="tablist" aria-label="Seleccionar vista">
+                <button class="mode-button active" data-view="material" type="button">Material</button>
+                <button class="mode-button" data-view="collections" type="button">Colecciones</button>
+            </div>
+            <div class="main">
                         <section id="material-view" class="view-panel">
+                            {% for libro in libros %}
                             <div class="card">
-                                <div class="image-placeholder">Imagen</div>
+                                {% if libro.portada %}
+                                    <div class="image-placeholder" style="background-image: url('{{ libro.portada.url }}'); background-size: cover; background-position: center; color: transparent;">Imagen</div>
+                                {% else %}
+                                    <div class="image-placeholder">Sin Portada</div>
+                                {% endif %}
                                 <div class="content">
-                                    <h2>Título</h2>
+                                    <h2><a href="{% url 'materiales:lectura_material' libro.id %}" style="text-decoration: none; color: inherit;">{{ libro.titulo }}</a></h2>
+                                    <p class="autor-original">Por {% firstof libro.autor.get_full_name libro.autor.username %}</p>
                                     <div class="tags">
-                                        <span class="tag">categoria</span>
-                                        <span class="tag">categoria</span>
-                                        <span class="tag">categoria</span>
+                                        {% for categoria in libro.categorias.all %}
+                                        <span class="tag">{{ categoria.nombre }}</span>
+                                        {% empty %}
+                                        <span class="tag">Sin categoría</span>
+                                        {% endfor %}
                                     </div>
-                                    <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since 1966, when designers at Letraset and James Mosley...</p>
+                                    {% if user.is_authenticated and libro.autor != request.user %}
+                                    <form action="{% url 'materiales:republicar_libro' libro.id %}" method="post" style="margin-top: 10px;">
+                                        {% csrf_token %}
+                                        <button type="submit" style="padding: 6px 16px; font-size: 14px; font-weight: 600; background: var(--accent); color: #000; border: 1px solid var(--border); cursor: pointer;">
+                                            Republicar
+                                        </button>
+                                    </form>
+                                    {% endif %}
                                 </div>
                             </div>
-
-                            <div class="card">
-                                <div class="image-placeholder">Imagen</div>
-                                <div class="content">
-                                    <h2>Título</h2>
-                                    <div class="tags">
-                                        <span class="tag">categoria</span>
-                                        <span class="tag">categoria</span>
-                                        <span class="tag">categoria</span>
-                                    </div>
-                                    <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since 1966, when designers at Letraset and James Mosley...</p>
-                                </div>
-                            </div>
+                            {% empty %}
+                            <p style="font-size: 18px; color: #555;">No hay libros publicados aún.</p>
+                            {% endfor %}
                         </section>
 
                         <section id="collections-view" class="view-panel hidden">
@@ -266,8 +331,6 @@
                                 </div>
                             </div>
                         </section>
-                    </div>
-                </div>
             </div>
         </div>
     </div>

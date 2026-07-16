@@ -8,11 +8,34 @@ Característica: Publicación de material educativo
   Antecedentes:
     Dado que el usuario ha iniciado sesión en la plataforma
 
-  Escenario: Publicar un libro con todos los requisitos completos
+  Escenario: Publicar un libro que supera la validación automática de contenido
     Dado que el usuario ha preparado un libro con título, portada, contenido textual y categoría
+    Y el contenido es enriquecido, tiene sentido y guarda relación con la categoría
+    Y las imágenes y la portada tienen relación con el contenido
     Cuando el usuario solicita publicar el libro
-    Entonces el sistema valida el contenido automáticamente
-    Y el libro queda visible para la comunidad académica
+    Entonces el sistema valida el contenido automáticamente de forma exitosa
+    Y el libro pasa a estado "Publicado" visible para la comunidad académica
+
+  Escenario: Rechazo de publicación por contenido sin sentido
+    Dado que el usuario ha preparado un libro cuyo texto carece de sentido o es texto de relleno
+    Cuando el usuario solicita publicar el libro
+    Entonces el sistema rechaza la validación automática
+    Y el libro no pasa a estado "Publicado"
+    Y se notifica al autor detallando que el contenido carece de sentido o no es enriquecido
+
+  Escenario: Rechazo de publicación por falta de relación temática
+    Dado que el usuario ha preparado un libro donde el contenido no está apegado a la categoría o el título no tiene relación con el contenido
+    Cuando el usuario solicita publicar el libro
+    Entonces el sistema rechaza la validación automática
+    Y el libro no pasa a estado "Publicado"
+    Y se notifica al autor detallando la falta de relación temática entre título, contenido y categoría
+
+  Escenario: Rechazo de publicación por imágenes no relacionadas al contenido
+    Dado que el usuario ha preparado un libro donde las imágenes o la portada no tienen relación con el contenido textual
+    Cuando el usuario solicita publicar el libro
+    Entonces el sistema rechaza la validación automática
+    Y el libro no pasa a estado "Publicado"
+    Y se notifica al autor detallando que las imágenes no son coherentes con el contenido
 
   Esquema del escenario: No se puede publicar un libro con requisitos incompletos
     Dado que el usuario está creando un libro sin <requisito_faltante>
@@ -38,16 +61,16 @@ Característica: Publicación de material educativo
     Entonces el sistema rechaza la operación
     Y el libro no queda publicado hasta que el contenido sea reducido
 
-  Escenario: Editar los metadatos de un libro publicado no requiere nueva validación
+  Escenario: Editar los metadatos de un libro publicado requiere nueva validación
     Dado que el usuario tiene un libro publicado en su perfil
     Cuando el usuario modifica los metadatos del libro
-    Entonces los cambios se aplican de forma inmediata
-    Y el libro continúa visible para la comunidad
+    Entonces el libro pasa a estado Borrador
+    Y deja de ser visible para otros usuarios hasta superar la validación automática
 
   Escenario: Editar el contenido de un libro publicado requiere nueva validación
     Dado que el usuario tiene un libro publicado en su perfil
     Cuando el usuario modifica el contenido textual del libro
-    Entonces el libro pasa a estado de revisión
+    Entonces el libro pasa a estado Borrador
     Y deja de ser visible para otros usuarios hasta superar la validación automática
 
   Escenario: Retirar un libro publicado lo hace invisible para otros usuarios

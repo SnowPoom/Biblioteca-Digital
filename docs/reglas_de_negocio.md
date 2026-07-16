@@ -19,8 +19,8 @@ Abarca la creación, edición, publicación y retiro de libros y colecciones den
 | RN-PUB-05 | Cada publicación puede tener un máximo de 500 páginas.                                                                                                           |
 | RN-PUB-06 | Las publicaciones pueden incluir imágenes como contenido complementario al texto.                                                                                  |
 | RN-PUB-07 | Un libro debe pertenecer al menos a una categoría temática al momento de su publicación.                                                                         |
-| RN-PUB-08 | El autor puede editar los metadatos (título, descripción, categoría, portada) de un libro publicado en cualquier momento.                                        |
-| RN-PUB-09 | Si el autor edita el contenido de un libro ya publicado, el material debe volver a pasar la validación automatizada antes de ser visible.                          |
+| RN-PUB-08 | El autor puede editar los metadatos (título, categoría, portada) y contenido de un libro publicado en cualquier momento.                                        |
+| RN-PUB-09 | Si el autor edita un libro ya publicado, el material debe volver a pasar la validación automatizada antes de ser visible.                          |
 | RN-PUB-10 | El autor puede retirar (despublicar) su propio material en cualquier momento; el material retirado deja de ser visible para otros usuarios.                         |
 | RN-PUB-11 | Un usuario no puede editar ni eliminar material publicado por otro usuario.                                                                                         |
 | RN-PUB-12 | Cualquier usuario puede republicar material de otro usuario en su propio perfil. La republicación preserva la autoría original y no crea una copia independiente. |
