@@ -12,10 +12,12 @@ def crear_coleccion(request):
     if request.method == 'POST':
         form = ColeccionForm(request.POST)
         if form.is_valid():
-            coleccion = form.save(commit=False)
-            coleccion.creador = request.user
-            coleccion.save()
-            form.save_m2m() # Guardar las categorías
+            from django.db import transaction
+            with transaction.atomic():
+                coleccion = form.save(commit=False)
+                coleccion.creador = request.user
+                coleccion.save()
+                form.save_m2m() # Guardar las categorías
             
             messages.success(request, "Colección creada exitosamente.")
             return redirect('feed:perfil_publico', username=request.user.username)

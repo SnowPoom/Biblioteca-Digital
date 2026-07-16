@@ -302,7 +302,7 @@
 
                         <div class="metadata-row">
                             <div class="metadata-field" style="flex-basis: 100%;">
-                                <label>Categorías:</label>
+                                <label for="cat-selector">Categorías:</label>
                                 
                                 <div class="category-selector-container">
                                     <div id="selected-chips"></div>
@@ -390,24 +390,32 @@
                     if (opt.selected) {
                         const chip = document.createElement('div');
                         chip.className = 'chip';
-                        chip.innerHTML = `${opt.text} <span class="chip-remove" data-value="${opt.value}">&times;</span>`;
+                        
+                        const textNode = document.createTextNode(opt.text + ' ');
+                        chip.appendChild(textNode);
+                        
+                        const removeBtn = document.createElement('button');
+                        removeBtn.type = 'button';
+                        removeBtn.className = 'chip-remove';
+                        removeBtn.dataset.value = opt.value;
+                        removeBtn.textContent = '×';
+                        removeBtn.setAttribute('aria-label', `Eliminar categoría ${opt.text}`);
+                        
+                        removeBtn.addEventListener('click', function() {
+                            const val = this.dataset.value;
+                            if (checkboxes.length > 0) {
+                                const chk = Array.from(checkboxes).find(c => c.value === val);
+                                if (chk) chk.checked = false;
+                            } else if (selects.length > 0) {
+                                const opt = Array.from(selects).find(o => o.value === val);
+                                if (opt) opt.selected = false;
+                            }
+                            updateUI();
+                        });
+                        
+                        chip.appendChild(removeBtn);
                         chipsContainer.appendChild(chip);
                     }
-                });
-                
-                document.querySelectorAll('.chip-remove').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const val = this.getAttribute('data-value');
-                        // Desmarcar
-                        if (checkboxes.length > 0) {
-                            const chk = Array.from(checkboxes).find(c => c.value === val);
-                            if (chk) chk.checked = false;
-                        } else if (selects.length > 0) {
-                            const opt = Array.from(selects).find(o => o.value === val);
-                            if (opt) opt.selected = false;
-                        }
-                        updateUI();
-                    });
                 });
             }
 

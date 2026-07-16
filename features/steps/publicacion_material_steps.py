@@ -665,49 +665,41 @@ def step_prepara_coleccion_basica(context):
     }
 
 
-@given('el usuario define la visibilidad de la colección')
-def step_define_visibilidad(context):
-    context.datos_coleccion['visibilidad'] = 'publica'
+@given('el usuario define la visibilidad de la colección como "{visibilidad}"')
+def step_define_visibilidad_param(context, visibilidad):
+    context.datos_coleccion['visibilidad'] = visibilidad
 
 
-@given('el usuario establece un límite máximo de libros válido (mínimo 5, por defecto 20)')
-def step_define_limite_valido(context):
-    context.datos_coleccion['limite_libros'] = 15
+@given('el usuario establece un límite máximo de {limite} libros')
+def step_define_limite_valido_param(context, limite):
+    context.datos_coleccion['limite_libros'] = int(limite)
 
 
 @when('el usuario crea la colección')
 def step_usuario_crea_coleccion(context):
-    from src.materiales.models import Coleccion
-    from django.core.exceptions import ValidationError
-    try:
-        coleccion = Coleccion(
-            nombre=context.datos_coleccion['nombre'],
-            descripcion=context.datos_coleccion.get('descripcion', ''),
-            visibilidad=context.datos_coleccion.get('visibilidad', 'publica'),
-            limite_libros=context.datos_coleccion.get('limite_libros', 20),
-            creador=context.usuario_principal
-        )
-        
-        # Simulamos la validación del formulario de que la categoría es requerida
-        if not context.datos_coleccion.get('categorias'):
-            raise ValidationError("Debe asignar al menos una categoría a la colección.")
-            
-        # Validar modelo (ejecuta validadores de campo)
-        coleccion.full_clean()
-        coleccion.save()
-        
-        for cat_id in context.datos_coleccion.get('categorias', []):
-            coleccion.categorias.add(cat_id)
-            
-        context.coleccion = coleccion
+    context.test.client.force_login(context.usuario_principal)
+    
+    post_data = {
+        'nombre': context.datos_coleccion.get('nombre', ''),
+        'descripcion': context.datos_coleccion.get('descripcion', ''),
+        'visibilidad': context.datos_coleccion.get('visibilidad', 'publica'),
+        'limite_libros': context.datos_coleccion.get('limite_libros', 20),
+        'categorias': context.datos_coleccion.get('categorias', []),
+    }
+    
+    response = context.test.client.post('/colecciones/crear/', data=post_data)
+    
+    if response.status_code == 302:
         context.resultado = True
         context.error_creacion = None
-    except ValidationError as e:
+        from src.materiales.models import Coleccion
+        context.coleccion = Coleccion.objects.filter(creador=context.usuario_principal).last()
+    else:
         context.resultado = False
-        context.error_creacion = str(e)
-    except Exception as e:
-        context.resultado = False
-        context.error_creacion = str(e)
+        if hasattr(response, 'context') and response.context and 'form' in response.context and response.context['form'].errors:
+            context.error_creacion = str(response.context['form'].errors)
+        else:
+            context.error_creacion = "Error desconocido o validación fallida"
 
 
 @then('la colección se crea exitosamente')
@@ -817,5 +809,3 @@ def step_libro_no_agregado(context):
         context.coleccion.libros.all(),
         "El libro no debe estar en la colección."
     )
-
-

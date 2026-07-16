@@ -392,7 +392,7 @@ class Coleccion(models.Model):
     def publicar(self):
         if not self.categorias.exists():
             return False, "Falta asignar categoría."
-        self.estado = self.PUBLICADO
+        self.visibilidad = self.PUBLICA
         self.save()
         return True, "Colección publicada."
 

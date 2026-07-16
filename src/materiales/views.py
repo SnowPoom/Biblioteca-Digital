@@ -241,10 +241,11 @@ def autoguardar_borrador(request, pk=None):
 
         titulo = request.POST.get('titulo', '').strip()
         contenido_texto = request.POST.get('contenido_texto', '')
-        categorias_str = request.POST.get('categorias', '')
+        categorias_str = request.POST.get('categorias', '').strip()
         
         # Validación para evitar guardar borradores en blanco
-        if not pk and not titulo and not contenido_texto and not 'portada' in request.FILES and not categorias_str:
+        es_categorias_vacio = not categorias_str or categorias_str == '[]'
+        if not pk and not titulo and not contenido_texto.strip() and not 'portada' in request.FILES and es_categorias_vacio:
             return JsonResponse({'success': False, 'msg': 'Borrador vacío, no se guardará.'})
         
         if not titulo and not pk:

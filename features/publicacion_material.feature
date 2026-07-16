@@ -119,14 +119,19 @@ Característica: Publicación de material educativo
     Entonces el libro desaparece de la colección
     Y el libro sigue disponible para cualquier usuario en la biblioteca general
 
-  Escenario: Crear una colección con visibilidad y límite de libros válido
+  Esquema del escenario: Crear una colección con visibilidad y límite de libros válido
     Dado que el usuario ha preparado una colección con nombre y al menos una categoría temática
-    Y el usuario define la visibilidad de la colección
-    Y el usuario establece un límite máximo de libros válido (mínimo 5, por defecto 20)
+    Y el usuario define la visibilidad de la colección como "<visibilidad>"
+    Y el usuario establece un límite máximo de <limite> libros
     Cuando el usuario crea la colección
     Entonces la colección se crea exitosamente
     Y la colección queda disponible según su visibilidad definida
     Y el usuario creador es asignado automáticamente como administrador inicial de la colección
+
+    Ejemplos:
+      | visibilidad | limite |
+      | publica     | 5      |
+      | privada     | 20     |
 
   Escenario: No se puede crear una colección con un límite de libros menor a 5
     Dado que el usuario ha preparado una colección con nombre y al menos una categoría temática
