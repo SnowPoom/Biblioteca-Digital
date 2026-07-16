@@ -376,3 +376,72 @@ def step_libro_no_publicado_paginas(context):
         Libro.BORRADOR,
         "El libro debe permanecer en 'Borrador' hasta reducir el numero de paginas.",
     )
+
+
+# ---------------------------------------------------------------------------
+# Escenarios de edicion y publicacion
+# ---------------------------------------------------------------------------
+
+@given('que el usuario tiene un libro publicado en su perfil')
+def step_usuario_libro_publicado(context):
+    context.categoria = Categoria.objects.create(nombre='Física')
+    context.libro = Libro.objects.create(
+        titulo='Introducción a la Física',
+        contenido_texto='Contenido de física enriquecido y relevante',
+        numero_paginas=150,
+        autor=context.usuario_principal,
+        estado=Libro.PUBLICADO
+    )
+    context.libro.categorias.add(context.categoria)
+
+
+@when('el usuario modifica los metadatos del libro')
+def step_usuario_modifica_metadatos(context):
+    context.libro.titulo = 'Física Avanzada'
+    context.libro.editar(usuario_editor=context.usuario_principal)
+
+
+@then('el libro pasa a estado Borrador')
+def step_libro_pasa_estado_revision(context):
+    context.libro.refresh_from_db()
+    context.test.assertEqual(
+        context.libro.estado,
+        Libro.BORRADOR,
+        "El libro debe regresar a estado Borrador tras su edición."
+    )
+
+
+@then('deja de ser visible para otros usuarios hasta superar la validación automática')
+def step_libro_no_visible(context):
+    context.test.assertNotEqual(
+        context.libro.estado,
+        Libro.PUBLICADO,
+        "El libro ya no debe ser visible públicamente."
+    )
+
+
+@when('el usuario modifica el contenido textual del libro')
+def step_usuario_modifica_contenido(context):
+    context.libro.contenido_texto = 'Nuevo contenido actualizado'
+    context.libro.editar(usuario_editor=context.usuario_principal)
+
+
+@given('que el usuario está visualizando un libro publicado por otro usuario')
+def step_usuario_viendo_libro_ajeno(context):
+    otro_usuario = User.objects.create_user(username='otro', password='123')
+    context.libro_ajeno = Libro.objects.create(
+        titulo='Libro Ajeno',
+        contenido_texto='Texto del otro usuario',
+        numero_paginas=100,
+        autor=otro_usuario,
+        estado=Libro.PUBLICADO
+    )
+
+
+@when('el usuario intenta modificar ese libro')
+def step_usuario_intenta_modificar_libro_ajeno(context):
+    try:
+        context.libro_ajeno.editar(usuario_editor=context.usuario_principal)
+        context.resultado = True
+    except PermissionError:
+        context.resultado = False

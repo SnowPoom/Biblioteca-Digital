@@ -61,16 +61,16 @@ Característica: Publicación de material educativo
     Entonces el sistema rechaza la operación
     Y el libro no queda publicado hasta que el contenido sea reducido
 
-  Escenario: Editar los metadatos de un libro publicado no requiere nueva validación
+  Escenario: Editar los metadatos de un libro publicado requiere nueva validación
     Dado que el usuario tiene un libro publicado en su perfil
     Cuando el usuario modifica los metadatos del libro
-    Entonces los cambios se aplican de forma inmediata
-    Y el libro continúa visible para la comunidad
+    Entonces el libro pasa a estado Borrador
+    Y deja de ser visible para otros usuarios hasta superar la validación automática
 
   Escenario: Editar el contenido de un libro publicado requiere nueva validación
     Dado que el usuario tiene un libro publicado en su perfil
     Cuando el usuario modifica el contenido textual del libro
-    Entonces el libro pasa a estado de revisión
+    Entonces el libro pasa a estado Borrador
     Y deja de ser visible para otros usuarios hasta superar la validación automática
 
   Escenario: Retirar un libro publicado lo hace invisible para otros usuarios
