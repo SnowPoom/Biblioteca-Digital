@@ -6,16 +6,8 @@ from src.materiales.models import Libro, Categoria
 User = get_user_model()
 
 # --- Antecedentes ---
-
-@given('que el usuario ha iniciado sesión en la plataforma')
-def step_usuario_autenticado(context):
-    context.usuario = User.objects.create_user(
-        username='autor_prueba',
-        email='autor@ejemplo.com',
-        password='password123',
-        first_name='Autor Prueba',
-    )
-    context.test.client.login(username='autor_prueba', password='password123')
+# El step "que el usuario ha iniciado sesion en la plataforma" se define
+# en feed_actividad_steps.py y Behave lo comparte con todos los features.
 
 
 # --- Escenario: Publicar un libro con todos los requisitos completos ---

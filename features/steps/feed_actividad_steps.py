@@ -27,6 +27,8 @@ def step_usuario_autenticado(context):
         rol=PerfilUsuario.ESTUDIANTE,
     )
     context.test.client.force_login(context.usuario_principal)
+    # Alias para compatibilidad con steps de publicacion y anotacion
+    context.usuario = context.usuario_principal
 
 
 # ---------------------------------------------------------------------------

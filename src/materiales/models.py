@@ -3,6 +3,7 @@ from django.db import models
 
 
 LIMITE_MAXIMO_PAGINAS = 500
+LIMITE_CARACTERES_ANOTACION = 150
 
 
 class Categoria(models.Model):
@@ -97,3 +98,89 @@ class Libro(models.Model):
         self.estado = self.EN_REVISION
         self.save()
         return True
+
+    def retirar(self):
+        """Retira el libro de la plataforma y elimina las anotaciones asociadas.
+
+        Reglas de negocio aplicadas:
+        - RN-PUB-10: El autor puede retirar su material en cualquier momento.
+        - RN-ANO-08: Al retirar un libro, las anotaciones asociadas se eliminan.
+        """
+        self.anotaciones.all().delete()
+        self.estado = self.RETIRADO
+        self.save()
+
+
+class Anotacion(models.Model):
+    """Anotacion personal vinculada a un fragmento de texto o imagen de un libro.
+
+    Las anotaciones son estrictamente privadas (RN-ANO-01) y cada fragmento
+    admite como maximo una anotacion activa por usuario (RN-ANO-04).
+    """
+
+    TEXTO = 'texto'
+    IMAGEN = 'imagen'
+
+    TIPOS_FRAGMENTO = [
+        (TEXTO, 'Texto'),
+        (IMAGEN, 'Imagen'),
+    ]
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='anotaciones',
+    )
+    libro = models.ForeignKey(
+        Libro,
+        on_delete=models.CASCADE,
+        related_name='anotaciones',
+    )
+    fragmento_texto = models.CharField(max_length=500)
+    tipo_fragmento = models.CharField(
+        max_length=10,
+        choices=TIPOS_FRAGMENTO,
+        default=TEXTO,
+    )
+    contenido = models.CharField(max_length=LIMITE_CARACTERES_ANOTACION)
+    creado = models.DateTimeField(auto_now_add=True)
+    actualizado = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Anotacion'
+        verbose_name_plural = 'Anotaciones'
+        # RN-ANO-04: Maximo una anotacion activa por fragmento por usuario
+        unique_together = ['usuario', 'libro', 'fragmento_texto']
+        ordering = ['-creado']
+
+    def __str__(self):
+        return f'Anotacion de {self.usuario.get_full_name()} en {self.libro.titulo}'
+
+    def esta_activa(self):
+        """Indica si la anotacion esta vigente (existe en base de datos y tiene contenido)."""
+        return bool(self.pk and self.contenido)
+
+    @staticmethod
+    def validar_contenido(texto):
+        """Valida que el contenido no supere el limite de caracteres.
+
+        Regla de negocio: RN-ANO-03
+        Retorna True si el texto es valido, False en caso contrario.
+        """
+        return len(texto) <= LIMITE_CARACTERES_ANOTACION
+
+    @staticmethod
+    def obtener_anotacion_existente(usuario, libro, fragmento_texto):
+        """Recupera la anotacion existente de un usuario sobre un fragmento especifico.
+
+        Regla de negocio: RN-ANO-04
+        Retorna la instancia de Anotacion si existe, None en caso contrario.
+        """
+        try:
+            return Anotacion.objects.get(
+                usuario=usuario,
+                libro=libro,
+                fragmento_texto=fragmento_texto,
+            )
+        except Anotacion.DoesNotExist:
+            return None
