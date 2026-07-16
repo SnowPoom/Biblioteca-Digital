@@ -247,10 +247,56 @@
                 <!-- Contenido dinamico inyectado por JS -->
             </div>
             <div>
-                <div class="notes">
-                    <h2>Notas</h2>
-                    <p>Sección de notas...</p>
+                <div class="notes" id="panel-anotaciones">
+                    <h2>Mis Anotaciones</h2>
+
+                    <!-- Formulario de anotacion -->
+                    <div id="form-anotacion" style="display:none; margin-bottom: 18px; padding: 12px; border: 1px solid #ccc; background: #f9f9f9;">
+                        <p id="fragmento-label" style="font-size: 14px; margin: 0 0 8px; color: #555;"></p>
+                        <textarea id="input-anotacion" maxlength="150" rows="3"
+                            style="width:100%; font-size:14px; padding:8px; border:1px solid #aaa; resize:vertical;"
+                            placeholder="Escribe tu anotacion (max. 150 caracteres)"></textarea>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+                            <span id="contador-caracteres" style="font-size:12px; color:#888;">0 / 150</span>
+                            <div>
+                                <button id="btn-cancelar-anotacion" type="button"
+                                    style="padding:6px 14px; font-size:13px; cursor:pointer; margin-right:6px;">Cancelar</button>
+                                <button id="btn-guardar-anotacion" type="button"
+                                    style="padding:6px 14px; font-size:13px; cursor:pointer; background:var(--accent); border:none; font-weight:600;">Guardar</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Instruccion para el usuario -->
+                    <p id="instruccion-anotar" style="font-size: 14px; color: #888; margin: 0 0 12px;">
+                        Selecciona texto en la pagina y presiona el boton "Anotar" que aparece.
+                    </p>
+
+                    <!-- Lista de anotaciones -->
+                    <div id="lista-anotaciones">
+                        {% for anotacion in anotaciones %}
+                        <div class="anotacion-item" data-id="{{ anotacion.id }}" data-fragmento="{{ anotacion.fragmento_texto }}"
+                            style="padding: 10px; margin-bottom: 8px; border: 1px solid #ddd; background: #fafafa; font-size: 14px;">
+                            <strong style="color: var(--accent);">"{{ anotacion.fragmento_texto|truncatechars:40 }}"</strong>
+                            <p class="anotacion-contenido" style="margin: 6px 0 8px;">{{ anotacion.contenido }}</p>
+                            <div style="display:flex; gap:8px;">
+                                <button class="btn-editar-anotacion" data-id="{{ anotacion.id }}" data-contenido="{{ anotacion.contenido }}" data-fragmento="{{ anotacion.fragmento_texto }}"
+                                    style="font-size:12px; cursor:pointer; padding:4px 10px;">Editar</button>
+                                <button class="btn-eliminar-anotacion" data-id="{{ anotacion.id }}"
+                                    style="font-size:12px; cursor:pointer; padding:4px 10px; color:#c00;">Eliminar</button>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p id="sin-anotaciones" style="font-size:14px; color:#aaa;">Sin anotaciones aun.</p>
+                        {% endfor %}
+                    </div>
                 </div>
+
+                <!-- Boton flotante de anotar (aparece al seleccionar texto) -->
+                <button id="btn-anotar-flotante" type="button"
+                    style="display:none; position:fixed; z-index:1000; padding:6px 16px; font-size:13px; font-weight:600; background:var(--accent); color:#000; border:none; cursor:pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+                    Anotar
+                </button>
                 
                 <div class="nav-controls">
                     <button id="btn-prev" class="print-btn" disabled>&larr;</button>
@@ -362,5 +408,166 @@
             renderPage();
         });
     </script>
+
+    {% if user.is_authenticated %}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const LIBRO_ID = {{ libro.id }};
+        const CSRF = '{{ csrf_token }}';
+        const btnFlotante = document.getElementById('btn-anotar-flotante');
+        const formAnotacion = document.getElementById('form-anotacion');
+        const inputAnotacion = document.getElementById('input-anotacion');
+        const fragmentoLabel = document.getElementById('fragmento-label');
+        const contador = document.getElementById('contador-caracteres');
+        const listaAnotaciones = document.getElementById('lista-anotaciones');
+
+        let fragmentoActual = '';
+        let modoEdicion = false;
+        let anotacionEditandoId = null;
+
+        // Contador de caracteres
+        inputAnotacion.addEventListener('input', function() {
+            const len = this.value.length;
+            contador.textContent = len + ' / 150';
+            contador.style.color = len >= 150 ? '#c00' : '#888';
+        });
+
+        // Seleccion de texto: mostrar boton flotante
+        document.getElementById('page-display').addEventListener('mouseup', function(e) {
+            const seleccion = window.getSelection();
+            const texto = seleccion.toString().trim();
+            if (texto.length > 0) {
+                fragmentoActual = texto;
+                btnFlotante.style.display = 'block';
+                btnFlotante.style.left = e.clientX + 'px';
+                btnFlotante.style.top = (e.clientY - 40) + 'px';
+            } else {
+                btnFlotante.style.display = 'none';
+            }
+        });
+
+        document.addEventListener('mousedown', function(e) {
+            if (e.target !== btnFlotante) {
+                btnFlotante.style.display = 'none';
+            }
+        });
+
+        // Boton "Anotar": abrir formulario
+        btnFlotante.addEventListener('click', function() {
+            btnFlotante.style.display = 'none';
+            modoEdicion = false;
+            anotacionEditandoId = null;
+            fragmentoLabel.textContent = 'Fragmento: "' + fragmentoActual.substring(0, 60) + '..."';
+            inputAnotacion.value = '';
+            contador.textContent = '0 / 150';
+            formAnotacion.style.display = 'block';
+            inputAnotacion.focus();
+        });
+
+        // Cancelar
+        document.getElementById('btn-cancelar-anotacion').addEventListener('click', function() {
+            formAnotacion.style.display = 'none';
+        });
+
+        // Guardar (crear o editar)
+        document.getElementById('btn-guardar-anotacion').addEventListener('click', function() {
+            const contenido = inputAnotacion.value.trim();
+            if (!contenido) return;
+
+            if (modoEdicion && anotacionEditandoId) {
+                fetch('/materiales/anotacion/' + anotacionEditandoId + '/editar/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+                    body: JSON.stringify({contenido: contenido}),
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.id) {
+                        const item = document.querySelector('.anotacion-item[data-id="' + data.id + '"]');
+                        if (item) {
+                            item.querySelector('.anotacion-contenido').textContent = data.contenido;
+                            item.querySelector('.btn-editar-anotacion').dataset.contenido = data.contenido;
+                        }
+                        formAnotacion.style.display = 'none';
+                    }
+                });
+            } else {
+                fetch('/materiales/lectura/' + LIBRO_ID + '/anotacion/crear/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+                    body: JSON.stringify({fragmento_texto: fragmentoActual, contenido: contenido, tipo_fragmento: 'texto'}),
+                })
+                .then(r => r.json().then(data => ({status: r.status, data})))
+                .then(({status, data}) => {
+                    if (status === 201) {
+                        agregarAnotacionAlDOM(data);
+                        formAnotacion.style.display = 'none';
+                    } else if (status === 409) {
+                        // Ya existe: abrir modo edicion
+                        modoEdicion = true;
+                        anotacionEditandoId = data.anotacion_id;
+                        inputAnotacion.value = data.contenido;
+                        contador.textContent = data.contenido.length + ' / 150';
+                        fragmentoLabel.textContent = 'Editando anotacion existente para este fragmento';
+                    } else {
+                        alert(data.error || 'Error al guardar');
+                    }
+                });
+            }
+        });
+
+        // Agregar anotacion al DOM sin recargar
+        function agregarAnotacionAlDOM(data) {
+            const sinAnotaciones = document.getElementById('sin-anotaciones');
+            if (sinAnotaciones) sinAnotaciones.remove();
+
+            const div = document.createElement('div');
+            div.className = 'anotacion-item';
+            div.dataset.id = data.id;
+            div.dataset.fragmento = data.fragmento_texto;
+            div.style.cssText = 'padding:10px; margin-bottom:8px; border:1px solid #ddd; background:#fafafa; font-size:14px;';
+            div.innerHTML = '<strong style="color:var(--accent);">"' + data.fragmento_texto.substring(0, 40) + '"</strong>' +
+                '<p class="anotacion-contenido" style="margin:6px 0 8px;">' + data.contenido + '</p>' +
+                '<div style="display:flex; gap:8px;">' +
+                '<button class="btn-editar-anotacion" data-id="' + data.id + '" data-contenido="' + data.contenido + '" data-fragmento="' + data.fragmento_texto + '" style="font-size:12px; cursor:pointer; padding:4px 10px;">Editar</button>' +
+                '<button class="btn-eliminar-anotacion" data-id="' + data.id + '" style="font-size:12px; cursor:pointer; padding:4px 10px; color:#c00;">Eliminar</button>' +
+                '</div>';
+            listaAnotaciones.appendChild(div);
+        }
+
+        // Delegacion de eventos para editar y eliminar
+        listaAnotaciones.addEventListener('click', function(e) {
+            const btnEditar = e.target.closest('.btn-editar-anotacion');
+            const btnEliminar = e.target.closest('.btn-eliminar-anotacion');
+
+            if (btnEditar) {
+                modoEdicion = true;
+                anotacionEditandoId = btnEditar.dataset.id;
+                fragmentoActual = btnEditar.dataset.fragmento;
+                fragmentoLabel.textContent = 'Editando: "' + fragmentoActual.substring(0, 60) + '"';
+                inputAnotacion.value = btnEditar.dataset.contenido;
+                contador.textContent = btnEditar.dataset.contenido.length + ' / 150';
+                formAnotacion.style.display = 'block';
+                inputAnotacion.focus();
+            }
+
+            if (btnEliminar) {
+                const id = btnEliminar.dataset.id;
+                fetch('/materiales/anotacion/' + id + '/eliminar/', {
+                    method: 'POST',
+                    headers: {'X-CSRFToken': CSRF},
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.eliminado) {
+                        const item = document.querySelector('.anotacion-item[data-id="' + id + '"]');
+                        if (item) item.remove();
+                    }
+                });
+            }
+        });
+    });
+    </script>
+    {% endif %}
 </body>
 </html>
