@@ -108,11 +108,30 @@ def perfil_publico(request, username):
         seguidor=usuario_perfil,
     ).count()
 
-    publicaciones = Publicacion.objects.filter(
+    publicaciones_propias = Publicacion.objects.filter(
         autor=usuario_perfil,
-    ).select_related('autor').order_by('-creado')
+    ).select_related('autor')
+
+    republicaciones_propias = Republicacion.objects.filter(
+        republicado_por=usuario_perfil,
+    ).select_related('republicado_por', 'publicacion__autor')
+
+    from itertools import chain
+    publicaciones = sorted(
+        chain(publicaciones_propias, republicaciones_propias),
+        key=lambda obj: obj.creado,
+        reverse=True
+    )
 
     es_propio = request.user == usuario_perfil
+    
+    borradores = []
+    if es_propio:
+        from src.materiales.models import Libro
+        borradores = Libro.objects.filter(
+            autor=usuario_perfil,
+            estado=Libro.BORRADOR,
+        ).order_by('-creado')
 
     contexto = {
         'usuario_perfil': usuario_perfil,
@@ -120,6 +139,7 @@ def perfil_publico(request, username):
         'cantidad_seguidores': cantidad_seguidores,
         'cantidad_seguidos': cantidad_seguidos,
         'publicaciones': publicaciones,
+        'borradores': borradores,
         'es_propio': es_propio,
     }
     return render(request, 'perfil/perfil_publico.html', contexto)

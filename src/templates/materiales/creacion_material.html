@@ -235,6 +235,7 @@
                     
                     <div class="toolbar-top">
                         <button class="publish-btn" type="submit">Publicar</button>
+                        <span id="autosave-indicator" style="display:none; color: #4caf50; font-size: 14px; margin-left: 10px;">Guardado</span>
                     </div>
 
                     <div class="metadata-section">
@@ -245,7 +246,13 @@
                         </div>
                         <div class="metadata-field">
                             <label>Portada:</label>
-                            <input type="file" name="portada" accept="image/*" required>
+                            <input type="file" name="portada" accept="image/*" {% if not es_edicion or not libro.portada %}required{% endif %}>
+                            {% if es_edicion and libro.portada %}
+                            <div style="font-size: 14px; margin-top: 4px; color: #555;">
+                                Portada actual: <a href="{{ libro.portada.url }}" target="_blank" style="color: var(--accent); text-decoration: none;">Ver imagen actual</a>
+                                <br><small>(Si no seleccionas un archivo, se mantendrá la portada actual)</small>
+                            </div>
+                            {% endif %}
                             {% if formulario.portada.errors %}<ul class="errors-list">{% for e in formulario.portada.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
                         </div>
                         <div class="metadata-field" style="flex-basis: 100%;">
@@ -399,6 +406,7 @@
                     const gap = editor.getDoc().createElement('div');
                     gap.className = 'page-gap auto-page-gap';
                     gap.contentEditable = 'false';
+                    gap.innerHTML = '&nbsp;';
                     body.insertBefore(gap, node);
                     
                     pageSum = nodeHeight + nodeMargin;
@@ -490,9 +498,14 @@
                     icon: 'page-break',
                     tooltip: 'Insertar Salto de Página',
                     onAction: function() {
-                        editor.insertContent('<div class="page-gap manual-page-gap" contenteditable="false"></div><p><br></p>');
+                        editor.insertContent('<div class="page-gap manual-page-gap" contenteditable="false">&nbsp;</div><p><br></p>');
                         enforcePagination(editor);
                     }
+                });
+
+                // Ejecutar paginacion al cargar (para edicion de libros publicados)
+                editor.on('init', function() {
+                    enforcePagination(editor);
                 });
 
                 // Auto paginador al tipear
@@ -510,6 +523,10 @@
                     paginatorTimeout = setTimeout(() => {
                         enforcePagination(editor);
                     }, 400); // 400ms despues de dejar de tipear se pagina automaticamente
+                    
+                    if (typeof triggerAutosave === 'function') {
+                        triggerAutosave();
+                    }
                 });
             }
         });
@@ -522,6 +539,76 @@
                 alert('El contenido no puede estar vacío.');
             }
         });
+
+        // ----------------------------------------------------
+        // Auto-save logic
+        // ----------------------------------------------------
+        let autosaveTimeout = null;
+        let isSaving = false;
+        let bookId = '{{ libro.pk|default_if_none:"" }}';
+        
+        function triggerAutosave() {
+            clearTimeout(autosaveTimeout);
+            autosaveTimeout = setTimeout(performAutosave, 1500);
+        }
+
+        function performAutosave() {
+            if (isSaving) {
+                triggerAutosave(); // retry later if currently saving
+                return;
+            }
+            isSaving = true;
+            tinymce.triggerSave();
+            
+            const form = document.getElementById('publish-form');
+            const formData = new FormData(form);
+            // Si el título está vacío, el backend le pondrá "(Sin título)" temporalmente.
+            // Mandamos los datos al nuevo endpoint.
+            
+            let url = "{% url 'materiales:autoguardar_borrador_nuevo' %}";
+            if (bookId) {
+                url = "/materiales/autoguardar/" + bookId + "/"; // Build URL manually since template tags can't dynamically construct it this way
+            }
+
+            fetch(url, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                isSaving = false;
+                if (data.success) {
+                    if (!bookId) {
+                        bookId = data.libro_id;
+                        // Cambiamos la URL visible sin recargar
+                        window.history.replaceState({}, '', '/materiales/edicion/' + bookId + '/');
+                    }
+                    showAutosaveIndicator();
+                }
+            })
+            .catch(error => {
+                console.error("Autosave error", error);
+                isSaving = false;
+            });
+        }
+
+        function showAutosaveIndicator() {
+            const ind = document.getElementById('autosave-indicator');
+            ind.style.display = 'inline-block';
+            setTimeout(() => {
+                ind.style.display = 'none';
+            }, 3000);
+        }
+
+        // Listen for typing in the title
+        document.querySelector('input[name="titulo"]').addEventListener('input', triggerAutosave);
+        
+        // Listen for cover upload
+        document.querySelector('input[name="portada"]').addEventListener('change', triggerAutosave);
+
     </script>
 </body>
 </html>

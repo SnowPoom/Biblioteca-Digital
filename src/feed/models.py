@@ -69,6 +69,18 @@ class Publicacion(models.Model):
     )
     creado = models.DateTimeField(auto_now_add=True)
 
+    @property
+    def portada_url(self):
+        if self.tipo == self.LIBRO:
+            from src.materiales.models import Libro
+            try:
+                libro = Libro.objects.get(pk=self.pk)
+                if libro.portada:
+                    return libro.portada.url
+            except Libro.DoesNotExist:
+                pass
+        return None
+
     class Meta:
         # El feed debe entregarse del más reciente al más antiguo
         ordering = ['-creado']

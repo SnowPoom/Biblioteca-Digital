@@ -48,8 +48,12 @@ class PublicacionLibroFormulario(forms.ModelForm):
 
     def clean_titulo(self):
         titulo = self.cleaned_data.get('titulo')
-        if Libro.objects.filter(titulo__iexact=titulo).exists():
-            raise forms.ValidationError('Ya existe un libro publicado con este mismo nombre.')
+        query = Libro.objects.filter(titulo__iexact=titulo)
+        if self.instance and self.instance.pk:
+            query = query.exclude(pk=self.instance.pk)
+            
+        if query.exists():
+            raise forms.ValidationError('Ya existe un libro con este mismo nombre.')
         return titulo
 
     def clean_contenido_texto(self):
@@ -78,7 +82,7 @@ class PublicacionLibroFormulario(forms.ModelForm):
 
     def clean_portada(self):
         portada = self.cleaned_data.get('portada')
-        if not portada:
+        if not portada and not (self.instance and self.instance.portada):
             raise forms.ValidationError(
                 'La portada es obligatoria. Sube una imagen para la portada del libro.'
             )

@@ -9,4 +9,8 @@ urlpatterns = [
     path('materiales/detalle/<int:pk>/', views.detalle_libro, name='detalle_libro'),
     path('materiales/lectura/<int:libro_id>/', views.lectura_material, name='lectura_material'),
     path('materiales/creacion/', views.creacion_material, name='creacion_material'),
+    path('materiales/edicion/<int:pk>/', views.edicion_material, name='edicion_material'),
+    path('materiales/autoguardar/', views.autoguardar_borrador, name='autoguardar_borrador_nuevo'),
+    path('materiales/autoguardar/<int:pk>/', views.autoguardar_borrador, name='autoguardar_borrador'),
+    path('materiales/republicar/<int:pk>/', views.republicar_libro, name='republicar_libro'),
 ]
