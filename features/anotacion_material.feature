@@ -39,6 +39,17 @@ Característica: Anotación y enriquecimiento de material
     Cuando el usuario cierra el libro y vuelve a abrirlo en una sesión posterior
     Entonces todas las anotaciones siguen visibles en los fragmentos correspondientes
 
+  Escenario: Los fragmentos anotados se muestran destacados al leer una página con anotaciones guardadas
+    Dado que el usuario tiene una anotación guardada sobre un fragmento de texto
+    Cuando el usuario abre la página del libro que contiene ese fragmento
+    Entonces el fragmento anotado se muestra visualmente destacado en la página
+
+  Escenario: Tocar un fragmento anotado permite editar o eliminar la anotación directamente
+    Dado que el usuario tiene una anotación guardada sobre un fragmento de texto
+    Cuando el usuario toca el fragmento anotado en la página
+    Entonces el sistema le permite editar el texto de la anotación
+    Y el sistema le permite eliminar la anotación directamente
+
   Escenario: Editar una anotación existente
     Dado que el usuario tiene una anotación guardada sobre un fragmento
     Cuando el usuario accede a esa anotación y modifica su contenido

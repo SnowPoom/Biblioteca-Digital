@@ -394,6 +394,18 @@ def step_usuario_libro_publicado(context):
     )
     context.libro.categorias.add(context.categoria)
 
+    # Un libro publicado ya cuenta con su entrada en el feed, tal como la
+    # crearia Libro.publicar(). Se replica aqui para no depender de ese metodo.
+    from src.feed.models import Publicacion
+    Publicacion.objects.get_or_create(
+        pk=context.libro.pk,
+        defaults={
+            'autor': context.libro.autor,
+            'titulo': context.libro.titulo,
+            'tipo': Publicacion.LIBRO,
+        }
+    )
+
 
 @when('el usuario modifica los metadatos del libro')
 def step_usuario_modifica_metadatos(context):
@@ -424,6 +436,74 @@ def step_libro_no_visible(context):
 def step_usuario_modifica_contenido(context):
     context.libro.contenido_texto = 'Nuevo contenido actualizado'
     context.libro.editar(usuario_editor=context.usuario_principal)
+
+
+# ---------------------------------------------------------------------------
+# Escenario: Retirar un libro publicado lo hace invisible para otros usuarios
+# ---------------------------------------------------------------------------
+
+@when('el usuario retira la publicación del libro')
+def step_usuario_retira_publicacion(context):
+    context.libro.retirar()
+
+
+@then('el libro deja de estar disponible para el resto de la comunidad')
+def step_libro_no_disponible_comunidad(context):
+    context.libro.refresh_from_db()
+    context.test.assertEqual(
+        context.libro.estado,
+        Libro.RETIRADO,
+        "El libro debe quedar en estado 'Retirado' tras retirarlo.",
+    )
+
+    from django.urls import reverse
+    response = context.test.client.get(reverse('materiales:inicio'))
+    libros_visibles = list(response.context['libros'])
+    context.test.assertNotIn(
+        context.libro,
+        libros_visibles,
+        "El libro retirado no debe aparecer en la biblioteca general.",
+    )
+
+
+@then('el libro deja de aparecer en el feed de los usuarios que siguen al autor')
+def step_libro_no_aparece_en_feed(context):
+    from django.urls import reverse
+    from src.feed.models import Publicacion, Seguimiento
+
+    seguidor = User.objects.create_user(username='seguidor_del_autor', password='123')
+    Seguimiento.objects.create(seguidor=seguidor, seguido=context.usuario_principal)
+
+    context.test.assertFalse(
+        Publicacion.objects.filter(pk=context.libro.pk).exists(),
+        "La publicación del libro retirado debe eliminarse para que no pueda mostrarse en ningún feed.",
+    )
+
+    context.test.client.force_login(seguidor)
+    response = context.test.client.get(reverse('feed:feed'))
+
+    if response.status_code == 200:
+        material_feed = list(response.context.get('material_feed', []))
+        ids_en_feed = [item.pk for item in material_feed if hasattr(item, 'titulo')]
+        context.test.assertNotIn(
+            context.libro.pk,
+            ids_en_feed,
+            "El libro retirado no debe aparecer en el feed de sus seguidores.",
+        )
+
+    context.test.client.force_login(context.usuario_principal)
+
+
+@then('el usuario puede seguir accediendo a él desde su propio perfil')
+def step_usuario_accede_propio_perfil(context):
+    libro_accesible = Libro.objects.filter(
+        pk=context.libro.pk,
+        autor=context.usuario_principal,
+    ).exists()
+    context.test.assertTrue(
+        libro_accesible,
+        "El autor debe poder seguir accediendo a su libro retirado desde su perfil.",
+    )
 
 
 @given('que el usuario está visualizando un libro publicado por otro usuario')

@@ -77,6 +77,7 @@ Característica: Publicación de material educativo
     Dado que el usuario tiene un libro publicado en su perfil
     Cuando el usuario retira la publicación del libro
     Entonces el libro deja de estar disponible para el resto de la comunidad
+    Y el libro deja de aparecer en el feed de los usuarios que siguen al autor
     Y el usuario puede seguir accediendo a él desde su propio perfil
 
   Escenario: Un usuario no puede editar el material publicado por otro
