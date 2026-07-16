@@ -18,4 +18,15 @@ urlpatterns = [
     path('materiales/anotacion/<int:anotacion_id>/eliminar/', views.eliminar_anotacion, name='eliminar_anotacion'),
     path('materiales/<int:libro_id>/descargar/confirmar/<str:formato>/', views.confirmar_descarga, name='confirmar_descarga'),
     path('materiales/<int:libro_id>/descargar/<str:formato>/', views.descargar_libro, name='descargar_libro'),
+    
+    # Rutas de Colecciones
+    path('colecciones/<int:coleccion_id>/', views.detalle_coleccion, name='detalle_coleccion'),
+    path('colecciones/<int:coleccion_id>/invitar/', views.invitar_a_coleccion, name='invitar_a_coleccion'),
+    path('colecciones/<int:coleccion_id>/solicitar-acceso/', views.solicitar_acceso_coleccion, name='solicitar_acceso_coleccion'),
+    path('colecciones/<int:coleccion_id>/abandonar/', views.abandonar_coleccion, name='abandonar_coleccion'),
+    path('colecciones/<int:coleccion_id>/retirar/<int:participante_id>/', views.retirar_de_coleccion, name='retirar_de_coleccion'),
+    path('colecciones/invitaciones/<int:invitacion_id>/procesar/<str:accion>/', views.procesar_invitacion, name='procesar_invitacion'),
+    path('colecciones/solicitudes/<int:solicitud_id>/procesar/<str:accion>/', views.procesar_solicitud, name='procesar_solicitud'),
+    path('api/buscar-usuarios/', views.api_buscar_usuarios, name='api_buscar_usuarios'),
+    path('colecciones/<int:coleccion_id>/ajustar-limite/', views.ajustar_limite, name='ajustar_limite'),
 ]

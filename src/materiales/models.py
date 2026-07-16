@@ -545,7 +545,8 @@ class Coleccion(models.Model):
     )
     creador = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
         related_name='colecciones_creadas',
     )
     categorias = models.ManyToManyField(
@@ -570,25 +571,19 @@ class Coleccion(models.Model):
 
     def clean(self):
         super().clean()
-        # Validación redundante eliminada para no duplicar errores en el form
 
     def save(self, *args, **kwargs):
         es_nuevo = self.pk is None
         super().save(*args, **kwargs)
-        if es_nuevo:
+        if es_nuevo and self.creador:
             self.agregar_participante(self.creador, rol=ParticipacionColeccion.ADMINISTRADOR)
 
     def publicar(self):
         if not self.categorias.exists():
-            return False, "Falta asignar categoría."
+            return False, "La colección debe tener al menos una categoría"
         self.visibilidad = self.PUBLICA
         self.save()
-        return True, "Colección publicada."
-
-    def agregar_libro(self, libro):
-        if self.libros.count() >= self.limite_libros:
-            raise ValidationError("Supera el límite máximo de libros")
-        self.libros.add(libro)
+        return True, "Colección publicada"
 
     def es_administrador(self, usuario):
         return self.participaciones.filter(usuario=usuario, rol=ParticipacionColeccion.ADMINISTRADOR).exists()
@@ -600,11 +595,117 @@ class Coleccion(models.Model):
             defaults={'rol': rol}
         )
 
+    def invitar_usuario(self, admin, usuario_invitado):
+        if not self.es_administrador(admin):
+            raise PermissionError("Solo el administrador puede invitar usuarios.")
+        
+        if self.participaciones.count() >= 15:
+            return False, "Se ha alcanzado el límite máximo de 15 participantes."
+            
+        invitacion = InvitacionColeccion.objects.filter(coleccion=self, usuario_invitado=usuario_invitado).first()
+        if invitacion:
+            if invitacion.estado != InvitacionColeccion.PENDIENTE:
+                return False, "Ya existe una invitación procesada para este usuario."
+            return True, "La invitación ya había sido enviada."
+            
+        invitacion = InvitacionColeccion.objects.create(
+            coleccion=self,
+            usuario_invitado=usuario_invitado,
+            estado=InvitacionColeccion.PENDIENTE
+        )
+        
+        from src.feed.models import Notificacion
+        Notificacion.objects.create(
+            usuario=usuario_invitado,
+            mensaje=f"{admin.username} te ha invitado a colaborar en la colección '{self.nombre}'.",
+            tipo='invitacion_coleccion',
+            extra_data={'invitacion_id': invitacion.id, 'coleccion_id': self.id, 'estado': InvitacionColeccion.PENDIENTE}
+        )
+        return True, "Invitación enviada."
+
+    def solicitar_acceso(self, usuario_solicitante):
+        if self.visibilidad != self.PUBLICA:
+            return False, "No se puede solicitar acceso a una colección privada."
+            
+        if self.participaciones.count() >= 15:
+            return False, "Se ha alcanzado el límite máximo de 15 participantes."
+            
+        solicitud = SolicitudAccesoColeccion.objects.filter(coleccion=self, usuario_solicitante=usuario_solicitante).first()
+        if solicitud:
+            if solicitud.estado != SolicitudAccesoColeccion.PENDIENTE:
+                return False, "Ya existe una solicitud procesada para este usuario."
+            return True, "La solicitud ya había sido enviada."
+            
+        solicitud = SolicitudAccesoColeccion.objects.create(
+            coleccion=self,
+            usuario_solicitante=usuario_solicitante,
+            estado=SolicitudAccesoColeccion.PENDIENTE
+        )
+        
+        if self.creador:
+            from src.feed.models import Notificacion
+            Notificacion.objects.create(
+                usuario=self.creador,
+                mensaje=f"{usuario_solicitante.username} ha solicitado acceso para colaborar en tu colección '{self.nombre}'.",
+                tipo='solicitud_acceso_coleccion',
+                extra_data={'solicitud_id': solicitud.id, 'coleccion_id': self.id, 'estado': SolicitudAccesoColeccion.PENDIENTE}
+            )
+        return True, "Solicitud enviada."
+        
+    def retirar_participante(self, admin_usuario, participante_usuario):
+        if not self.participaciones.filter(usuario=admin_usuario, rol=ParticipacionColeccion.ADMINISTRADOR).exists():
+            raise PermissionError("Solo un administrador puede retirar participantes.")
+        if self.creador == participante_usuario:
+            raise PermissionError("No se puede retirar al creador de la colección.")
+            
+        participacion = self.participaciones.filter(usuario=participante_usuario).first()
+        if participacion:
+            participacion.delete()
+            from src.feed.models import Notificacion
+            Notificacion.objects.create(
+                usuario=participante_usuario,
+                tipo='sistema',
+                mensaje=f'Has sido retirado de la colección "{self.nombre}".',
+                extra_data={'coleccion_id': self.id}
+            )
+            return True
+        return False
+        
+    def abandonar(self, usuario):
+        participacion = self.participaciones.filter(usuario=usuario).first()
+        if not participacion:
+            return False
+            
+        if self.creador == usuario:
+            otros_miembros = self.participaciones.exclude(usuario=usuario)
+            if otros_miembros.exists():
+                nuevo_admin = otros_miembros.first()
+                nuevo_admin.rol = ParticipacionColeccion.ADMINISTRADOR
+                nuevo_admin.save()
+                self.creador = nuevo_admin.usuario
+                self.save()
+            else:
+                self.creador = None
+                self.save()
+                
+        participacion.delete()
+        
+        if self.creador and self.creador != usuario:
+            from src.feed.models import Notificacion
+            Notificacion.objects.create(
+                usuario=self.creador,
+                tipo='sistema',
+                mensaje=f'{usuario.username} ha abandonado la colección "{self.nombre}".',
+                extra_data={'coleccion_id': self.id}
+            )
+            
+        return True
 
 class ParticipacionColeccion(models.Model):
     ADMINISTRADOR = 'administrador'
     PARTICIPANTE = 'participante'
-    ROLES = [
+
+    OPCIONES_ROL = [
         (ADMINISTRADOR, 'Administrador'),
         (PARTICIPANTE, 'Participante'),
     ]
@@ -619,7 +720,11 @@ class ParticipacionColeccion(models.Model):
         on_delete=models.CASCADE,
         related_name='participaciones_coleccion',
     )
-    rol = models.CharField(max_length=20, choices=ROLES, default=PARTICIPANTE)
+    rol = models.CharField(
+        max_length=20,
+        choices=OPCIONES_ROL,
+        default=PARTICIPANTE,
+    )
     fecha_union = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -628,4 +733,179 @@ class ParticipacionColeccion(models.Model):
         unique_together = ('coleccion', 'usuario')
 
     def __str__(self):
-        return f"{self.usuario.username} - {self.rol} en {self.coleccion.nombre}"
+        return f"{self.usuario.username} - {self.coleccion.nombre} ({self.rol})"
+
+class InvitacionColeccion(models.Model):
+    PENDIENTE = 'pendiente'
+    ACEPTADA = 'aceptada'
+    RECHAZADA = 'rechazada'
+    ESTADOS = [
+        (PENDIENTE, 'Pendiente'),
+        (ACEPTADA, 'Aceptada'),
+        (RECHAZADA, 'Rechazada'),
+    ]
+
+    coleccion = models.ForeignKey(Coleccion, on_delete=models.CASCADE, related_name='invitaciones')
+    usuario_invitado = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='invitaciones_recibidas')
+    estado = models.CharField(max_length=20, choices=ESTADOS, default=PENDIENTE)
+    creada_en = models.DateTimeField(auto_now_add=True)
+
+    def aceptar(self, usuario):
+        from django.db import transaction
+        if self.usuario_invitado != usuario:
+            raise PermissionError("No puedes aceptar una invitación dirigida a otro usuario.")
+            
+        with transaction.atomic():
+            invitacion = InvitacionColeccion.objects.select_for_update().get(id=self.id)
+            if invitacion.estado != self.PENDIENTE:
+                return False, "La invitación ya no está pendiente."
+                
+            coleccion = Coleccion.objects.select_for_update().get(id=self.coleccion.id)
+            if coleccion.participaciones.count() >= 15:
+                return False, "La colección ya ha alcanzado el límite máximo de participantes."
+                
+            invitacion.estado = self.ACEPTADA
+            invitacion.save()
+            coleccion.agregar_participante(usuario, rol=ParticipacionColeccion.PARTICIPANTE)
+            
+        self.estado = invitacion.estado
+        self._actualizar_notificaciones()
+        
+        if self.coleccion.creador:
+            from src.feed.models import Notificacion
+            Notificacion.objects.create(
+                usuario=self.coleccion.creador,
+                tipo='sistema',
+                mensaje=f'{usuario.username} aceptó tu invitación a la colección "{self.coleccion.nombre}".',
+                extra_data={'coleccion_id': self.coleccion.id}
+            )
+        return True, "Invitación aceptada."
+
+    def rechazar(self, usuario):
+        from django.db import transaction
+        if self.usuario_invitado != usuario:
+            raise PermissionError("No puedes rechazar una invitación dirigida a otro usuario.")
+            
+        with transaction.atomic():
+            invitacion = InvitacionColeccion.objects.select_for_update().get(id=self.id)
+            if invitacion.estado != self.PENDIENTE:
+                return False, "La invitación ya no está pendiente."
+                
+            invitacion.estado = self.RECHAZADA
+            invitacion.save()
+            
+        self.estado = invitacion.estado
+        self._actualizar_notificaciones()
+        
+        if self.coleccion.creador:
+            from src.feed.models import Notificacion
+            Notificacion.objects.create(
+                usuario=self.coleccion.creador,
+                tipo='sistema',
+                mensaje=f'{usuario.username} rechazó tu invitación a la colección "{self.coleccion.nombre}".',
+                extra_data={'coleccion_id': self.coleccion.id}
+            )
+        return True, "Invitación rechazada."
+        
+    def _actualizar_notificaciones(self):
+        from src.feed.models import Notificacion
+        notifs = Notificacion.objects.filter(usuario=self.usuario_invitado, tipo='invitacion_coleccion')
+        for n in notifs:
+            if n.extra_data.get('invitacion_id') == self.id:
+                n.extra_data['estado'] = self.estado
+                n.save()
+
+
+class SolicitudAccesoColeccion(models.Model):
+    PENDIENTE = 'pendiente'
+    APROBADA = 'aprobada'
+    RECHAZADA = 'rechazada'
+    ESTADOS = [
+        (PENDIENTE, 'Pendiente'),
+        (APROBADA, 'Aprobada'),
+        (RECHAZADA, 'Rechazada'),
+    ]
+
+    coleccion = models.ForeignKey(Coleccion, on_delete=models.CASCADE, related_name='solicitudes')
+    usuario_solicitante = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='solicitudes_acceso')
+    estado = models.CharField(max_length=20, choices=ESTADOS, default=PENDIENTE)
+    creada_en = models.DateTimeField(auto_now_add=True)
+
+    def aprobar(self, admin_usuario):
+        from django.db import transaction
+        if not self.coleccion.participaciones.filter(usuario=admin_usuario, rol=ParticipacionColeccion.ADMINISTRADOR).exists():
+            raise PermissionError("Solo un administrador puede aprobar solicitudes.")
+            
+        with transaction.atomic():
+            solicitud = SolicitudAccesoColeccion.objects.select_for_update().get(id=self.id)
+            if solicitud.estado != self.PENDIENTE:
+                return False, "La solicitud ya no está pendiente."
+                
+            coleccion = Coleccion.objects.select_for_update().get(id=self.coleccion.id)
+            if coleccion.participaciones.count() >= 15:
+                return False, "La colección ya ha alcanzado el límite de participantes."
+                
+            solicitud.estado = self.APROBADA
+            solicitud.save()
+            coleccion.agregar_participante(self.usuario_solicitante, rol=ParticipacionColeccion.PARTICIPANTE)
+            
+        self.estado = solicitud.estado
+        self._actualizar_notificaciones(admin_usuario)
+        from src.feed.models import Notificacion
+        Notificacion.objects.create(
+            usuario=self.usuario_solicitante,
+            tipo='sistema',
+            mensaje=f'Tu solicitud para unirte a la colección "{self.coleccion.nombre}" ha sido aprobada.',
+            extra_data={'coleccion_id': self.coleccion.id}
+        )
+        return True
+
+    def rechazar(self, admin_usuario):
+        from django.db import transaction
+        if not self.coleccion.participaciones.filter(usuario=admin_usuario, rol=ParticipacionColeccion.ADMINISTRADOR).exists():
+            raise PermissionError("Solo un administrador puede rechazar solicitudes.")
+            
+        with transaction.atomic():
+            solicitud = SolicitudAccesoColeccion.objects.select_for_update().get(id=self.id)
+            if solicitud.estado != self.PENDIENTE:
+                return False, "La solicitud ya no está pendiente."
+                
+            solicitud.estado = self.RECHAZADA
+            solicitud.save()
+            
+        self.estado = solicitud.estado
+        self._actualizar_notificaciones(admin_usuario)
+        from src.feed.models import Notificacion
+        Notificacion.objects.create(
+            usuario=self.usuario_solicitante,
+            tipo='sistema',
+            mensaje=f'Tu solicitud para unirte a la colección "{self.coleccion.nombre}" ha sido rechazada.',
+            extra_data={'coleccion_id': self.coleccion.id}
+        )
+        return True
+        
+    def _actualizar_notificaciones(self, admin):
+        from src.feed.models import Notificacion
+        notifs = Notificacion.objects.filter(usuario=admin, tipo='solicitud_acceso_coleccion')
+        for n in notifs:
+            if n.extra_data.get('solicitud_id') == self.id:
+                n.extra_data['estado'] = self.estado
+                n.save()
+
+from django.db.models.signals import pre_delete
+from django.dispatch import receiver
+
+@receiver(pre_delete, sender=ParticipacionColeccion)
+def reasingar_creador_al_eliminar_participacion(sender, instance, **kwargs):
+    coleccion = instance.coleccion
+    if coleccion.creador == instance.usuario:
+        otros = coleccion.participaciones.exclude(usuario=instance.usuario)
+        if otros.exists():
+            nuevo_admin = otros.first()
+            nuevo_admin.rol = ParticipacionColeccion.ADMINISTRADOR
+            nuevo_admin.save()
+            coleccion.creador = nuevo_admin.usuario
+            coleccion.save()
+        else:
+            coleccion.creador = None
+            coleccion.save()
