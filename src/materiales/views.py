@@ -169,10 +169,11 @@ def republicar_libro(request, pk):
     from django.http import HttpResponseRedirect
     
     if request.method == 'POST':
-        libro = get_object_or_404(Libro, pk=pk)
+        libro = get_object_or_404(Libro, pk=pk, estado=Libro.PUBLICADO)
         if libro.autor != request.user:
-            libro.republicar(usuario=request.user)
-            messages.success(request, f'Has republicado "{libro.titulo}" en tu perfil.')
+            republicacion, created = libro.republicar(usuario=request.user)
+            if created:
+                messages.success(request, f'Has republicado "{libro.titulo}" en tu perfil.')
         else:
             messages.error(request, 'No puedes republicar tu propio material.')
             

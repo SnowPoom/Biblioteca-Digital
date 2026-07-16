@@ -157,25 +157,34 @@ class Libro(models.Model):
         - RN-PUB-12: La republicación preserva la autoría original y no crea una copia independiente.
         - RN-PUB-13: Se incrementa el contador de republicaciones.
         """
-        self.republicaciones += 1
-        self.save(update_fields=['republicaciones'])
-        
-        from src.feed.models import Publicacion, Republicacion
-        pub, created = Publicacion.objects.get_or_create(
-            pk=self.pk,
-            defaults={
-                'autor': self.autor,
-                'titulo': self.titulo,
-                'tipo': Publicacion.LIBRO,
-            }
-        )
-        if not created:
-            pub.titulo = self.titulo
-            pub.save()
+        if self.estado != self.PUBLICADO:
+            raise ValueError("Solo los libros publicados pueden ser republicados.")
             
-        republicacion, _ = Republicacion.objects.get_or_create(
-            publicacion=pub,
-            republicado_por=usuario
-        )
+        from django.db import transaction
+        from django.db.models import F
+        from src.feed.models import Publicacion, Republicacion
         
-        return republicacion
+        with transaction.atomic():
+            pub, pub_created = Publicacion.objects.get_or_create(
+                pk=self.pk,
+                defaults={
+                    'autor': self.autor,
+                    'titulo': self.titulo,
+                    'tipo': Publicacion.LIBRO,
+                }
+            )
+            if not pub_created:
+                pub.titulo = self.titulo
+                pub.save(update_fields=['titulo'])
+                
+            republicacion, created = Republicacion.objects.get_or_create(
+                publicacion=pub,
+                republicado_por=usuario
+            )
+            
+            if created:
+                self.republicaciones = F('republicaciones') + 1
+                self.save(update_fields=['republicaciones'])
+                self.refresh_from_db(fields=['republicaciones'])
+                
+        return republicacion, created
