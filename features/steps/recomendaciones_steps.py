@@ -279,6 +279,108 @@ def step_incluye_publicaciones_alta_actividad(context):
 
 
 # ---------------------------------------------------------------------------
+# Escenario: Usuario sin actividad suficiente recibe recomendaciones generales
+# (RN-REC-05 — US-27 Arranque en frio)
+# ---------------------------------------------------------------------------
+
+@given('que el usuario no tiene historial de actividad suficiente en la plataforma')
+def step_usuario_sin_historial(context):
+    """
+    Verifica que el usuario principal no tiene historial de lectura y
+    crea contenido con distintas metricas de consumo para validar que
+    el sistema recomiende el contenido mas popular de la plataforma.
+    RN-REC-05: Arranque en frio.
+    """
+    from src.recomendaciones.models import HistorialLectura
+
+    # Asegurar que el usuario no tiene historial de lectura
+    HistorialLectura.objects.filter(usuario=context.usuario_principal).delete()
+
+    otro_autor = User.objects.create_user(
+        username='autor_arranque_frio',
+        email='autor_frio@ejemplo.com',
+        password='password123',
+        first_name='Autor Arranque Frio',
+    )
+    PerfilUsuario.objects.create(
+        usuario=otro_autor,
+        rol=PerfilUsuario.ESTUDIANTE,
+    )
+
+    cat_general = Categoria.objects.create(nombre='General')
+
+    # Libro con alto consumo (debe aparecer primero)
+    libro_alto_consumo, _ = _crear_libro_publicado(
+        autor=otro_autor,
+        titulo='Libro de alto consumo general',
+        categorias=[cat_general],
+        visualizaciones=1000,
+        descargas=500,
+        republicaciones=100,
+    )
+    context.libro_alto_consumo = libro_alto_consumo
+
+    # Libro con bajo consumo (debe aparecer despues)
+    libro_bajo_consumo, _ = _crear_libro_publicado(
+        autor=otro_autor,
+        titulo='Libro de bajo consumo general',
+        categorias=[cat_general],
+        visualizaciones=5,
+        descargas=1,
+        republicaciones=0,
+    )
+    context.libro_bajo_consumo = libro_bajo_consumo
+
+    # Coleccion publicada para verificar que tambien se incluyen colecciones
+    coleccion_popular = _crear_coleccion_publicada(
+        autor=otro_autor,
+        titulo='Coleccion popular general',
+        categorias=[cat_general],
+    )
+    context.coleccion_popular = coleccion_popular
+
+
+@then('el sistema presenta el contenido de mayor consumo general de la plataforma')
+def step_presenta_contenido_mayor_consumo(context):
+    """
+    Verifica que el feed de recomendaciones muestra contenido basado en el
+    mayor consumo general (visualizaciones y descargas) cuando el usuario
+    no tiene historial suficiente. RN-REC-05.
+    """
+    context.test.assertEqual(
+        context.response.status_code,
+        200,
+        'La seccion de recomendaciones no respondio con HTTP 200.',
+    )
+
+    recomendaciones = list(context.response.context['recomendaciones'])
+    context.test.assertGreater(
+        len(recomendaciones),
+        0,
+        'No se generaron recomendaciones generales para un usuario sin historial.',
+    )
+
+    ids_recomendados = [pub.pk for pub in recomendaciones]
+
+    # El contenido de alto consumo debe estar presente
+    context.test.assertIn(
+        context.libro_alto_consumo.pk,
+        ids_recomendados,
+        'El libro de alto consumo general no aparece en las recomendaciones de arranque en frio.',
+    )
+
+    # El contenido de alto consumo debe aparecer antes que el de bajo consumo
+    if context.libro_bajo_consumo.pk in ids_recomendados:
+        indice_alto = ids_recomendados.index(context.libro_alto_consumo.pk)
+        indice_bajo = ids_recomendados.index(context.libro_bajo_consumo.pk)
+        context.test.assertLess(
+            indice_alto,
+            indice_bajo,
+            'El contenido de mayor consumo no tiene prioridad sobre el de menor consumo en arranque en frio.',
+        )
+
+
+# ---------------------------------------------------------------------------
 # Escenario: El contenido ya consumido no aparece entre las recomendaciones
 # (RN-REC-03 - escenario especifico)
 # ---------------------------------------------------------------------------
@@ -337,6 +439,134 @@ def step_libro_no_aparece_en_sugerencias(context):
         context.libro_ya_leido.pk,
         ids_recomendados,
         'El libro ya leido aparece entre las sugerencias cuando deberia estar excluido.',
+    )
+
+
+# ---------------------------------------------------------------------------
+# Escenario: Descartar una recomendacion la excluye de sugerencias futuras
+# (RN-REC-04 — US-28)
+# ---------------------------------------------------------------------------
+
+@given('que el usuario visualiza una recomendación en su sección')
+def step_usuario_visualiza_recomendacion(context):
+    """Crea contenido recomendable y verifica que aparece en la seccion.
+
+    Se genera historial de lectura para que el usuario no caiga en arranque
+    en frio y se crea un libro candidato en la misma area tematica que debe
+    aparecer como recomendacion antes de ser descartado.
+    RN-REC-04: Prerequisito — el contenido debe ser visible inicialmente.
+    """
+    from src.recomendaciones.models import HistorialLectura
+
+    cat_biologia = Categoria.objects.create(nombre='Biologia')
+
+    otro_autor = User.objects.create_user(
+        username='autor_descarte',
+        email='autor_descarte@ejemplo.com',
+        password='password123',
+        first_name='Autor Descarte',
+    )
+    PerfilUsuario.objects.create(
+        usuario=otro_autor,
+        rol=PerfilUsuario.ESTUDIANTE,
+    )
+
+    # Lectura previa para generar historial (evitar arranque en frio)
+    libro_historial, _ = _crear_libro_publicado(
+        autor=otro_autor,
+        titulo='Libro historial descarte',
+        categorias=[cat_biologia],
+    )
+    HistorialLectura.objects.create(
+        usuario=context.usuario_principal,
+        publicacion=Publicacion.objects.get(pk=libro_historial.pk),
+    )
+
+    # Libro candidato que debe aparecer como recomendacion
+    libro_candidato, pub_candidata = _crear_libro_publicado(
+        autor=otro_autor,
+        titulo='Libro candidato a descartar',
+        categorias=[cat_biologia],
+    )
+    context.libro_a_descartar = libro_candidato
+    context.publicacion_a_descartar = pub_candidata
+
+    # Verificar que el contenido aparece inicialmente en las recomendaciones
+    from django.urls import reverse
+
+    url = reverse('recomendaciones:recomendaciones')
+    response = context.test.client.get(url)
+    recomendaciones = list(response.context['recomendaciones'])
+    ids_recomendados = [pub.pk for pub in recomendaciones]
+
+    context.test.assertIn(
+        pub_candidata.pk,
+        ids_recomendados,
+        'El contenido candidato no aparece en las recomendaciones iniciales; '
+        'no se puede validar el descarte.',
+    )
+
+
+@when('el usuario descarta esa recomendación')
+def step_usuario_descarta_recomendacion(context):
+    """Realiza la accion de descarte sobre la recomendacion candidata.
+
+    Envia una peticion POST al endpoint de descarte con el identificador
+    de la publicacion. El sistema debe registrar un DescarteRecomendacion
+    permanente asociado al usuario y la publicacion.
+    RN-REC-04: El descarte queda registrado para ajustar recomendaciones futuras.
+    US-28: El descarte se asocia a DescarteRecomendacion de forma permanente.
+    """
+    from django.urls import reverse
+
+    url = reverse(
+        'recomendaciones:descartar_recomendacion',
+        kwargs={'publicacion_id': context.publicacion_a_descartar.pk},
+    )
+    context.response = context.test.client.post(url)
+
+
+@then('ese contenido no vuelve a aparecer en recomendaciones futuras')
+def step_contenido_no_aparece_en_futuras(context):
+    """Verifica que el contenido descartado se excluye de recomendaciones.
+
+    Se comprueban dos condiciones derivadas de los criterios de aceptacion:
+    1. El contenido descartado ya no aparece en el feed de recomendaciones
+       (US-28 CA-1).
+    2. El descarte quedo registrado de forma permanente en el modelo
+       DescarteRecomendacion (US-28 CA-2, RN-REC-04).
+    """
+    from src.recomendaciones.models import DescarteRecomendacion
+    from django.urls import reverse
+
+    # CA-2: El descarte se registro de forma permanente
+    descarte_existe = DescarteRecomendacion.objects.filter(
+        usuario=context.usuario_principal,
+        publicacion=context.publicacion_a_descartar,
+    ).exists()
+    context.test.assertTrue(
+        descarte_existe,
+        'No se registro el descarte de forma permanente en DescarteRecomendacion.',
+    )
+
+    # CA-1: El contenido descartado ya no aparece en las recomendaciones
+    url = reverse('recomendaciones:recomendaciones')
+    response = context.test.client.get(url)
+
+    context.test.assertEqual(
+        response.status_code,
+        200,
+        'La seccion de recomendaciones no respondio con HTTP 200 tras el descarte.',
+    )
+
+    recomendaciones = list(response.context['recomendaciones'])
+    ids_recomendados = [pub.pk for pub in recomendaciones]
+
+    context.test.assertNotIn(
+        context.publicacion_a_descartar.pk,
+        ids_recomendados,
+        'El contenido descartado sigue apareciendo en las recomendaciones '
+        'cuando deberia estar excluido (RN-REC-04).',
     )
 
 

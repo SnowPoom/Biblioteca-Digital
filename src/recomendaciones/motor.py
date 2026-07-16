@@ -125,6 +125,27 @@ class MotorRecomendaciones:
                     pesos_categorias.get(nombre, 0.0) + peso_temporal
                 )
 
+        # Restar peso a las categorias basandose en las publicaciones descartadas
+        descartes = DescarteRecomendacion.objects.filter(
+            usuario=self.usuario
+        ).select_related('publicacion').prefetch_related('publicacion__categorias')
+
+        for descarte in descartes:
+            dias_antiguedad = max(
+                (ahora - descarte.fecha).days, 0
+            )
+            # El peso negativo tiene el mismo decaimiento
+            peso_temporal = max(
+                1.0 - (DECAIMIENTO_TEMPORAL_POR_DIA * dias_antiguedad),
+                0.1,
+            )
+
+            for categoria in descarte.publicacion.categorias.all():
+                nombre = categoria.nombre
+                pesos_categorias[nombre] = (
+                    pesos_categorias.get(nombre, 0.0) - peso_temporal
+                )
+
         return pesos_categorias
 
     def _puntuacion_publicacion(self, publicacion, pesos_categorias):
