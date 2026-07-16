@@ -232,6 +232,37 @@
                 margin-left: 0;
             }
         }
+
+        .download-menu {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            right: 0;
+            margin-bottom: 8px;
+            background: #fff;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 10;
+            min-width: 200px;
+        }
+
+        .download-menu.show {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .download-menu a {
+            padding: 14px 20px;
+            text-decoration: none;
+            color: var(--text);
+            font-size: 18px;
+            font-weight: 500;
+            transition: background 0.15s;
+        }
+
+        .download-menu a:hover {
+            background: #f0f4ff;
+        }
     </style>
 </head>
 
@@ -276,9 +307,16 @@
                     <span id="page-indicator" style="font-size: 18px; font-weight: 600;">Portada</span>
                     <button id="btn-next" class="print-btn">&rarr;</button>
                 </div>
-                <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
-                    <a href="{% url 'materiales:descargar_libro' libro.id %}" class="print-btn" style="text-decoration: none;">Descargar</a>
-                    <button class="print-btn" type="button">Imprimir</button>
+                <div class="download-wrapper"
+                    style="position: relative; margin-top: 20px; display: flex; justify-content: flex-end;">
+                    <button class="print-btn" type="button" id="btn-descargar"
+                        onclick="document.getElementById('download-menu').classList.toggle('show')">
+                        Descargar &#9662;
+                    </button>
+                    <div id="download-menu" class="download-menu">
+                        <a href="{% url 'materiales:descargar_libro' libro.id 'pdf' %}">📄 Descargar PDF</a>
+                        <a href="{% url 'materiales:descargar_libro' libro.id 'epub' %}">📕 Descargar EPUB</a>
+                    </div>
                 </div>
             </div>
         </section>
@@ -382,6 +420,15 @@
 
             // Inicializar
             renderPage();
+
+            // Cerrar menu de descarga al hacer clic fuera
+            document.addEventListener('click', function (e) {
+                var menu = document.getElementById('download-menu');
+                var btn = document.getElementById('btn-descargar');
+                if (menu && btn && !btn.contains(e.target) && !menu.contains(e.target)) {
+                    menu.classList.remove('show');
+                }
+            });
         });
     </script>
 </body>

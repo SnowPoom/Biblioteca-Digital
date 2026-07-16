@@ -184,9 +184,13 @@ def republicar_libro(request, pk):
 
 
 @login_required(login_url='/auth/')
-def descargar_libro(request, libro_id):
+def descargar_libro(request, libro_id, formato='pdf'):
     libro = get_object_or_404(Libro, pk=libro_id)
     perfil = request.user.perfil
+
+    formato = formato.lower()
+    if formato not in ('pdf', 'epub'):
+        formato = 'pdf'
 
     # RN-EXP-05: La descarga se registra como metrica sin importar si supera la cuota
     libro.registrar_descarga()
@@ -202,8 +206,15 @@ def descargar_libro(request, libro_id):
     perfil.reducir_cuota(libro.numero_paginas)
 
     # RN-EXP-06: El archivo generado incluye metadatos del autor original y la fuente
-    contenido = libro.generar_contenido_descarga()
+    contenido = libro.generar_contenido_descarga(formato)
 
-    respuesta = HttpResponse(contenido, content_type='application/pdf')
-    respuesta['Content-Disposition'] = f'attachment; filename="{libro.titulo}.pdf"'
+    if formato == 'epub':
+        tipo_contenido = 'application/epub+zip'
+        extension = 'epub'
+    else:
+        tipo_contenido = 'application/pdf'
+        extension = 'pdf'
+
+    respuesta = HttpResponse(contenido, content_type=tipo_contenido)
+    respuesta['Content-Disposition'] = f'attachment; filename="{libro.titulo}.{extension}"'
     return respuesta

@@ -195,19 +195,70 @@ class Libro(models.Model):
         self.descargas += 1
         self.save()
 
-    def generar_contenido_descarga(self):
-        """Genera un archivo PDF valido incluyendo metadatos de autoria original (RN-EXP-06)."""
+    def generar_contenido_descarga(self, formato='pdf'):
+        """Genera un archivo en formato PDF o EPUB con el contenido del libro
+        y metadatos de autoria original (RN-EXP-06)."""
+        if formato == 'epub':
+            return self._generar_epub()
+        return self._generar_pdf()
+
+    def _extraer_texto_plano(self):
+        """Extrae texto plano del contenido HTML del libro."""
+        import re
+        texto = self.contenido_texto or ''
+        # Reemplazar saltos de parrafo/divs con saltos de linea
+        texto = re.sub(r'<br\s*/?>', '\n', texto)
+        texto = re.sub(r'</p>', '\n', texto)
+        texto = re.sub(r'</div>', '\n', texto)
+        texto = re.sub(r'<[^>]+>', '', texto)
+        # Decodificar entidades HTML basicas
+        texto = texto.replace('&amp;', '&')
+        texto = texto.replace('&lt;', '<')
+        texto = texto.replace('&gt;', '>')
+        texto = texto.replace('&nbsp;', ' ')
+        texto = texto.replace('&quot;', '"')
+        return texto.strip()
+
+    def _generar_pdf(self):
+        """Genera un PDF valido con el contenido real del libro y metadatos obligatorios."""
         nombre_autor = self.autor.get_full_name() or self.autor.username
         fuente = "Biblioteca Digital"
+        texto_contenido = self._extraer_texto_plano()
 
-        lineas_texto = [
-            f"Autor original: {nombre_autor}",
-            f"Fuente: {fuente}",
-            f"Titulo: {self.titulo}",
-        ]
+        # Construir las lineas de texto para el PDF
+        # Encabezado con metadatos obligatorios
+        linea_meta = f"Autor original: {nombre_autor}  |  Fuente: {fuente}"
 
-        texto_pagina = "  ".join(lineas_texto)
-        stream = f"BT /F1 12 Tf 72 720 Td ({texto_pagina}) Tj ET"
+        # Dividir contenido en lineas de maximo 80 caracteres
+        lineas = [linea_meta, f"Titulo: {self.titulo}", ""]
+        for parrafo in texto_contenido.split('\n'):
+            parrafo = parrafo.strip()
+            if not parrafo:
+                lineas.append("")
+                continue
+            while len(parrafo) > 80:
+                corte = parrafo.rfind(' ', 0, 80)
+                if corte == -1:
+                    corte = 80
+                lineas.append(parrafo[:corte])
+                parrafo = parrafo[corte:].strip()
+            if parrafo:
+                lineas.append(parrafo)
+
+        # Construir stream de texto PDF con multiples lineas
+        y_inicio = 740
+        interlineado = 14
+        comandos = ["/F1 11 Tf"]
+        y = y_inicio
+        for linea in lineas:
+            # Escapar caracteres especiales de PDF
+            linea_safe = linea.replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+            comandos.append(f"BT 60 {y} Td ({linea_safe}) Tj ET")
+            y -= interlineado
+            if y < 50:
+                break  # Limite de una pagina
+
+        stream = "\n".join(comandos)
         largo_stream = len(stream)
 
         objetos = []
@@ -254,3 +305,92 @@ class Libro(models.Model):
 
         return (encabezado + cuerpo + "\n" + xref + trailer).encode('latin-1')
 
+    def _generar_epub(self):
+        """Genera un EPUB valido con el contenido real del libro y metadatos obligatorios."""
+        import io
+        import zipfile
+
+        nombre_autor = self.autor.get_full_name() or self.autor.username
+        fuente = "Biblioteca Digital"
+        contenido_html = self.contenido_texto or '<p>Sin contenido.</p>'
+
+        # Archivo mimetype (sin comprimir, segun especificacion EPUB)
+        mimetype = 'application/epub+zip'
+
+        # container.xml
+        container_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">\n'
+            '  <rootfiles>\n'
+            '    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>\n'
+            '  </rootfiles>\n'
+            '</container>'
+        )
+
+        # content.opf con metadatos obligatorios (RN-EXP-06)
+        content_opf = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid">\n'
+            '  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">\n'
+            f'    <dc:title>{self.titulo}</dc:title>\n'
+            f'    <dc:creator>{nombre_autor}</dc:creator>\n'
+            f'    <dc:publisher>{fuente}</dc:publisher>\n'
+            f'    <dc:source>{fuente}</dc:source>\n'
+            '    <dc:language>es</dc:language>\n'
+            f'    <dc:identifier id="uid">libro-{self.pk}</dc:identifier>\n'
+            '    <meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>\n'
+            '  </metadata>\n'
+            '  <manifest>\n'
+            '    <item id="chapter1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>\n'
+            '    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>\n'
+            '  </manifest>\n'
+            '  <spine>\n'
+            '    <itemref idref="chapter1"/>\n'
+            '  </spine>\n'
+            '</package>'
+        )
+
+        # nav.xhtml (tabla de contenidos requerida por EPUB 3)
+        nav_xhtml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<!DOCTYPE html>\n'
+            '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">\n'
+            '<head><title>Navegacion</title></head>\n'
+            '<body>\n'
+            '<nav epub:type="toc">\n'
+            '  <ol><li><a href="chapter1.xhtml">Contenido</a></li></ol>\n'
+            '</nav>\n'
+            '</body></html>'
+        )
+
+        # chapter1.xhtml con contenido real y metadatos obligatorios
+        chapter_xhtml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<!DOCTYPE html>\n'
+            '<html xmlns="http://www.w3.org/1999/xhtml">\n'
+            '<head>\n'
+            f'  <title>{self.titulo}</title>\n'
+            '  <style>body { font-family: serif; margin: 2em; } '
+            '.metadata { color: #555; border-bottom: 1px solid #ccc; padding-bottom: 1em; margin-bottom: 2em; }</style>\n'
+            '</head>\n'
+            '<body>\n'
+            f'  <div class="metadata">\n'
+            f'    <p><strong>Autor original:</strong> {nombre_autor}</p>\n'
+            f'    <p><strong>Fuente:</strong> {fuente}</p>\n'
+            f'  </div>\n'
+            f'  <h1>{self.titulo}</h1>\n'
+            f'  {contenido_html}\n'
+            '</body></html>'
+        )
+
+        # Construir el archivo ZIP (EPUB)
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as epub:
+            # mimetype debe ser el primer archivo y sin comprimir
+            epub.writestr('mimetype', mimetype, compress_type=zipfile.ZIP_STORED)
+            epub.writestr('META-INF/container.xml', container_xml)
+            epub.writestr('OEBPS/content.opf', content_opf)
+            epub.writestr('OEBPS/nav.xhtml', nav_xhtml)
+            epub.writestr('OEBPS/chapter1.xhtml', chapter_xhtml)
+
+        return buffer.getvalue()
