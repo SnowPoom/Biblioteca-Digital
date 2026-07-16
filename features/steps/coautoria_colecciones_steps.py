@@ -268,10 +268,18 @@ def step_retira_participante(context):
 
 @then('ese participante pierde acceso de edición a la colección')
 def step_pierde_acceso_edicion(context):
-    es_participante = ParticipacionColeccion.objects.filter(
-        coleccion=context.coleccion, usuario=context.participante
+    es_participante_activo = context.coleccion.participantes_activos().filter(
+        usuario=context.participante
     ).exists()
-    context.test.assertFalse(es_participante)
+    context.test.assertFalse(es_participante_activo)
+
+@then('su estado cambia a "retirado"')
+def step_estado_cambia_a_retirado(context):
+    participacion = ParticipacionColeccion.objects.filter(
+        coleccion=context.coleccion, usuario=context.participante
+    ).first()
+    context.test.assertIsNotNone(participacion)
+    context.test.assertEqual(participacion.estado, 'retirado')
 
 @then('el contenido que aportó permanece en la colección')
 def step_contenido_permanece(context):
@@ -286,6 +294,11 @@ def step_usuario_es_participante(context):
     admin = User.objects.create_user(username='admin_aband', password='123')
     context.coleccion = Coleccion.objects.create(nombre='Col Abandonar', creador=admin)
     context.coleccion.agregar_participante(context.usuario_principal, rol=ParticipacionColeccion.PARTICIPANTE)
+
+    context.libro_aportado_abandono = Libro.objects.create(
+        titulo="Libro Abandonado", autor=context.usuario_principal, numero_paginas=10, estado=Libro.PUBLICADO
+    )
+    context.coleccion.libros.add(context.libro_aportado_abandono)
 
 @when('el usuario decide abandonar esa colección')
 def step_decide_abandonar(context):
@@ -305,6 +318,12 @@ def step_deja_ser_participante(context):
 def step_pierde_acceso_edicion_abandonar(context):
     # Verificado en el step anterior
     pass
+
+@then('los libros que aportó permanecen en la colección')
+def step_libros_aportados_permanecen(context):
+    context.test.assertTrue(
+        context.coleccion.libros.filter(id=context.libro_aportado_abandono.id).exists()
+    )
 
 # ---------------------------------------------------------------------------
 # Escenario: Cualquier participante puede agregar libros a la colección

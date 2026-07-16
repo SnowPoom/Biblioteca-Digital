@@ -51,6 +51,7 @@ Característica: Coautoría y edición compartida de colecciones
     Dado que el usuario es administrador de una colección
     Cuando el usuario retira a un participante de la colección
     Entonces ese participante pierde acceso de edición a la colección
+    Y su estado cambia a "retirado"
     Y el contenido que aportó permanece en la colección
 
   Escenario: Abandonar una colección voluntariamente
@@ -58,6 +59,7 @@ Característica: Coautoría y edición compartida de colecciones
     Cuando el usuario decide abandonar esa colección
     Entonces deja de ser participante
     Y pierde acceso de edición a la colección
+    Y los libros que aportó permanecen en la colección
 
   Escenario: Cualquier participante puede agregar libros a la colección
     Dado que el usuario es participante de una colección que no ha alcanzado su límite de libros
