@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Creación del material</title>
+    <!-- Incluir TinyMCE desde CDNJS (Open Source) para evitar bloqueos de API Key -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.2/tinymce.min.js" referrerpolicy="origin"></script>
+
     <style>
         :root {
             --bg: #ffffff;
@@ -53,48 +56,161 @@
         .editor-panel {
             margin-top: 30px;
             border: 1px solid var(--border);
-            min-height: 792px;
             padding: 28px 24px 36px;
             position: relative;
         }
 
-        .toolbar {
+        .toolbar-top {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 20px;
-            flex-wrap: wrap;
+            justify-content: flex-end;
             margin-bottom: 20px;
-        }
-
-        .toolbar-label {
-            font-size: 48px;
-            font-weight: 600;
-            margin: 0;
+            padding-bottom: 16px;
+            border-bottom: 2px solid var(--surface);
         }
 
         .publish-btn {
             background: var(--accent);
             border: none;
-            padding: 20px 28px;
-            font-size: 24px;
+            padding: 16px 28px;
+            font-size: 20px;
             font-weight: 600;
             cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        
+        .publish-btn:hover {
+            background: #4a7de0;
         }
 
-        .editor-surface {
-            background: var(--surface);
-            min-height: 630px;
+        .metadata-section {
+            background: #f4f4f4;
+            padding: 16px 24px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+        }
+
+        .metadata-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .metadata-field input[type="text"] {
+            padding: 10px;
+            border: 1px solid #999;
+            font-size: 16px;
+        }
+
+        /* Categorias Dinamicas */
+        .category-selector-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .category-dropdown {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .category-dropdown select {
+            padding: 8px;
+            font-size: 14px;
+            border: 1px solid #999;
+            border-radius: 4px;
+        }
+
+        .btn-add-cat {
+            background: var(--accent);
+            border: none;
+            color: #000;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
-            font-weight: 600;
-            border: 1px solid #bdbdbd;
+            transition: background 0.2s;
         }
 
-        .editor-surface span {
-            color: #111;
+        .btn-add-cat:hover {
+            background: #4a7de0;
+        }
+
+        .chip {
+            background: #e0e0e0;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid #ccc;
+        }
+
+        .chip-remove {
+            cursor: pointer;
+            font-weight: bold;
+            color: #c0392b;
+        }
+
+        .page-counter {
+            text-align: right;
+            margin-top: 10px;
+            font-size: 16px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .alert {
+            padding: 14px 20px;
+            margin-bottom: 20px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        .alert-error {
+            background: #fdecea;
+            color: #c0392b;
+            border: 1px solid #c0392b;
+        }
+        .alert-success {
+            background: #eafaf1;
+            color: #27ae60;
+            border: 1px solid #27ae60;
+        }
+        .errors-list {
+            color: #c0392b;
+            font-size: 14px;
+            margin: 4px 0 0;
+            padding-left: 20px;
+        }
+
+        /* TinyMCE Editor Container overrides to look nice on the outside */
+        .tox-tinymce {
+            border: 1px solid #bdbdbd !important;
+            border-radius: 4px !important;
+        }
+        
+        .tox-notifications-container {
+            display: none !important;
+        }
+        
+        #selected-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
         }
     </style>
 </head>
@@ -102,18 +218,397 @@
     <div class="page">
         <div class="shell">
             <div class="title">{{ titulo }}</div>
+            <a href="{% url 'feed:perfil_publico' request.user.username %}" style="text-decoration:none; color:inherit;">
             <div class="avatar" aria-label="Perfil"></div>
+            </a>
 
             <section class="editor-panel">
-                <div class="toolbar">
-                    <p class="toolbar-label">barra de herramientas para edición</p>
-                    <button class="publish-btn" type="button">Publicar</button>
-                </div>
-                <div class="editor-surface">
-                    <span>Texto</span>
-                </div>
+                {% if mensaje_exito %}
+                <div class="alert alert-success">{{ mensaje_exito }}</div>
+                {% endif %}
+                {% if mensaje_error %}
+                <div class="alert alert-error">{{ mensaje_error }}</div>
+                {% endif %}
+
+                <form method="post" enctype="multipart/form-data" id="publish-form">
+                    {% csrf_token %}
+                    
+                    <div class="toolbar-top">
+                        <button class="publish-btn" type="submit">Publicar</button>
+                        <span id="autosave-indicator" style="display:none; color: #4caf50; font-size: 14px; margin-left: 10px;">Guardado</span>
+                    </div>
+
+                    <div class="metadata-section">
+                        <div class="metadata-field" style="flex-grow: 1;">
+                            <label>Título del libro:</label>
+                            <input type="text" name="titulo" value="{{ formulario.titulo.value|default:'' }}" required>
+                            {% if formulario.titulo.errors %}<ul class="errors-list">{% for e in formulario.titulo.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                        </div>
+                        <div class="metadata-field">
+                            <label>Portada:</label>
+                            <input type="file" name="portada" accept="image/*" {% if not es_edicion or not libro.portada %}required{% endif %}>
+                            {% if es_edicion and libro.portada %}
+                            <div style="font-size: 14px; margin-top: 4px; color: #555;">
+                                Portada actual: <a href="{{ libro.portada.url }}" target="_blank" style="color: var(--accent); text-decoration: none;">Ver imagen actual</a>
+                                <br><small>(Si no seleccionas un archivo, se mantendrá la portada actual)</small>
+                            </div>
+                            {% endif %}
+                            {% if formulario.portada.errors %}<ul class="errors-list">{% for e in formulario.portada.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                        </div>
+                        <div class="metadata-field" style="flex-basis: 100%;">
+                            <label>Categorías:</label>
+                            
+                            <!-- Interfaz visual para categorias -->
+                            <div class="category-selector-container">
+                                <div id="selected-chips"></div>
+                                <div class="category-dropdown">
+                                    <select id="cat-selector">
+                                        <option value="">Seleccione una categoría...</option>
+                                    </select>
+                                    <button type="button" class="btn-add-cat" id="add-cat-btn">+</button>
+                                </div>
+                            </div>
+
+                            <!-- Ocultamos los checkboxes reales de Django que enviaran la data -->
+                            <div id="hidden-django-categories" style="display: none;">
+                                {{ formulario.categorias }}
+                            </div>
+
+                            {% if formulario.categorias.errors %}<ul class="errors-list">{% for e in formulario.categorias.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                        </div>
+                    </div>
+
+                    <!-- TinyMCE Target -->
+                    <textarea id="word-editor" name="contenido_texto">{{ formulario.contenido_texto.value|default:'' }}</textarea>
+                    
+                    {% if formulario.contenido_texto.errors %}<ul class="errors-list" style="margin-top: 10px;">{% for e in formulario.contenido_texto.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+                    
+                    {{ formulario.numero_paginas }}
+                    
+                    <div class="page-counter" id="page-counter-display">Páginas: 1 de 1</div>
+                </form>
             </section>
         </div>
     </div>
+
+    <script>
+        // === 1. Logica del Selector de Categorias Dinamico ===
+        document.addEventListener('DOMContentLoaded', function() {
+            const hiddenContainer = document.getElementById('hidden-django-categories');
+            const checkboxes = hiddenContainer.querySelectorAll('input[type="checkbox"]');
+            const selector = document.getElementById('cat-selector');
+            const btnAdd = document.getElementById('add-cat-btn');
+            const chipsContainer = document.getElementById('selected-chips');
+
+            function renderSelector() {
+                selector.innerHTML = '<option value="">Seleccione una categoría...</option>';
+                checkboxes.forEach(chk => {
+                    if (!chk.checked) {
+                        const label = hiddenContainer.querySelector(`label[for="${chk.id}"]`);
+                        const text = label ? label.textContent.trim() : chk.value;
+                        const option = document.createElement('option');
+                        option.value = chk.id;
+                        option.textContent = text;
+                        selector.appendChild(option);
+                    }
+                });
+            }
+
+            function renderChips() {
+                chipsContainer.innerHTML = '';
+                checkboxes.forEach(chk => {
+                    if (chk.checked) {
+                        const label = hiddenContainer.querySelector(`label[for="${chk.id}"]`);
+                        const text = label ? label.textContent.trim() : chk.value;
+                        const chip = document.createElement('div');
+                        chip.className = 'chip';
+                        chip.innerHTML = `${text} <span class="chip-remove" data-id="${chk.id}">&times;</span>`;
+                        chipsContainer.appendChild(chip);
+                    }
+                });
+                
+                document.querySelectorAll('.chip-remove').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const chkId = this.getAttribute('data-id');
+                        document.getElementById(chkId).checked = false;
+                        updateUI();
+                    });
+                });
+            }
+
+            function updateUI() {
+                renderSelector();
+                renderChips();
+            }
+
+            btnAdd.addEventListener('click', function() {
+                const selectedId = selector.value;
+                if (selectedId) {
+                    document.getElementById(selectedId).checked = true;
+                    updateUI();
+                }
+            });
+
+            updateUI();
+        });
+
+        // === 2. Inicializacion de TinyMCE ===
+        let paginatorTimeout;
+        
+        function updateCurrentPageDisplay(editor, totalPages) {
+            const node = editor.selection.getNode();
+            let currentPage = 1;
+            if (node) {
+                let parent = node;
+                while (parent && parent !== editor.getBody()) {
+                    let prevSibling = parent.previousSibling;
+                    while (prevSibling) {
+                        if (prevSibling.classList && prevSibling.classList.contains('page-gap')) {
+                            currentPage++;
+                        }
+                        prevSibling = prevSibling.previousSibling;
+                    }
+                    parent = parent.parentElement;
+                }
+            }
+            document.getElementById('page-counter-display').textContent = 'Página ' + currentPage + ' de ' + totalPages;
+        }
+
+        function enforcePagination(editor) {
+            const body = editor.getBody();
+            const PAGE_HEIGHT = 864; // Alto de contenido por hoja (1056 - 96 - 96)
+            
+            const bookmark = editor.selection.getBookmark(2, true);
+            
+            // Eliminar los gaps autogenerados para recalcular
+            const existingAutoGaps = body.querySelectorAll('.auto-page-gap');
+            existingAutoGaps.forEach(gap => gap.remove());
+            
+            const children = Array.from(body.children);
+            let pageSum = 0;
+            
+            for (let i = 0; i < children.length; i++) {
+                const node = children[i];
+                if (node.nodeType !== 1) continue;
+                
+                // Si es un salto manual, reiniciamos el contador de alto
+                if (node.classList.contains('manual-page-gap')) {
+                    pageSum = 0;
+                    continue;
+                }
+                
+                let nodeHeight = node.offsetHeight;
+                const style = window.getComputedStyle(node);
+                let nodeMargin = parseInt(style.marginTop || 0) + parseInt(style.marginBottom || 0);
+                
+                // Si este bloque supera el limite de la pagina, insertamos un gap automatico antes
+                if (pageSum + nodeHeight + nodeMargin > PAGE_HEIGHT && pageSum > 0) {
+                    const gap = editor.getDoc().createElement('div');
+                    gap.className = 'page-gap auto-page-gap';
+                    gap.contentEditable = 'false';
+                    gap.innerHTML = '&nbsp;';
+                    body.insertBefore(gap, node);
+                    
+                    pageSum = nodeHeight + nodeMargin;
+                } else {
+                    pageSum += nodeHeight + nodeMargin;
+                }
+            }
+            
+            editor.selection.moveToBookmark(bookmark);
+            
+            const totalPages = body.querySelectorAll('.page-gap').length + 1;
+            document.getElementById('id-numero-paginas').value = totalPages;
+            updateCurrentPageDisplay(editor, totalPages);
+        }
+
+        tinymce.init({
+            selector: '#word-editor',
+            plugins: 'link wordcount formatpainter',
+            toolbar: 'undo redo | fontfamily fontsize | bold italic underline forecolor | alignleft aligncenter alignright alignjustify | customPageBreak customInsertImage',
+            height: 800,
+            menubar: false,
+            elementpath: false, // Oculta la "p" en la esquina inferior izquierda
+            language: 'es',
+            language_url: 'https://cdn.jsdelivr.net/npm/tinymce-i18n@23.10.9/langs6/es.min.js',
+            font_size_formats: '8pt 10pt 11pt 12pt 14pt 18pt 24pt 36pt', // Fuerzas en pt para evitar px
+            content_style: `
+                html {
+                    background: #e0e0e0;
+                    padding: 40px 0;
+                }
+                body { 
+                    width: 816px !important;
+                    min-height: 1056px !important;
+                    margin: 0 auto !important;
+                    background: #fff;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    padding: 96px !important; 
+                    box-sizing: border-box;
+                    font-family: 'Times New Roman', Times, serif;
+                    font-size: 12pt !important;
+                    line-height: 1.5;
+                }
+                p {
+                    margin-top: 0;
+                    margin-bottom: 10px;
+                }
+                img {
+                    max-width: 100%;
+                    height: auto;
+                    display: block;
+                }
+                .page-gap {
+                    height: 40px;
+                    background-color: #e0e0e0;
+                    margin: 96px -96px; /* Genera el margen inferior de la pag actual y superior de la nueva */
+                    border-top: 1px solid #ccc;
+                    border-bottom: 1px solid #ccc;
+                    box-shadow: inset 0 4px 4px rgba(0,0,0,0.05), inset 0 -4px 4px rgba(0,0,0,0.05);
+                    clear: both;
+                    position: relative;
+                }
+                /* Para que el cursor no intente entrar en el gap */
+                .page-gap::before {
+                    content: " ";
+                    display: block;
+                }
+            `,
+            setup: function (editor) {
+                editor.ui.registry.addButton('customInsertImage', {
+                    icon: 'image',
+                    tooltip: 'Insertar Imagen',
+                    onAction: function (_) {
+                        var input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/*';
+                        input.onchange = function(e) {
+                            var file = e.target.files[0];
+                            var reader = new FileReader();
+                            reader.onload = function(re) {
+                                editor.insertContent('<img src="' + re.target.result + '" alt="Imagen" />');
+                            }
+                            reader.readAsDataURL(file);
+                        }
+                        input.click();
+                    }
+                });
+
+                editor.ui.registry.addButton('customPageBreak', {
+                    icon: 'page-break',
+                    tooltip: 'Insertar Salto de Página',
+                    onAction: function() {
+                        editor.insertContent('<div class="page-gap manual-page-gap" contenteditable="false">&nbsp;</div><p><br></p>');
+                        enforcePagination(editor);
+                    }
+                });
+
+                // Ejecutar paginacion al cargar (para edicion de libros publicados)
+                editor.on('init', function() {
+                    enforcePagination(editor);
+                });
+
+                // Auto paginador al tipear
+                editor.on('input keyup NodeChange', function (e) {
+                    // Evitar loop si la tecla fue shift/ctrl etc
+                    if (e.type === 'keyup' && [16, 17, 18, 37, 38, 39, 40].includes(e.keyCode)) {
+                        const totalPages = editor.getBody().querySelectorAll('.page-gap').length + 1;
+                        updateCurrentPageDisplay(editor, totalPages);
+                        return; 
+                    }
+                    
+                    editor.save();
+                    
+                    clearTimeout(paginatorTimeout);
+                    paginatorTimeout = setTimeout(() => {
+                        enforcePagination(editor);
+                    }, 400); // 400ms despues de dejar de tipear se pagina automaticamente
+                    
+                    if (typeof triggerAutosave === 'function') {
+                        triggerAutosave();
+                    }
+                });
+            }
+        });
+
+        document.getElementById('publish-form').addEventListener('submit', function(e) {
+            tinymce.triggerSave();
+            const content = document.getElementById('word-editor').value;
+            if (!content.trim() || content.trim() === '<p><br data-mce-bogus="1"></p>') {
+                e.preventDefault();
+                alert('El contenido no puede estar vacío.');
+            }
+        });
+
+        // ----------------------------------------------------
+        // Auto-save logic
+        // ----------------------------------------------------
+        let autosaveTimeout = null;
+        let isSaving = false;
+        let bookId = '{{ libro.pk|default_if_none:"" }}';
+        
+        function triggerAutosave() {
+            clearTimeout(autosaveTimeout);
+            autosaveTimeout = setTimeout(performAutosave, 1500);
+        }
+
+        function performAutosave() {
+            if (isSaving) {
+                triggerAutosave(); // retry later if currently saving
+                return;
+            }
+            isSaving = true;
+            tinymce.triggerSave();
+            
+            const form = document.getElementById('publish-form');
+            const formData = new FormData(form);
+            // Si el título está vacío, el backend le pondrá "(Sin título)" temporalmente.
+            // Mandamos los datos al nuevo endpoint.
+            
+            let url = "{% url 'materiales:autoguardar_borrador_nuevo' %}";
+            if (bookId) {
+                url = "/materiales/autoguardar/" + bookId + "/"; // Build URL manually since template tags can't dynamically construct it this way
+            }
+
+            fetch(url, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                isSaving = false;
+                if (data.success) {
+                    if (!bookId) {
+                        bookId = data.libro_id;
+                        // Cambiamos la URL visible sin recargar
+                        window.history.replaceState({}, '', '/materiales/edicion/' + bookId + '/');
+                    }
+                    showAutosaveIndicator();
+                }
+            })
+            .catch(error => {
+                console.error("Autosave error", error);
+                isSaving = false;
+            });
+        }
+
+        function showAutosaveIndicator() {
+            const ind = document.getElementById('autosave-indicator');
+            ind.style.display = 'inline-block';
+            setTimeout(() => {
+                ind.style.display = 'none';
+            }, 3000);
+        }
+
+        // Listen for typing in the title
+        document.querySelector('input[name="titulo"]').addEventListener('input', triggerAutosave);
+        
+        // Listen for cover upload
+        document.querySelector('input[name="portada"]').addEventListener('change', triggerAutosave);
+
+    </script>
 </body>
 </html>

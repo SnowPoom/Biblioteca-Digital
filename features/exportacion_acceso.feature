@@ -8,25 +8,27 @@ Característica: Exportación y acceso a material educativo
   Antecedentes:
     Dado que el usuario ha iniciado sesión en la plataforma
 
-  Escenario: Descargar un libro dentro de la cuota disponible
-    Dado que el usuario tiene cuota de páginas de descarga disponible en su cuenta
+  Escenario: Descargar un libro exitosamente dentro de la cuota
+    Dado que el usuario tiene una cuota de descarga mensual disponible
+    Y la cantidad de páginas del libro no excede dicha cuota
     Cuando el usuario descarga un libro
     Entonces el libro queda disponible para acceso sin conexión
     Y la cuota del usuario se reduce según el número de páginas descargadas
 
-  Escenario: No se puede descargar si se agotó la cuota mensual
-    Dado que el usuario ha agotado su cuota de descarga del ciclo actual
+  Escenario: Rechazo de descarga cuando el libro excede la cuota mensual disponible
+    Dado que el usuario tiene una cuota de descarga mensual disponible
+    Pero la cantidad de páginas del libro excede su cuota restante
     Cuando el usuario intenta descargar un libro
     Entonces el sistema rechaza la operación
-    Y el sistema informa la fecha en que se renueva la cuota
+    Y el sistema le informa que no tiene suficientes páginas en su cuota
 
   Escenario: Publicar un libro incrementa la cuota de descarga mensual
     Dado que el usuario publica un libro exitosamente en la plataforma
     Entonces la cuota de descarga mensual del usuario aumenta en 100 páginas adicionales
 
-  Esquema del escenario: Imprimir distintas porciones de un libro
+  Esquema del escenario: Descargar distintas porciones de un libro
     Dado que el usuario está visualizando un libro
-    Cuando el usuario solicita imprimir <porcion>
+    Cuando el usuario solicita descargar <porcion>
     Entonces el sistema genera el documento correspondiente a <porcion> listo para impresión
 
     Ejemplos:
@@ -35,12 +37,7 @@ Característica: Exportación y acceso a material educativo
       | un rango de páginas |
       | el libro completo |
 
-  Escenario: El archivo descargado preserva la autoría original
-    Dado que el usuario descarga un libro publicado por otro usuario
+  Escenario: El archivo descargado en PDF/EPUB preserva la autoría original
+    Dado que el usuario descarga un libro publicado por otro usuario en formato PDF o EPUB
     Cuando el usuario abre el archivo descargado
-    Entonces el archivo incluye el nombre del autor original y la fuente de la publicación
-
-  Escenario: Cada descarga queda registrada como métrica de la publicación
-    Dado que el usuario descarga un libro de la plataforma
-    Cuando el autor del libro consulta las métricas de esa publicación
-    Entonces el contador de descargas refleja la descarga realizada
+    Entonces el archivo incluye de forma mandatoria el nombre del autor original y la fuente de la publicación

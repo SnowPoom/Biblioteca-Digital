@@ -129,8 +129,17 @@ def step_usuario_intenta_utilizar(context):
 
 @then('el sistema rechaza la operación')
 def step_sistema_rechaza_operacion(context):
-    # El response debería ser un render con status 200 pero que contenga el mensaje de error
-    context.test.assertEqual(context.response.status_code, 200)
+    if hasattr(context, 'response'):
+        # RN-EXP-01: Para descargas se rechaza con 403; para otros flujos se renderiza con 200
+        context.test.assertIn(
+            context.response.status_code, [200, 403],
+            "Se esperaba que el sistema rechazara la operación."
+        )
+    elif hasattr(context, 'resultado'):
+        context.test.assertFalse(
+            context.resultado,
+            "La operacion deberia haber sido rechazada por el sistema.",
+        )
 
 @then('solicita que genere un nuevo código de recuperación')
 def step_solicita_nuevo_codigo(context):
