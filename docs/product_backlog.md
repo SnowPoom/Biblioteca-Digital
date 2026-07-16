@@ -239,11 +239,11 @@ Regula la descarga y uso offline del material didáctico.
 *   **Estimación:** M
 *   **Reglas de Negocio asociadas:** RN-EXP-02, RN-EXP-03
 
-### [US-21] Impresión de Páginas o Libros Completos
-*   **Descripción:** Como lector, quiero imprimir una página, un rango o el libro completo para trabajar con material en físico.
+### [US-21] Descarga de Páginas o Libros Completos
+*   **Descripción:** Como lector, quiero descargar una página, un rango o el libro completo para trabajar con material en físico.
 *   **Criterios de Aceptación:**
-    *   El lector puede elegir entre 3 opciones de impresión: "Solo la página actual", "Rango de páginas" o "Libro completo".
-    *   El sistema genera un archivo optimizado para impresión respetando la selección.
+    *   El lector puede elegir entre 3 opciones de descargar: "Solo la página actual", "Rango de páginas" o "Libro completo".
+    *   El sistema genera un archivo optimizado para descarga respetando la selección.
 *   **Prioridad:** Baja
 *   **Estimación:** S
 *   **Reglas de Negocio asociadas:** RN-EXP-04

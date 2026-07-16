@@ -183,11 +183,89 @@ def step_cuota_aumenta_100_paginas(context):
     )
 
 
+# --- Steps para US-21: Descarga de Paginas o Libros Completos ---
+# RN-EXP-04: Un usuario puede solicitar imprimir un libro completo,
+# un rango de paginas o unicamente la pagina que esta visualizando.
+
+
+@given('que el usuario está visualizando un libro')
+def step_usuario_visualizando_libro(context):
+    from src.materiales.models import Libro, Categoria
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    categoria = Categoria.objects.create(nombre='Ciencias')
+    imagen_portada = SimpleUploadedFile(
+        'portada.jpg', b'\xff\xd8\xff\xe0', content_type='image/jpeg'
+    )
+    libro = Libro.objects.create(
+        titulo='Libro de Prueba Paginado',
+        numero_paginas=50,
+        autor=context.usuario_principal,
+        contenido_texto=(
+            '<p>Contenido de la pagina uno del libro de prueba.</p>'
+            '<div class="page-gap"></div>'
+            '<p>Contenido de la pagina dos del libro de prueba.</p>'
+            '<div class="page-gap"></div>'
+            '<p>Contenido de la pagina tres del libro de prueba.</p>'
+        ),
+        portada=imagen_portada,
+    )
+    libro.categorias.add(categoria)
+    libro.estado = Libro.PUBLICADO
+    libro.save()
+    context.libro = libro
+    # La pagina actual simulada por defecto es la pagina 1
+    context.pagina_actual = 1
+    # Configurar cuota suficiente para la descarga
+    perfil = context.usuario_principal.perfil
+    perfil.cuota_descarga = 500
+    perfil.save()
+    context.perfil = perfil
+
 
 @when('el usuario solicita descargar {porcion}')
-def step_usuario_solicita_descargar(context, porcion):
-    pass
+def step_usuario_solicita_descargar_porcion(context, porcion):
+    if porcion == 'la página actual':
+        url = reverse(
+            'materiales:descargar_pagina',
+            args=[context.libro.id, context.pagina_actual, 'pdf'],
+        )
+        context.response = context.test.client.get(url)
+
+    elif porcion == 'un rango de páginas':
+        url = reverse(
+            'materiales:descargar_rango',
+            args=[context.libro.id, 1, 3, 'pdf'],
+        )
+        context.response = context.test.client.get(url)
+
+    elif porcion == 'el libro completo':
+        url = reverse(
+            'materiales:descargar_libro',
+            args=[context.libro.id, 'pdf'],
+        )
+        context.response = context.test.client.get(url)
+
 
 @then('el sistema genera el documento correspondiente a {porcion} listo para impresión')
 def step_sistema_genera_documento_impresion(context, porcion):
-    pass
+    context.test.assertEqual(
+        context.response.status_code, 200,
+        f"La descarga de '{porcion}' no fue exitosa (status {context.response.status_code}).",
+    )
+    context.test.assertEqual(
+        context.response['Content-Type'], 'application/pdf',
+        f"El tipo de contenido no es PDF para '{porcion}'.",
+    )
+    # Verificar que el archivo descargado tiene contenido
+    context.test.assertTrue(
+        len(context.response.content) > 0,
+        f"El archivo generado para '{porcion}' esta vacio.",
+    )
+    # RN-EXP-06: El archivo debe incluir metadatos de autoria
+    contenido = context.response.content.decode('latin-1')
+    context.test.assertIn(
+        'Autor original',
+        contenido,
+        f"El archivo para '{porcion}' no incluye los metadatos del autor original.",
+    )
