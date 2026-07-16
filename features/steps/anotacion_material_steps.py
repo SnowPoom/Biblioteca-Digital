@@ -245,6 +245,42 @@ def step_anotaciones_visibles(context):
 
 
 # ---------------------------------------------------------------------------
+# Escenario: Al tocar un fragmento anotado se puede editar o eliminar directamente
+# ---------------------------------------------------------------------------
+
+@when('el usuario toca el fragmento anotado')
+def step_toca_fragmento_anotado(context):
+    context.anotacion_tocada = context.anotacion
+    context.acciones_disponibles = {'editar', 'eliminar'}
+
+
+@then('el sistema permite editar la anotación directamente')
+def step_permite_editar_directamente(context):
+    context.test.assertIn(
+        'editar',
+        context.acciones_disponibles,
+        "Al tocar el fragmento anotado debe estar disponible la accion de editar.",
+    )
+    context.test.assertIsNotNone(
+        context.anotacion_tocada,
+        "Debe existir una anotacion seleccionada para poder editarla.",
+    )
+
+
+@then('el sistema permite eliminar la anotación directamente')
+def step_permite_eliminar_directamente(context):
+    context.test.assertIn(
+        'eliminar',
+        context.acciones_disponibles,
+        "Al tocar el fragmento anotado debe estar disponible la accion de eliminar.",
+    )
+    context.test.assertTrue(
+        context.anotacion_tocada.esta_activa(),
+        "La anotacion tocada debe seguir activa para poder eliminarse.",
+    )
+
+
+# ---------------------------------------------------------------------------
 # Escenario: Editar una anotacion existente
 # ---------------------------------------------------------------------------
 

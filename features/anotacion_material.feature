@@ -39,6 +39,12 @@ Característica: Anotación y enriquecimiento de material
     Cuando el usuario cierra el libro y vuelve a abrirlo en una sesión posterior
     Entonces todas las anotaciones siguen visibles en los fragmentos correspondientes
 
+  Escenario: Al tocar un fragmento anotado se puede editar o eliminar directamente
+    Dado que el usuario tiene una anotación guardada sobre un fragmento
+    Cuando el usuario toca el fragmento anotado
+    Entonces el sistema permite editar la anotación directamente
+    Y el sistema permite eliminar la anotación directamente
+
   Escenario: Editar una anotación existente
     Dado que el usuario tiene una anotación guardada sobre un fragmento
     Cuando el usuario accede a esa anotación y modifica su contenido

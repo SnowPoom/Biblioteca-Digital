@@ -1,8 +1,9 @@
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect, render, get_object_or_404
+from django.shortcuts import get_object_or_404, render, redirect
+from django.views.decorators.http import require_POST
 
 from .forms import PublicacionLibroFormulario
-from .models import Libro
+from .models import Anotacion, Libro, LIMITE_CARACTERES_ANOTACION
 
 
 def inicio(request):
@@ -17,6 +18,8 @@ def vista_previa_material(request):
         'descripcion': 'Lorem Ipsum is simply dummy text of the printing and typesetting industry.',
         'categorias': ['categoria', 'categoria'],
     })
+
+
 def detalle_libro(request, pk):
     from src.feed.models import Publicacion
     from django.shortcuts import get_object_or_404
@@ -31,10 +34,51 @@ def detalle_libro(request, pk):
 
 def lectura_material(request, libro_id):
     libro = get_object_or_404(Libro, id=libro_id)
+    anotaciones = []
+
+    if request.user.is_authenticated:
+        anotaciones = [
+            anotacion.serializar_para_lectura()
+            for anotacion in Anotacion.objects.filter(
+                usuario=request.user,
+                libro=libro,
+            ).order_by('creado')
+        ]
+
     return render(request, 'materiales/lectura_material.html', {
         'libro': libro,
-        'notas': 'Sección de notas...',
+        'anotaciones': anotaciones,
+        'limite_caracteres_anotacion': LIMITE_CARACTERES_ANOTACION,
     })
+
+
+@login_required(login_url='/auth/')
+@require_POST
+def editar_anotacion(request, anotacion_id):
+    anotacion = get_object_or_404(
+        Anotacion,
+        pk=anotacion_id,
+        usuario=request.user,
+    )
+    nuevo_contenido = request.POST.get('contenido', '').strip()
+
+    if nuevo_contenido and Anotacion.validar_contenido(nuevo_contenido):
+        anotacion.actualizar_contenido(nuevo_contenido)
+
+    return redirect('materiales:lectura_material', libro_id=anotacion.libro_id)
+
+
+@login_required(login_url='/auth/')
+@require_POST
+def eliminar_anotacion(request, anotacion_id):
+    anotacion = get_object_or_404(
+        Anotacion,
+        pk=anotacion_id,
+        usuario=request.user,
+    )
+    libro_id = anotacion.libro_id
+    anotacion.delete()
+    return redirect('materiales:lectura_material', libro_id=libro_id)
 
 
 @login_required(login_url='/auth/')
