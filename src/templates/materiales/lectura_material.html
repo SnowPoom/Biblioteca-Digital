@@ -397,9 +397,27 @@
                         onclick="document.getElementById('download-menu').classList.toggle('show')">
                         Descargar &#9662;
                     </button>
-                    <div id="download-menu" class="download-menu">
-                        <a href="{% url 'materiales:confirmar_descarga' libro.id 'pdf' %}">📄 Descargar PDF</a>
-                        <a href="{% url 'materiales:confirmar_descarga' libro.id 'epub' %}">📕 Descargar EPUB</a>
+                    <div id="download-menu" class="download-menu" style="padding: 10px; width: 250px;">
+                        <h4 style="margin: 5px 10px; font-size: 14px; color: #555;">Libro Completo</h4>
+                        <a href="{% url 'materiales:confirmar_descarga' libro.id 'pdf' %}">📄 Completo PDF</a>
+                        <a href="{% url 'materiales:confirmar_descarga' libro.id 'epub' %}">📕 Completo EPUB</a>
+                        
+                        <hr style="margin: 10px 0; border: 0; border-top: 1px solid #ddd;">
+                        
+                        <h4 style="margin: 5px 10px; font-size: 14px; color: #555;">Página Actual</h4>
+                        <a href="javascript:void(0)" onclick="descargarParcial('pagina', 'pdf')">📄 PDF (Pág. actual)</a>
+                        
+                        <hr style="margin: 10px 0; border: 0; border-top: 1px solid #ddd;">
+                        
+                        <h4 style="margin: 5px 10px; font-size: 14px; color: #555;">Rango de Páginas</h4>
+                        <div style="padding: 0 10px 10px 10px; display: flex; flex-direction: column; gap: 8px;">
+                            <div style="display: flex; gap: 5px; align-items: center;">
+                                <input type="number" id="descarga-inicio" min="1" placeholder="Ini" style="width: 100%; padding: 5px; border: 1px solid #ccc;">
+                                <span>-</span>
+                                <input type="number" id="descarga-fin" min="1" placeholder="Fin" style="width: 100%; padding: 5px; border: 1px solid #ccc;">
+                            </div>
+                            <button onclick="descargarParcial('rango', 'pdf')" style="background: var(--accent); border: none; padding: 8px; cursor: pointer; font-weight: bold;">Descargar Rango (PDF)</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -506,6 +524,38 @@
 
             // Inicializar
             renderPage();
+
+            // Funciones de descarga parcial
+            window.descargarParcial = function(tipo, formato) {
+                const libroId = "{{ libro.id }}";
+                let url = '';
+                
+                if (tipo === 'pagina') {
+                    if (currentPageIndex === 0) {
+                        alert("La portada no puede descargarse individualmente.");
+                        return;
+                    }
+                    url = `/materiales/${libroId}/descargar/pagina/${currentPageIndex}/${formato}/`;
+                } else if (tipo === 'rango') {
+                    const inicio = parseInt(document.getElementById('descarga-inicio').value);
+                    const fin = parseInt(document.getElementById('descarga-fin').value);
+                    if (!inicio || !fin || inicio > fin || inicio < 1) {
+                        alert("Por favor, ingresa un rango válido.");
+                        return;
+                    }
+                    const maxPages = pages.length - 1;
+                    if (fin > maxPages) {
+                        alert(`El libro solo tiene ${maxPages} páginas de contenido.`);
+                        return;
+                    }
+                    url = `/materiales/${libroId}/descargar/rango/${inicio}/${fin}/${formato}/`;
+                }
+                
+                // Cerrar menu
+                document.getElementById('download-menu').classList.remove('show');
+                // Disparar
+                window.location.href = url;
+            };
 
             // Cerrar menu de descarga al hacer clic fuera
             document.addEventListener('click', function (e) {

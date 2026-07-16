@@ -188,7 +188,7 @@ def step_cuota_aumenta_100_paginas(context):
 # un rango de paginas o unicamente la pagina que esta visualizando.
 
 
-@given('que el usuario está visualizando un libro')
+@given('que el usuario tiene abierto un libro para descargarlo')
 def step_usuario_visualizando_libro(context):
     from src.materiales.models import Libro, Categoria
     from django.core.files.uploadedfile import SimpleUploadedFile
