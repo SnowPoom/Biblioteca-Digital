@@ -379,6 +379,7 @@
     <div class="content-frame">
         <h1 class="title">Siguiendo</h1>
 
+        {% if request.user.is_authenticated %}
         <a href="{% url 'feed:perfil_publico' request.user.username %}" style="text-decoration:none; color:inherit;">
         <div class="avatar" aria-label="Perfil de {{ request.user.get_full_name|default:request.user.username }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
@@ -387,6 +388,14 @@
             </svg>
         </div>
         </a>
+        {% else %}
+        <div class="avatar" aria-label="Perfil">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+            </svg>
+        </div>
+        {% endif %}
 
         <div class="content-panel">
             <div class="mode-switch" role="tablist" aria-label="Seleccionar vista">

@@ -237,9 +237,13 @@
 
     <div class="content-frame-page">
         <h1 class="title">{{ titulo }}</h1>
+        {% if request.user.is_authenticated %}
         <a href="{% url 'feed:perfil_publico' request.user.username %}" style="text-decoration:none; color:inherit;">
         <div class="avatar" aria-label="Perfil"></div>
         </a>
+        {% else %}
+        <div class="avatar" aria-label="Perfil"></div>
+        {% endif %}
 
         <section class="content-panel">
                 {% if libro.portada_url %}

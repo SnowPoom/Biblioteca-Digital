@@ -218,9 +218,13 @@
     <div class="page">
         <div class="shell">
             <div class="title">{{ titulo }}</div>
+            {% if request.user.is_authenticated %}
             <a href="{% url 'feed:perfil_publico' request.user.username %}" style="text-decoration:none; color:inherit;">
             <div class="avatar" aria-label="Perfil"></div>
             </a>
+            {% else %}
+            <div class="avatar" aria-label="Perfil"></div>
+            {% endif %}
 
             <section class="editor-panel">
                 {% if mensaje_exito %}

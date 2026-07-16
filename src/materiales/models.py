@@ -1,5 +1,7 @@
 from django.conf import settings
 from django.db import models
+from django.db import transaction
+from django.db.models import F
 
 
 LIMITE_MAXIMO_PAGINAS = 500
@@ -114,6 +116,31 @@ class Libro(models.Model):
                     'titulo': self.titulo,
                     'tipo': Publicacion.LIBRO,
                 }
+            )
+            
+            if not created:
+                pub.titulo = self.titulo
+                pub.save()
+            
+            # Sincronizar categorías
+            pub.categorias.clear()
+            for cat in self.categorias.all():
+                feed_cat, _ = FeedCategoria.objects.get_or_create(nombre=cat.nombre)
+                pub.categorias.add(feed_cat)
+
+            return True, "Publicación exitosa."
+        else:
+            self.estado = self.BORRADOR
+            self.save()
+            from src.feed.models import Notificacion
+            Notificacion.objects.create(
+                usuario=self.autor,
+                mensaje=resultado['mensaje'],
+            )
+            return False, resultado['mensaje']
+
+    def retirar(self):
+        """
         Reglas de negocio aplicadas:
         - RN-PUB-10: El autor puede retirar su material en cualquier momento.
         - RN-ANO-08: Al retirar un libro, las anotaciones asociadas se eliminan.
@@ -121,6 +148,58 @@ class Libro(models.Model):
         self.anotaciones.all().delete()
         self.estado = self.RETIRADO
         self.save()
+
+    def editar(self, usuario_editor):
+        """Aplica las reglas de negocio al editar un libro.
+        
+        Reglas de negocio aplicadas:
+        - RN-PUB-11: Un usuario no puede editar ni eliminar material publicado por otro usuario.
+        - RN-PUB-09: Si el autor edita un libro ya publicado, el material debe volver a pasar la validacion.
+        """
+        if self.autor != usuario_editor:
+            raise PermissionError("No tiene permisos para editar este libro.")
+        
+        if self.estado == self.PUBLICADO:
+            self.estado = self.BORRADOR
+            
+        self.save()
+
+    def republicar(self, usuario):
+        """Republica un libro preservando la autoría original.
+        
+        Reglas de negocio aplicadas:
+        - RN-PUB-12: La republicación preserva la autoría original y no crea una copia independiente.
+        - RN-PUB-13: Se incrementa el contador de republicaciones.
+        """
+        if self.estado != self.PUBLICADO:
+            raise ValueError("Solo los libros publicados pueden ser republicados.")
+            
+        from src.feed.models import Publicacion, Republicacion
+        
+        with transaction.atomic():
+            pub, pub_created = Publicacion.objects.get_or_create(
+                pk=self.pk,
+                defaults={
+                    'autor': self.autor,
+                    'titulo': self.titulo,
+                    'tipo': Publicacion.LIBRO,
+                }
+            )
+            if not pub_created:
+                pub.titulo = self.titulo
+                pub.save(update_fields=['titulo'])
+                
+            republicacion, created = Republicacion.objects.get_or_create(
+                publicacion=pub,
+                republicado_por=usuario
+            )
+            
+            if created:
+                self.republicaciones = F('republicaciones') + 1
+                self.save(update_fields=['republicaciones'])
+                self.refresh_from_db(fields=['republicaciones'])
+                
+        return republicacion, created
 
 
 class Anotacion(models.Model):
@@ -161,7 +240,6 @@ class Anotacion(models.Model):
     class Meta:
         verbose_name = 'Anotacion'
         verbose_name_plural = 'Anotaciones'
-        # RN-ANO-04: Maximo una anotacion activa por fragmento por usuario
         unique_together = ['usuario', 'libro', 'fragmento_texto']
         ordering = ['-creado']
 
@@ -214,77 +292,5 @@ class Anotacion(models.Model):
                 libro=libro,
                 fragmento_texto=fragmento_texto,
             )
-            if not created:
-                pub.titulo = self.titulo
-                pub.save()
-            
-            # Sincronizar categorías
-            pub.categorias.clear()
-            for cat in self.categorias.all():
-                feed_cat, _ = FeedCategoria.objects.get_or_create(nombre=cat.nombre)
-                pub.categorias.add(feed_cat)
-
-            return True, "Publicación exitosa."
-        else:
-            self.estado = self.BORRADOR
-            self.save()
-            from src.feed.models import Notificacion
-            Notificacion.objects.create(
-                usuario=self.autor,
-                mensaje=resultado['mensaje'],
-            )
-            return False, resultado['mensaje']
-
-    def editar(self, usuario_editor):
-        """Aplica las reglas de negocio al editar un libro.
-        
-        Reglas de negocio aplicadas:
-        - RN-PUB-11: Un usuario no puede editar ni eliminar material publicado por otro usuario.
-        - RN-PUB-09: Si el autor edita un libro ya publicado, el material debe volver a pasar la validacion.
-        """
-        if self.autor != usuario_editor:
-            raise PermissionError("No tiene permisos para editar este libro.")
-        
-        if self.estado == self.PUBLICADO:
-            self.estado = self.BORRADOR
-            
-        self.save()
-
-    def republicar(self, usuario):
-        """Republica un libro preservando la autoría original.
-        
-        Reglas de negocio aplicadas:
-        - RN-PUB-12: La republicación preserva la autoría original y no crea una copia independiente.
-        - RN-PUB-13: Se incrementa el contador de republicaciones.
-        """
-        if self.estado != self.PUBLICADO:
-            raise ValueError("Solo los libros publicados pueden ser republicados.")
-            
-        from django.db import transaction
-        from django.db.models import F
-        from src.feed.models import Publicacion, Republicacion
-        
-        with transaction.atomic():
-            pub, pub_created = Publicacion.objects.get_or_create(
-                pk=self.pk,
-                defaults={
-                    'autor': self.autor,
-                    'titulo': self.titulo,
-                    'tipo': Publicacion.LIBRO,
-                }
-            )
-            if not pub_created:
-                pub.titulo = self.titulo
-                pub.save(update_fields=['titulo'])
-                
-            republicacion, created = Republicacion.objects.get_or_create(
-                publicacion=pub,
-                republicado_por=usuario
-            )
-            
-            if created:
-                self.republicaciones = F('republicaciones') + 1
-                self.save(update_fields=['republicaciones'])
-                self.refresh_from_db(fields=['republicaciones'])
-                
-        return republicacion, created
+        except Anotacion.DoesNotExist:
+            return None
