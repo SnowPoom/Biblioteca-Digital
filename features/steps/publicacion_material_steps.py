@@ -795,7 +795,7 @@ def step_agrega_libro_extra(context):
         autor=context.usuario_principal
     )
     try:
-        context.coleccion.agregar_libro(context.libro_nuevo)
+        context.coleccion.agregar_libro(context.usuario_principal, context.libro_nuevo)
         context.resultado = True
     except ValidationError as e:
         context.resultado = False
@@ -808,4 +808,51 @@ def step_libro_no_agregado(context):
         context.libro_nuevo,
         context.coleccion.libros.all(),
         "El libro no debe estar en la colección."
+    )
+
+
+@given('que el usuario tiene una colección que contiene un libro')
+def step_coleccion_contiene_libro(context):
+    from src.materiales.models import Coleccion, Libro
+    context.coleccion_eliminar = Coleccion.objects.create(
+        nombre='Coleccion para eliminar libro',
+        creador=context.usuario_principal
+    )
+    context.libro_a_eliminar = Libro.objects.create(
+        titulo='Libro a Eliminar',
+        autor=context.usuario_principal,
+        estado=Libro.PUBLICADO
+    )
+    context.coleccion_eliminar.libros.add(context.libro_a_eliminar)
+
+@when('el usuario elimina ese libro de la colección')
+def step_elimina_libro_de_coleccion(context):
+    try:
+        context.coleccion_eliminar.eliminar_libro(context.usuario_principal, context.libro_a_eliminar)
+        context.resultado = True
+    except Exception as e:
+        context.resultado = False
+        context.error = e
+
+@then('el libro desaparece de la colección')
+def step_libro_desaparece_coleccion(context):
+    context.test.assertNotIn(
+        context.libro_a_eliminar,
+        context.coleccion_eliminar.libros.all(),
+        'El libro no debería estar en la colección'
+    )
+
+@then('el libro sigue disponible para cualquier usuario en la biblioteca general')
+def step_libro_sigue_disponible(context):
+    from src.materiales.models import Libro
+    libro_en_bd = Libro.objects.filter(id=context.libro_a_eliminar.id).exists()
+    context.test.assertTrue(
+        libro_en_bd,
+        'El libro debe seguir existiendo en la base de datos general'
+    )
+    context.libro_a_eliminar.refresh_from_db()
+    context.test.assertEqual(
+        context.libro_a_eliminar.estado,
+        Libro.PUBLICADO,
+        'El libro debe seguir publicado'
     )
