@@ -201,6 +201,11 @@ class Libro(models.Model):
         # RN-ANO-08: Las anotaciones pierden sentido al retirar el libro
         self.anotaciones.all().delete()
 
+        # RN-PUB-10: El libro comparte PK con su Publicacion en el feed; se
+        # elimina para que deje de mostrarse en feeds y republicaciones ajenas.
+        from src.feed.models import Publicacion
+        Publicacion.objects.filter(pk=self.pk).delete()
+
     def fragmentos_anotados_por(self, usuario):
         """Fragmentos con anotacion activa del usuario en este libro.
 
