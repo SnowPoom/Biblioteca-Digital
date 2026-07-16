@@ -160,6 +160,26 @@ class Anotacion(models.Model):
         """Indica si la anotacion esta vigente (existe en base de datos y tiene contenido)."""
         return bool(self.pk and self.contenido)
 
+    def pertenece_al_usuario(self, usuario):
+        return self.usuario_id == getattr(usuario, 'id', None)
+
+    def puede_ser_gestionada_por(self, usuario):
+        return self.pertenece_al_usuario(usuario)
+
+    def actualizar_contenido(self, nuevo_contenido):
+        self.contenido = nuevo_contenido
+        self.save(update_fields=['contenido', 'actualizado'])
+
+    def serializar_para_lectura(self):
+        return {
+            'id': self.id,
+            'fragmento_texto': self.fragmento_texto,
+            'tipo_fragmento': self.tipo_fragmento,
+            'contenido': self.contenido,
+            'creado': self.creado.isoformat() if self.creado else None,
+            'actualizado': self.actualizado.isoformat() if self.actualizado else None,
+        }
+
     @staticmethod
     def validar_contenido(texto):
         """Valida que el contenido no supere el limite de caracteres.

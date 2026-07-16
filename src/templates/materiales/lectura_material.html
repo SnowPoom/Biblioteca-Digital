@@ -167,6 +167,70 @@
             padding: 20px 16px;
         }
 
+        .anotaciones-lista {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .anotacion-card {
+            border: 1px solid #000;
+            padding: 14px;
+            background: #f8f8f8;
+        }
+
+        .anotacion-card.activa {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        .anotacion-card h3 {
+            margin: 0 0 8px;
+            font-size: 18px;
+        }
+
+        .anotacion-fragmento {
+            margin: 0 0 10px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .anotacion-form {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .anotacion-form textarea {
+            width: 100%;
+            min-height: 110px;
+            resize: vertical;
+            font-family: inherit;
+            font-size: 16px;
+            padding: 10px;
+            border: 1px solid #000;
+            background: #fff;
+        }
+
+        .anotacion-acciones {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .anotacion-acciones button {
+            font-size: 16px;
+            padding: 10px 16px;
+        }
+
+        .fragmento-anotado {
+            background: #ffe89a;
+            color: inherit;
+            cursor: pointer;
+            padding: 0 2px;
+            border-radius: 2px;
+        }
+
         .notes h2 {
             margin: 0 0 18px;
             font-size: 25px;
@@ -249,7 +313,32 @@
             <div>
                 <div class="notes">
                     <h2>Notas</h2>
-                    <p>Sección de notas...</p>
+                    {% if anotaciones %}
+                    <div class="anotaciones-lista">
+                        {% for anotacion in anotaciones %}
+                        <article class="anotacion-card" data-anotacion-card="{{ anotacion.id }}">
+                            <h3>Fragmento anotado</h3>
+                            <p class="anotacion-fragmento">{{ anotacion.fragmento_texto }}</p>
+                            <form class="anotacion-form" method="post" action="{% url 'materiales:editar_anotacion' anotacion.id %}">
+                                {% csrf_token %}
+                                <label for="anotacion-contenido-{{ anotacion.id }}">Editar texto</label>
+                                <textarea id="anotacion-contenido-{{ anotacion.id }}" name="contenido" maxlength="{{ limite_caracteres_anotacion }}">{{ anotacion.contenido }}</textarea>
+                                <div class="anotacion-acciones">
+                                    <button type="submit">Guardar cambios</button>
+                                </div>
+                            </form>
+                            <form method="post" action="{% url 'materiales:eliminar_anotacion' anotacion.id %}" style="margin-top: 10px;">
+                                {% csrf_token %}
+                                <div class="anotacion-acciones">
+                                    <button type="submit">Eliminar anotación</button>
+                                </div>
+                            </form>
+                        </article>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p>No hay anotaciones guardadas en este libro.</p>
+                    {% endif %}
                 </div>
                 
                 <div class="nav-controls">
@@ -265,6 +354,8 @@
         <div id="raw-content" style="display: none;">
             {{ libro.contenido_texto|safe }}
         </div>
+
+        {{ anotaciones|json_script:"anotaciones-data" }}
     </div>
 
     <script>
@@ -274,8 +365,77 @@
             const btnPrev = document.getElementById('btn-prev');
             const btnNext = document.getElementById('btn-next');
             const pageIndicator = document.getElementById('page-indicator');
+            const anotacionesScript = document.getElementById('anotaciones-data');
+            const anotaciones = anotacionesScript ? JSON.parse(anotacionesScript.textContent || '[]') : [];
+            const anotacionesOrdenadas = [...anotaciones].sort((a, b) => {
+                return (b.fragmento_texto || '').length - (a.fragmento_texto || '').length;
+            });
             
             const pages = [];
+
+            function escaparExpresionRegular(texto) {
+                return texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            }
+
+            function resaltarAnotacionesEnElemento(elemento) {
+                if (!anotacionesOrdenadas.length) {
+                    return;
+                }
+
+                const walker = document.createTreeWalker(elemento, NodeFilter.SHOW_TEXT, null);
+                const nodos = [];
+
+                while (walker.nextNode()) {
+                    if ((walker.currentNode.nodeValue || '').trim() !== '') {
+                        nodos.push(walker.currentNode);
+                    }
+                }
+
+                nodos.forEach((nodo) => {
+                    let contenido = nodo.nodeValue;
+                    let modificado = false;
+
+                    anotacionesOrdenadas.forEach((anotacion) => {
+                        const fragmento = anotacion.fragmento_texto || '';
+                        if (!fragmento || contenido.indexOf(fragmento) === -1) {
+                            return;
+                        }
+
+                        const regex = new RegExp(escaparExpresionRegular(fragmento), 'g');
+                        contenido = contenido.replace(
+                            regex,
+                            '<span class="fragmento-anotado" data-anotacion-id="' + anotacion.id + '" role="button" tabindex="0" title="Toca para editar o eliminar">' + fragmento + '</span>'
+                        );
+                        modificado = true;
+                    });
+
+                    if (modificado && nodo.parentNode) {
+                        const contenedor = document.createElement('span');
+                        contenedor.innerHTML = contenido;
+                        nodo.parentNode.replaceChild(contenedor, nodo);
+                    }
+                });
+            }
+
+            function activarAnotacion(anotacionId) {
+                const card = document.querySelector('[data-anotacion-card="' + anotacionId + '"]');
+                if (!card) {
+                    return;
+                }
+
+                document.querySelectorAll('.anotacion-card.activa').forEach((activa) => {
+                    activa.classList.remove('activa');
+                });
+
+                card.classList.add('activa');
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                const textarea = card.querySelector('textarea');
+                if (textarea) {
+                    textarea.focus();
+                    textarea.select();
+                }
+            }
             
             // Portada como primera pagina (height auto para que encaje su proporcion real)
             {% if libro.portada %}
@@ -292,6 +452,7 @@
             Array.from(temp.children).forEach(child => {
                 if (child.classList && child.classList.contains('page-gap')) {
                     if (currentChunk.innerHTML.trim() !== '') {
+                        resaltarAnotacionesEnElemento(currentChunk);
                         // Envolvemos en el escalador
                         pages.push('<div class="page-scaler">' + currentChunk.innerHTML + '</div>');
                         currentChunk = document.createElement('div');
@@ -302,6 +463,7 @@
             });
             
             if (currentChunk.innerHTML.trim() !== '') {
+                resaltarAnotacionesEnElemento(currentChunk);
                 pages.push('<div class="page-scaler">' + currentChunk.innerHTML + '</div>');
             }
             
@@ -329,6 +491,19 @@
             
             function renderPage() {
                 pageDisplay.innerHTML = pages[currentPageIndex];
+
+                pageDisplay.querySelectorAll('.fragmento-anotado').forEach((fragmento) => {
+                    fragmento.addEventListener('click', () => {
+                        activarAnotacion(fragmento.dataset.anotacionId);
+                    });
+
+                    fragmento.addEventListener('keydown', (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            activarAnotacion(fragmento.dataset.anotacionId);
+                        }
+                    });
+                });
                 
                 if (currentPageIndex === 0) {
                     pageIndicator.textContent = "Portada";
