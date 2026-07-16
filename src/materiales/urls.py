@@ -13,5 +13,7 @@ urlpatterns = [
     path('materiales/autoguardar/', views.autoguardar_borrador, name='autoguardar_borrador_nuevo'),
     path('materiales/autoguardar/<int:pk>/', views.autoguardar_borrador, name='autoguardar_borrador'),
     path('materiales/republicar/<int:pk>/', views.republicar_libro, name='republicar_libro'),
-    path('materiales/<int:libro_id>/descargar/<str:formato>/', views.descargar_libro, name='descargar_libro'),
+    path('materiales/lectura/<int:libro_id>/anotacion/crear/', views.crear_anotacion, name='crear_anotacion'),
+    path('materiales/anotacion/<int:anotacion_id>/editar/', views.editar_anotacion, name='editar_anotacion'),
+    path('materiales/anotacion/<int:anotacion_id>/eliminar/', views.eliminar_anotacion, name='eliminar_anotacion'),
 ]

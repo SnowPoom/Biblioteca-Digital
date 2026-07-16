@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Categoria, Libro
+from .models import Categoria, Libro, Anotacion
 
 
 @admin.register(Categoria)
@@ -14,3 +14,10 @@ class LibroAdmin(admin.ModelAdmin):
     list_display = ('titulo', 'autor', 'estado', 'numero_paginas', 'creado')
     list_filter = ('estado', 'categorias')
     search_fields = ('titulo', 'autor__username')
+
+
+@admin.register(Anotacion)
+class AnotacionAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'libro', 'tipo_fragmento', 'fragmento_texto', 'creado')
+    list_filter = ('tipo_fragmento',)
+    search_fields = ('usuario__username', 'libro__titulo', 'fragmento_texto')

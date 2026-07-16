@@ -264,6 +264,13 @@
                         <button class="secondary-btn" style="width:100%; max-width:none;" type="button">Editar</button>
                     </a>
                     {% endif %}
+                    {% if metricas %}
+                    <div class="metrics">
+                        <p class="meta">Visualizaciones: {{ metricas.visualizaciones }}</p>
+                        <p class="meta">Republicaciones: {{ metricas.republicaciones }}</p>
+                        <p class="meta">Descargas: {{ metricas.descargas }}</p>
+                    </div>
+                    {% endif %}
                     <div class="collection-toggle"><span class="caret">V</span><span>colección</span></div>
                 </div>
         </section>
