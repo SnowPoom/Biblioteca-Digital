@@ -154,6 +154,14 @@
                         <h2>Notas</h2>
                         <p>{{ notas }}</p>
                     </div>
+                {% if perfil %}
+                <div style="background: #f0f4ff; border: 1px solid var(--accent); padding: 10px 16px; margin-top: 16px; font-size: 16px; display: flex; justify-content: space-between; align-items: center;">
+                    <span>Cuota disponible: <strong>{{ perfil.cuota_descarga }}</strong> paginas</span>
+                    <span>Este libro: <strong>{{ libro.paginas }}</strong> paginas</span>
+                </div>
+                {% endif %}
+                <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 12px;">
+                    <a href="{% url 'materiales:descargar_libro' libro.id %}" class="print-btn" style="text-decoration: none;">Descargar</a>
                     <button class="print-btn" type="button">Imprimir</button>
                 </div>
             </section>

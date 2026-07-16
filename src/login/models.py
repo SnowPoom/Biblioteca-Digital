@@ -15,6 +15,9 @@ class PerfilUsuario(models.Model):
         (PROFESOR, 'Profesor'),
     ]
 
+    # RN-EXP-01: La cuota se mide en numero de paginas descargadas
+    CUOTA_BASE = 500
+
     usuario = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -25,10 +28,25 @@ class PerfilUsuario(models.Model):
         choices=TIPOS_USUARIO,
         default=ESTUDIANTE,
     )
+    cuota_descarga = models.IntegerField(default=CUOTA_BASE)
     creado = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f'{self.usuario.email} ({self.get_rol_display()})'
+
+    def puede_descargar(self, paginas_libro):
+        """RN-EXP-01: Verifica si la cantidad de paginas del libro no excede la cuota disponible."""
+        return paginas_libro <= self.cuota_descarga
+
+    def reducir_cuota(self, paginas_libro):
+        """Reduce la cuota disponible segun las paginas del libro descargado."""
+        self.cuota_descarga -= paginas_libro
+        self.save()
+
+    def incrementar_cuota_por_publicacion(self):
+        """RN-EXP-03: Por cada libro publicado, la cuota aumenta en 100 paginas adicionales."""
+        self.cuota_descarga += 100
+        self.save()
 
 
 class RecuperacionContrasena(models.Model):
