@@ -73,6 +73,13 @@ Característica: Coautoría y edición compartida de colecciones
     Entonces el sistema rechaza la operación
 
 
-  Escenario: El rol de administrador pasa al colaborador más activo si el creador es eliminado
-    Dado que el creador de una colección es eliminado de la plataforma
-    Entonces el sistema asigna automáticamente el rol de administrador al participante con mayor índice de reputación de colaborador en esa colección
+  Escenario: El rol de administrador pasa al participante con mayor índice de reputación si el creador es eliminado
+    Dado que una colección tiene varios participantes activos con distintos índices de reputación de colaborador
+    Cuando el creador de la colección es eliminado de la plataforma
+    Entonces el sistema asigna automáticamente el rol de administrador al participante activo con mayor índice de reputación de colaborador
+
+  Escenario: Un participante retirado no hereda la administración aunque tenga mayor reputación
+    Dado que una colección tiene un participante retirado con mayor reputación que los participantes activos
+    Cuando el creador de la colección es eliminado de la plataforma
+    Entonces el sistema asigna el rol de administrador al participante activo con mayor índice de reputación de colaborador
+    Y el participante retirado no es considerado para el rol de administrador
