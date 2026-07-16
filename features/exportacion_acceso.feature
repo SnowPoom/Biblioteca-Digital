@@ -33,7 +33,7 @@ Característica: Exportación y acceso a material educativo
     Entonces la cuota de descarga mensual del usuario aumenta en 100 páginas adicionales
 
   Esquema del escenario: Descargar distintas porciones de un libro
-    Dado que el usuario está visualizando un libro
+    Dado que el usuario tiene abierto un libro para descargarlo
     Cuando el usuario solicita descargar <porcion>
     Entonces el sistema genera el documento correspondiente a <porcion> listo para impresión
 

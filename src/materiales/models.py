@@ -217,17 +217,33 @@ class Libro(models.Model):
         self.descargas += 1
         self.save()
 
-    def generar_contenido_descarga(self, formato='pdf'):
-        """Genera un archivo en formato PDF o EPUB con el contenido del libro
-        y metadatos de autoria original (RN-EXP-06)."""
-        if formato == 'epub':
-            return self._generar_epub()
-        return self._generar_pdf()
-
-    def _extraer_texto_plano(self):
-        """Extrae texto plano del contenido HTML del libro."""
+    def _obtener_contenido_paginas(self, inicio=None, fin=None):
+        """Extrae unicamente el HTML correspondiente al rango de paginas indicado."""
         import re
         texto = self.contenido_texto or ''
+        if inicio is None and fin is None:
+            return texto
+            
+        paginas = re.split(r'<div\s+class=[\'"]page-gap[\'"][^>]*>\s*</div>', texto)
+        
+        idx_inicio = max(0, inicio - 1) if inicio is not None else 0
+        idx_fin = fin if fin is not None else len(paginas)
+        
+        paginas_seleccionadas = paginas[idx_inicio:idx_fin]
+        return '<div class="page-gap"></div>'.join(paginas_seleccionadas)
+
+    def generar_contenido_descarga(self, formato='pdf', pagina_inicio=None, pagina_fin=None):
+        """Genera un archivo en formato PDF o EPUB con el contenido del libro
+        y metadatos de autoria original (RN-EXP-06)."""
+        contenido_html = self._obtener_contenido_paginas(pagina_inicio, pagina_fin)
+        if formato == 'epub':
+            return self._generar_epub(contenido_html)
+        return self._generar_pdf(contenido_html)
+
+    def _extraer_texto_plano(self, texto):
+        """Extrae texto plano del contenido HTML especificado."""
+        import re
+        texto = texto or ''
         # Reemplazar saltos de parrafo/divs con saltos de linea
         texto = re.sub(r'<br\s*/?>', '\n', texto)
         texto = re.sub(r'</p>', '\n', texto)
@@ -241,11 +257,11 @@ class Libro(models.Model):
         texto = texto.replace('&quot;', '"')
         return texto.strip()
 
-    def _generar_pdf(self):
-        """Genera un PDF valido con el contenido real del libro y metadatos obligatorios."""
+    def _generar_pdf(self, contenido_html):
+        """Genera un PDF valido con el contenido proporcionado y metadatos obligatorios."""
         nombre_autor = self.autor.get_full_name() or self.autor.username
         fuente = "Biblioteca Digital"
-        texto_contenido = self._extraer_texto_plano()
+        texto_contenido = self._extraer_texto_plano(contenido_html)
 
         linea_meta = f"Autor original: {nombre_autor}  |  Fuente: {fuente}"
         lineas = [linea_meta, f"Titulo: {self.titulo}", ""]
@@ -320,14 +336,15 @@ class Libro(models.Model):
 
         return (encabezado + cuerpo + "\n" + xref + trailer).encode('latin-1')
 
-    def _generar_epub(self):
-        """Genera un EPUB valido con el contenido real del libro y metadatos obligatorios."""
+    def _generar_epub(self, contenido_html):
+        """Genera un EPUB valido con el contenido proporcionado y metadatos obligatorios."""
         import io
         import zipfile
 
         nombre_autor = self.autor.get_full_name() or self.autor.username
         fuente = "Biblioteca Digital"
-        contenido_html = self.contenido_texto or '<p>Sin contenido.</p>'
+        if not contenido_html or not contenido_html.strip():
+            contenido_html = '<p>Sin contenido.</p>'
         mimetype = 'application/epub+zip'
         container_xml = (
             '<?xml version="1.0" encoding="UTF-8"?>\n'

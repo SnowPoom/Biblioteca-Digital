@@ -18,6 +18,8 @@ urlpatterns = [
     path('materiales/anotacion/<int:anotacion_id>/eliminar/', views.eliminar_anotacion, name='eliminar_anotacion'),
     path('materiales/<int:libro_id>/descargar/confirmar/<str:formato>/', views.confirmar_descarga, name='confirmar_descarga'),
     path('materiales/<int:libro_id>/descargar/<str:formato>/', views.descargar_libro, name='descargar_libro'),
+    path('materiales/<int:libro_id>/descargar/pagina/<int:pagina>/<str:formato>/', views.descargar_pagina, name='descargar_pagina'),
+    path('materiales/<int:libro_id>/descargar/rango/<int:inicio>/<int:fin>/<str:formato>/', views.descargar_rango, name='descargar_rango'),
     
     # Rutas de Colecciones
     path('colecciones/<int:coleccion_id>/', views.detalle_coleccion, name='detalle_coleccion'),
