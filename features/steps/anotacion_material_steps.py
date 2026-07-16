@@ -513,7 +513,7 @@ from behave import use_step_matcher
 use_step_matcher('re')
 
 
-@given('que el usuario está visualizando (?P<nombre_libro>(?!un libro publicado por otro usuario).+)')
+@given('que el usuario está visualizando (?P<nombre_libro>(?!un libro publicado por otro usuario|una colección colaborativa disponible).+)')
 def step_usuario_visualizando_libro(context, nombre_libro):
     categoria = Categoria.objects.create(
         nombre=f'Categoria de {nombre_libro}',
