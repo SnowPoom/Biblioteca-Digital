@@ -201,6 +201,19 @@ class Libro(models.Model):
         # RN-ANO-08: Las anotaciones pierden sentido al retirar el libro
         self.anotaciones.all().delete()
 
+    def fragmentos_anotados_por(self, usuario):
+        """Fragmentos con anotacion activa del usuario en este libro.
+
+        Regla de negocio aplicada:
+        - RN-ANO-05: Los fragmentos anotados deben mostrarse visualmente
+          diferenciados durante toda la lectura, no solo al crearse.
+        """
+        return list(
+            self.anotaciones.filter(usuario=usuario).values_list(
+                'fragmento_texto', flat=True
+            )
+        )
+
 
 LIMITE_CARACTERES_ANOTACION = 150
 
@@ -282,3 +295,15 @@ class Anotacion(models.Model):
         - RN-ANO-06: El usuario puede eliminar sus propias anotaciones.
         """
         self.delete()
+
+    @classmethod
+    def para_fragmento(cls, usuario, libro, fragmento_texto):
+        """Recupera la anotacion del usuario asociada a un fragmento.
+
+        Regla de negocio aplicada:
+        - RN-ANO-06: Permite editar o eliminar la anotacion accediendo
+          directamente desde el fragmento resaltado durante la lectura.
+        """
+        return cls.objects.filter(
+            usuario=usuario, libro=libro, fragmento_texto=fragmento_texto
+        ).first()
