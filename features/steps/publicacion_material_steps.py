@@ -401,7 +401,7 @@ def step_usuario_modifica_metadatos(context):
     context.libro.editar(usuario_editor=context.usuario_principal)
 
 
-@then('el libro pasa a estado de revisión')
+@then('el libro pasa a estado Borrador')
 def step_libro_pasa_estado_revision(context):
     context.libro.refresh_from_db()
     context.test.assertEqual(

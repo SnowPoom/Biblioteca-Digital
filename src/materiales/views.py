@@ -140,7 +140,10 @@ def autoguardar_borrador(request, pk=None):
         if 'portada' in request.FILES:
             libro.portada = request.FILES['portada']
 
-        libro.save()
+        if pk:
+            libro.editar(usuario_editor=request.user)
+        else:
+            libro.save()
 
         # Manejo de categorias
         categorias_str = request.POST.get('categorias', '')
