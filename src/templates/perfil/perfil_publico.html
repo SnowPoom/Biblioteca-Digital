@@ -254,15 +254,16 @@
         }
 
         .image-placeholder {
-            width: 147px;
-            height: 161px;
+            width: 120px;
+            height: 180px; /* Aspecto 2:3 tipico de libro */
             background: var(--surface-soft);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 25px;
+            font-size: 20px;
             font-weight: 600;
             border: 1px solid #e0d7d7;
+            border-radius: 4px;
         }
 
         .card-content h2 {
@@ -439,7 +440,11 @@
                 {% for item in publicaciones %}
                 <a href="{% url 'materiales:detalle_libro' item.pk %}" style="text-decoration:none; color:inherit; display:block;">
                     <article class="card" aria-label="{{ item.titulo }}">
-                        <div class="image-placeholder" aria-hidden="true">Imagen</div>
+                        {% if item.portada_url %}
+                            <img src="{{ item.portada_url }}" alt="Portada de {{ item.titulo }}" class="image-placeholder" style="object-fit: cover;">
+                        {% else %}
+                            <div class="image-placeholder" aria-hidden="true">Sin Portada</div>
+                        {% endif %}
                         <div class="card-content">
                             <h2>{{ item.titulo }}</h2>
                             <div class="tags">
@@ -458,6 +463,46 @@
                 {% endfor %}
                 {% endif %}
             </div>
+
+            {% if es_propio %}
+            <hr class="separador">
+            <h3 class="seccion-titulo">Borradores</h3>
+            <div class="main">
+                {% if not borradores %}
+                <div class="estado-vacio">
+                    <strong>Sin borradores</strong>
+                    No tienes libros en estado de borrador actualmente.
+                </div>
+                {% else %}
+                {% for item in borradores %}
+                <a href="{% url 'materiales:edicion_material' item.pk %}" style="text-decoration:none; color:inherit; display:block;">
+                    <article class="card" aria-label="{{ item.titulo }}">
+                        {% if item.portada %}
+                            <img src="{{ item.portada.url }}" alt="Portada de {{ item.titulo }}" class="image-placeholder" style="object-fit: cover;">
+                        {% else %}
+                            <div class="image-placeholder" aria-hidden="true">Sin Portada</div>
+                        {% endif %}
+                        <div class="card-content">
+                            <h2>{{ item.titulo }}</h2>
+                            <div class="tags">
+                                {% for cat in item.categorias.all %}
+                                <span class="tag">{{ cat.nombre }}</span>
+                                {% empty %}
+                                <span class="tag">Sin categoría</span>
+                                {% endfor %}
+                            </div>
+                            {% if item.titulo == '(Sin título)' %}
+                                <p style="color: #666; font-weight: bold; margin-top: 8px;">En Borrador</p>
+                            {% else %}
+                                <p style="color: #ff3b3b; font-weight: bold; margin-top: 8px;">Rechazado por validación / En Borrador</p>
+                            {% endif %}
+                        </div>
+                    </article>
+                </a>
+                {% endfor %}
+                {% endif %}
+            </div>
+            {% endif %}
         </div>
     </div>
 </body>

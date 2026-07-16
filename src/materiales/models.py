@@ -72,28 +72,66 @@ class Libro(models.Model):
         return self.numero_paginas <= LIMITE_MAXIMO_PAGINAS
 
     def publicar(self):
-        """Valida los requisitos de publicacion y cambia el estado a 'En Revision'.
+        """Valida los requisitos de publicacion, realiza la validacion
+        automatizada de contenido y cambia el estado.
 
         Reglas de negocio aplicadas:
         - RN-PUB-03: Portada obligatoria.
-        - RN-PUB-04: Contenido textual obligatorio (no se permiten libros solo con imagenes).
+        - RN-PUB-04: Contenido textual obligatorio.
         - RN-PUB-05: Maximo 500 paginas.
         - RN-PUB-07: Al menos una categoria tematica.
+        - RN-PUB-02: Validacion automatizada de contenido.
 
-        Retorna True si la publicacion fue aceptada para revision, False en caso contrario.
+        Retorna (True, 'mensaje') si la publicacion fue exitosa, o (False, 'mensaje') en caso de rechazo.
         """
         if not self.tiene_portada():
-            return False
+            return False, "Falta portada."
 
         if not self.tiene_contenido_textual():
-            return False
+            return False, "Falta contenido textual."
 
         if not self.tiene_categorias():
-            return False
+            return False, "Falta asignar categoría."
 
         if not self.esta_dentro_del_limite_de_paginas():
-            return False
+            return False, "Supera límite de páginas."
 
-        self.estado = self.EN_REVISION
-        self.save()
-        return True
+        # Validacion automatizada de contenido
+        from src.materiales.validacion_contenido import ValidadorContenido
+        validador = ValidadorContenido()
+        resultado = validador.validar(self)
+
+        if resultado['aprobado']:
+            self.estado = self.PUBLICADO
+            self.save()
+
+            # Crear o actualizar la publicación para el feed
+            from src.feed.models import Publicacion, Categoria as FeedCategoria
+            pub, created = Publicacion.objects.get_or_create(
+                pk=self.pk,
+                defaults={
+                    'autor': self.autor,
+                    'titulo': self.titulo,
+                    'tipo': Publicacion.LIBRO,
+                }
+            )
+            if not created:
+                pub.titulo = self.titulo
+                pub.save()
+            
+            # Sincronizar categorías
+            pub.categorias.clear()
+            for cat in self.categorias.all():
+                feed_cat, _ = FeedCategoria.objects.get_or_create(nombre=cat.nombre)
+                pub.categorias.add(feed_cat)
+
+            return True, "Publicación exitosa."
+        else:
+            self.estado = self.BORRADOR
+            self.save()
+            from src.feed.models import Notificacion
+            Notificacion.objects.create(
+                usuario=self.autor,
+                mensaje=resultado['mensaje'],
+            )
+            return False, resultado['mensaje']

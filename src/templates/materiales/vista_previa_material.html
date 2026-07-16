@@ -242,7 +242,11 @@
         </a>
 
         <section class="content-panel">
-                <div class="cover">PORTADA</div>
+                {% if libro.portada_url %}
+                    <img src="{{ libro.portada_url }}" alt="Portada de {{ titulo }}" class="cover" style="object-fit: cover;">
+                {% else %}
+                    <div class="cover" aria-hidden="true">PORTADA</div>
+                {% endif %}
                 <div class="info">
                     <p class="meta">{{ autor }}</p>
                     <p class="description">{{ descripcion }}</p>
@@ -251,7 +255,9 @@
                             <span class="chip">{{ categoria }}</span>
                         {% endfor %}
                     </div>
-                    <button class="primary-btn" type="button">Leer</button>
+                    <a href="{% url 'materiales:lectura_material' libro.pk %}" style="text-decoration:none; display:block; width:100%; max-width:404px;">
+                        <button class="primary-btn" style="width:100%; max-width:none;" type="button">Leer</button>
+                    </a>
                     <button class="secondary-btn" type="button">Añadir a la colección</button>
                     <div class="collection-toggle"><span class="caret">V</span><span>colección</span></div>
                 </div>
