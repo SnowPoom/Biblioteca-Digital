@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,7 +16,10 @@
             --border: #000000;
         }
 
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
             font-family: 'Roboto', Arial, sans-serif;
@@ -55,8 +59,13 @@
             transition: opacity 0.15s ease;
         }
 
-        .sidebar-nav a:hover { opacity: 0.55; }
-        .sidebar-nav .activo { font-weight: 600; }
+        .sidebar-nav a:hover {
+            opacity: 0.55;
+        }
+
+        .sidebar-nav .activo {
+            font-weight: 600;
+        }
 
         .notificacion-link {
             display: flex;
@@ -70,8 +79,16 @@
             transition: opacity 0.15s ease;
             position: relative;
         }
-        .notificacion-link:hover { opacity: 0.55; }
-        .notificacion-link svg { width: 22px; height: 22px; }
+
+        .notificacion-link:hover {
+            opacity: 0.55;
+        }
+
+        .notificacion-link svg {
+            width: 22px;
+            height: 22px;
+        }
+
         .badge {
             background: #ff3b3b;
             color: #fff;
@@ -132,6 +149,7 @@
             font-size: 12px;
             font-weight: 600;
         }
+
         .tag-outline {
             background: transparent;
             border: 1px solid var(--border);
@@ -184,6 +202,7 @@
             color: #ff3b3b;
             border-color: #ff3b3b;
         }
+
         .btn-danger:hover {
             background: #fff0f0;
         }
@@ -204,6 +223,7 @@
             font-family: 'Roboto', sans-serif;
             outline: none;
         }
+
         .form-input:focus {
             background: var(--surface-soft);
         }
@@ -222,38 +242,56 @@
             overflow-y: auto;
             display: none;
         }
+
         .autocomplete-item {
             padding: 12px 16px;
             cursor: pointer;
             border-bottom: 1px solid #eee;
             font-size: 15px;
         }
+
         .autocomplete-item:last-child {
             border-bottom: none;
         }
+
         .autocomplete-item:hover {
             background: var(--surface-soft);
         }
 
-        .messages { margin-bottom: 24px; }
+        .messages {
+            margin-bottom: 24px;
+        }
+
         .alert {
             padding: 16px;
             border: 1px solid var(--border);
             margin-bottom: 12px;
             font-weight: 600;
         }
-        .alert-success { background: #d1fae5; border-color: #065f46; color: #065f46; }
-        .alert-error { background: #fee2e2; border-color: #991b1b; color: #991b1b; }
+
+        .alert-success {
+            background: #d1fae5;
+            border-color: #065f46;
+            color: #065f46;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            border-color: #991b1b;
+            color: #991b1b;
+        }
     </style>
 </head>
+
 <body>
 
     <div class="sidebar-frame">
         <nav class="sidebar-nav" aria-label="Navegacion principal">
             <a href="{% url 'feed:notificaciones' %}" class="notificacion-link" aria-label="Notificaciones">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                 </svg>
                 {% if unread_notifications_count > 0 %}
                 <span class="badge">{{ unread_notifications_count }}</span>
@@ -268,8 +306,10 @@
     </div>
 
     <div class="content-frame">
-        <a href="javascript:history.back()" style="display:inline-block; margin-bottom: 20px; text-decoration: none; color: #555; font-weight: 600;">← Volver atrás</a>
-        
+        <a href="javascript:history.back()"
+            style="display:inline-block; margin-bottom: 20px; text-decoration: none; color: #555; font-weight: 600;">←
+            Volver atrás</a>
+
         {% if messages %}
         <div class="messages">
             {% for message in messages %}
@@ -287,7 +327,7 @@
             <span class="tag-outline">Por {{ coleccion.creador.username }}</span>
             <span class="tag">{{ coleccion.get_visibilidad_display }}</span>
         </div>
-        
+
         {% if coleccion.categorias.all %}
         <div class="tags" style="margin-top: 0; margin-bottom: 10px;">
             {% for cat in coleccion.categorias.all %}
@@ -298,13 +338,13 @@
 
         <div class="tags" style="margin-top: 0; align-items: center;">
             {% if es_miembro or es_admin %}
-            <span class="tag-outline">{{ coleccion.libros.count }} de {{ coleccion.limite_libros }} libros permitidos</span>
+            <span class="tag-outline">{{ coleccion.libros.count }} de {{ coleccion.limite_libros }} libros
+                permitidos</span>
             {% if es_admin %}
-            <form action="{% url 'materiales:ajustar_limite' coleccion.pk %}" method="post" style="display: flex; gap: 10px; margin-left: 10px;">
-                {% csrf_token %}
-                <input type="number" name="limite_libros" min="5" max="20" value="{{ coleccion.limite_libros }}" style="padding: 5px; width: 60px; font-family: 'Roboto';" required>
-                <button type="submit" class="btn" style="padding: 5px 10px; font-size: 14px;">Actualizar Límite</button>
-            </form>
+            <div style="margin-top: 10px; width: 100%;">
+                <a href="{% url 'colecciones:editar_coleccion' coleccion.pk %}" class="btn"
+                    style="text-decoration: none; display: inline-block;">Editar</a>
+            </div>
             {% endif %}
             {% else %}
             <span class="tag-outline">{{ coleccion.libros.count }} libros</span>
@@ -312,55 +352,120 @@
         </div>
 
         <div class="content-panel">
-            
-            {% if es_admin %}
-            <div style="margin-bottom: 32px; padding: 24px; background: var(--surface-soft); border: 1px solid var(--border);">
-                <h3 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600;">Invitar usuario</h3>
-                <form action="{% url 'materiales:invitar_a_coleccion' coleccion.pk %}" method="post" id="invite-form">
+
+            <button class="btn" type="button"
+                onclick="document.getElementById('participantes-section').style.display = document.getElementById('participantes-section').style.display === 'none' ? 'block' : 'none';"
+                style="margin-bottom: 20px;">Ver participantes</button>
+            <div id="participantes-section" style="display: none;">
+                {% if es_admin %}
+                <div
+                    style="margin-bottom: 32px; padding: 24px; background: var(--surface-soft); border: 1px solid var(--border);">
+                    <h3 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600;">Invitar usuario</h3>
+                    <form action="{% url 'materiales:invitar_a_coleccion' coleccion.pk %}" method="post"
+                        id="invite-form">
+                        {% csrf_token %}
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <input type="text" name="username" id="username-input" class="form-input"
+                                placeholder="Nombre de usuario" autocomplete="off" required>
+                            <button type="submit" class="btn">Enviar Invitación</button>
+                            <div id="autocomplete-results" class="autocomplete-results"></div>
+                        </div>
+                    </form>
+                </div>
+                {% endif %}
+
+                <h2 class="seccion-titulo">Participantes ({{ participaciones|length }}/15)</h2>
+                <div style="margin-bottom: 32px;">
+                    {% for participacion in participaciones %}
+                    <div class="card">
+                        <div class="card-content">
+                            <h3>{{ participacion.usuario.get_full_name|default:participacion.usuario.username }}</h3>
+                            <p>@{{ participacion.usuario.username }} {% if participacion.usuario == coleccion.creador
+                                %}(Administrador){% endif %}</p>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p>No hay otros participantes.</p>
+                    {% endfor %}
+                </div>
+
+                {% if es_admin and solicitudes %}
+                <h2 class="seccion-titulo">Solicitudes de Acceso Pendientes</h2>
+                <div style="margin-bottom: 32px;">
+                    {% for sol in solicitudes %}
+                    <div class="card">
+                        <div class="card-content">
+                            <h3>{{ sol.usuario_solicitante.get_full_name|default:sol.usuario_solicitante.username }}
+                            </h3>
+                            <p>@{{ sol.usuario_solicitante.username }} quiere unirse a la colección</p>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <form action="{% url 'materiales:procesar_solicitud' sol.id 'aprobar' %}" method="post">
+                                {% csrf_token %}
+                                <button type="submit" class="btn" style="background: var(--accent);">Aprobar</button>
+                            </form>
+                            <form action="{% url 'materiales:procesar_solicitud' sol.id 'rechazar' %}" method="post">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger">Rechazar</button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <h2 class="seccion-titulo">Libros en la Colección ({{ coleccion.libros.count }}/{{ coleccion.limite_libros
+                }})</h2>
+
+            {% if es_miembro %}
+            <div
+                style="margin-bottom: 32px; padding: 24px; background: var(--surface-soft); border: 1px solid var(--border);">
+                <h3 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600;">Añadir Libro</h3>
+                <form action="{% url 'materiales:agregar_libro_coleccion' coleccion.pk %}" method="post">
                     {% csrf_token %}
                     <div class="form-group" style="margin-bottom: 0;">
-                        <input type="text" name="username" id="username-input" class="form-input" placeholder="Nombre de usuario" autocomplete="off" required>
-                        <button type="submit" class="btn">Enviar Invitación</button>
-                        <div id="autocomplete-results" class="autocomplete-results"></div>
+                        <input type="hidden" name="libro_id" id="libro-id-input" required>
+                        <input type="text" id="libro-search-input" class="form-input"
+                            placeholder="Buscar libro por título..." autocomplete="off" required>
+                        <button type="submit" class="btn" style="background: var(--accent);">Agregar</button>
+                        <div id="autocomplete-libros-results" class="autocomplete-results"></div>
                     </div>
                 </form>
             </div>
             {% endif %}
 
-            <h2 class="seccion-titulo">Participantes ({{ participaciones|length }}/15)</h2>
             <div style="margin-bottom: 32px;">
-                {% for participacion in participaciones %}
+                {% for lc in libros_coleccion %}
                 <div class="card">
                     <div class="card-content">
-                        <h3>{{ participacion.usuario.get_full_name|default:participacion.usuario.username }}</h3>
-                        <p>@{{ participacion.usuario.username }} {% if participacion.usuario == coleccion.creador %}(Administrador){% endif %}</p>
+                        <h3><a href="{% url 'materiales:lectura_material' lc.libro.id %}"
+                                style="text-decoration: none; color: inherit;">{{ lc.libro.titulo }}</a></h3>
+                        <p>Por @{{ lc.libro.autor.username }} | {{ lc.libro.numero_paginas }} páginas</p>
+                        <p style="font-size: 0.9em; color: #555;">Añadido por {% if lc.agregado_por %}@{{
+                            lc.agregado_por.username }}{% else %}Sistema{% endif %}</p>
                     </div>
-                    {% if es_admin and participacion.usuario != coleccion.creador %}
-                    <form action="{% url 'materiales:retirar_de_coleccion' coleccion.pk participacion.usuario.id %}" method="post">
+                    {% if es_miembro %}
+                    <form action="{% url 'materiales:eliminar_libro_coleccion' coleccion.pk lc.libro.id %}"
+                        method="post">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-danger">Retirar</button>
+                        <button type="submit" class="btn btn-danger">Eliminar</button>
                     </form>
                     {% endif %}
                 </div>
                 {% empty %}
-                <p>No hay otros participantes.</p>
+                <p>No hay libros en esta colección.</p>
                 {% endfor %}
             </div>
 
-            {% if not es_miembro and coleccion.visibilidad == 'PUBLICA' %}
+            {% if not es_miembro and coleccion.visibilidad == 'publica' %}
             <div style="text-align: center; margin-top: 40px; padding-top: 40px; border-top: 1px solid var(--border);">
                 <form action="{% url 'materiales:solicitar_acceso_coleccion' coleccion.pk %}" method="post">
                     {% csrf_token %}
                     <button type="submit" class="btn" style="background: var(--accent);">Solicitar Unirse</button>
                 </form>
             </div>
-            {% elif es_miembro and request.user != coleccion.creador %}
-            <div style="text-align: center; margin-top: 40px; padding-top: 40px; border-top: 1px solid var(--border);">
-                <form action="{% url 'materiales:abandonar_coleccion' coleccion.pk %}" method="post">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger">Abandonar Colección</button>
-                </form>
-            </div>
+
             {% endif %}
 
         </div>
@@ -373,10 +478,10 @@
         if (input && resultsBox) {
             let debounceTimer;
 
-            input.addEventListener('input', function() {
+            input.addEventListener('input', function () {
                 clearTimeout(debounceTimer);
                 const query = this.value.trim();
-                
+
                 if (query.length < 2) {
                     resultsBox.style.display = 'none';
                     return;
@@ -407,12 +512,62 @@
                 }, 300);
             });
 
-            document.addEventListener('click', function(e) {
+            document.addEventListener('click', function (e) {
                 if (!resultsBox.contains(e.target) && e.target !== input) {
                     resultsBox.style.display = 'none';
                 }
             });
         }
+
+        const libroInput = document.getElementById('libro-search-input');
+        const libroIdInput = document.getElementById('libro-id-input');
+        const libroResultsBox = document.getElementById('autocomplete-libros-results');
+
+        if (libroInput && libroResultsBox) {
+            let debounceTimerLibro;
+
+            libroInput.addEventListener('input', function () {
+                clearTimeout(debounceTimerLibro);
+                const query = this.value.trim();
+
+                if (query.length < 2) {
+                    libroResultsBox.style.display = 'none';
+                    return;
+                }
+
+                debounceTimerLibro = setTimeout(() => {
+                    fetch('/api/buscar-libros/?q=' + encodeURIComponent(query))
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.libros && data.libros.length > 0) {
+                                libroResultsBox.innerHTML = '';
+                                data.libros.forEach(libro => {
+                                    const div = document.createElement('div');
+                                    div.className = 'autocomplete-item';
+                                    div.textContent = libro.titulo + ' (por ' + libro.autor + ')';
+                                    div.addEventListener('click', () => {
+                                        libroInput.value = libro.titulo;
+                                        libroIdInput.value = libro.id;
+                                        libroResultsBox.style.display = 'none';
+                                    });
+                                    libroResultsBox.appendChild(div);
+                                });
+                                libroResultsBox.style.display = 'block';
+                            } else {
+                                libroResultsBox.style.display = 'none';
+                            }
+                        })
+                        .catch(err => console.error(err));
+                }, 300);
+            });
+
+            document.addEventListener('click', function (e) {
+                if (!libroResultsBox.contains(e.target) && e.target !== libroInput) {
+                    libroResultsBox.style.display = 'none';
+                }
+            });
+        }
     </script>
 </body>
+
 </html>

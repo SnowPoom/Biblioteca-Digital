@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,7 +16,10 @@
             --border: #000000;
         }
 
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
             font-family: 'Roboto', Arial, sans-serif;
@@ -55,8 +59,13 @@
             transition: opacity 0.15s ease;
         }
 
-        .sidebar-nav a:hover { opacity: 0.55; }
-        .sidebar-nav .activo { font-weight: 600; }
+        .sidebar-nav a:hover {
+            opacity: 0.55;
+        }
+
+        .sidebar-nav .activo {
+            font-weight: 600;
+        }
 
         /* Icono de campana */
         .notificacion-link {
@@ -72,7 +81,9 @@
             position: relative;
         }
 
-        .notificacion-link:hover { opacity: 0.55; }
+        .notificacion-link:hover {
+            opacity: 0.55;
+        }
 
         .notificacion-link svg {
             width: 22px;
@@ -177,7 +188,8 @@
             border: 1px solid #2fbf72;
         }
 
-        .primary-btn, .secondary-btn {
+        .primary-btn,
+        .secondary-btn {
             border: none;
             cursor: pointer;
             font-size: 25px;
@@ -211,18 +223,41 @@
         }
 
         @media (max-width: 960px) {
-            .content-panel { grid-template-columns: 1fr; }
-            .title { margin-left: 0; }
+            .content-panel {
+                grid-template-columns: 1fr;
+            }
+
+            .title {
+                margin-left: 0;
+            }
+        }
+
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 5px;
+            background: #fff;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 10;
+        }
+        .dropdown-menu.show {
+            display: block;
         }
     </style>
 </head>
+
 <body>
     <aside class="sidebar-frame">
         <nav class="sidebar-nav" aria-label="Navegacion principal">
             <a href="{% url 'feed:notificaciones' %}" class="notificacion-link" aria-label="Notificaciones">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                    stroke-linejoin="round" aria-hidden="true">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
                 </svg>
                 {% if unread_notifications_count > 0 %}
                 <span class="badge">{{ unread_notifications_count }}</span>
@@ -239,42 +274,65 @@
     <div class="content-frame-page">
         <h1 class="title">{{ titulo }}</h1>
         <a href="{% url 'feed:perfil_publico' request.user.username %}" style="text-decoration:none; color:inherit;">
-        <div class="avatar" aria-label="Perfil"></div>
+            <div class="avatar" aria-label="Perfil"></div>
         </a>
 
         <section class="content-panel">
-                {% if libro.portada_url %}
-                    <img src="{{ libro.portada_url }}" alt="Portada de {{ titulo }}" class="cover" style="object-fit: cover;">
-                {% else %}
-                    <div class="cover" aria-hidden="true">PORTADA</div>
-                {% endif %}
-                <div class="info">
-                    <p class="meta">{{ autor }}</p>
-                    <p class="description">{{ descripcion }}</p>
-                    <div class="categories">
-                        {% for categoria in categorias %}
-                            <span class="chip">{{ categoria }}</span>
-                        {% endfor %}
-                    </div>
-                    <a href="{% url 'materiales:lectura_material' libro.pk %}" style="text-decoration:none; display:block; width:100%; max-width:404px;">
-                        <button class="primary-btn" style="width:100%; max-width:none;" type="button">Leer</button>
-                    </a>
-                    <button class="secondary-btn" type="button" style="margin-top: 10px;">Añadir a la colección</button>
-                    {% if request.user == libro.autor %}
-                    <a href="{% url 'materiales:edicion_material' libro.pk %}" style="text-decoration:none; display:block; width:100%; max-width:404px; margin-top: 10px;">
-                        <button class="secondary-btn" style="width:100%; max-width:none;" type="button">Editar</button>
-                    </a>
-                    {% endif %}
-                    {% if metricas %}
-                    <div class="metrics">
-                        <p class="meta">Visualizaciones: {{ metricas.visualizaciones }}</p>
-                        <p class="meta">Republicaciones: {{ metricas.republicaciones }}</p>
-                        <p class="meta">Descargas: {{ metricas.descargas }}</p>
-                    </div>
-                    {% endif %}
-                    <div class="collection-toggle"><span class="caret">V</span><span>colección</span></div>
+            {% if libro.portada_url %}
+            <img src="{{ libro.portada_url }}" alt="Portada de {{ titulo }}" class="cover" style="object-fit: cover;">
+            {% else %}
+            <div class="cover" aria-hidden="true">PORTADA</div>
+            {% endif %}
+            <div class="info">
+                <p class="meta">{{ autor }}</p>
+                <p class="description">{{ descripcion }}</p>
+                <div class="categories">
+                    {% for categoria in categorias %}
+                    <span class="chip">{{ categoria }}</span>
+                    {% endfor %}
                 </div>
+                <a href="{% url 'materiales:lectura_material' libro.pk %}"
+                    style="text-decoration:none; display:block; width:100%; max-width:404px;">
+                    <button class="primary-btn" style="width:100%; max-width:none;" type="button">Leer</button>
+                </a>
+                <div style="position: relative; width: 100%; max-width: 404px; margin-top: 10px;">
+                    <button class="secondary-btn" type="button" style="width: 100%; text-align: center; margin: 0;" onclick="document.getElementById('add-collection-form-{{ libro.id }}').classList.toggle('show')">
+                        Añadir a colección &#9662;
+                    </button>
+                    <div id="add-collection-form-{{ libro.id }}" class="dropdown-menu" style="width: 100%; padding: 10px; box-sizing: border-box; text-align: left;">
+                        {% if colecciones_usuario %}
+                        <form method="post" id="form-col-{{ libro.id }}">
+                            {% csrf_token %}
+                            <input type="hidden" name="libro_id" value="{{ libro.id }}">
+                            <select onchange="document.getElementById('form-col-{{ libro.id }}').action='/colecciones/' + this.value + '/agregar_libro/'" style="padding: 5px; width: 100%; border: 1px solid var(--border);" required>
+                                <option value="">Selecciona colección</option>
+                                {% for col in colecciones_usuario %}
+                                <option value="{{ col.id }}">{{ col.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" style="margin-top:5px; width: 100%; padding: 5px; background: var(--accent); border: 1px solid var(--border); font-weight: 600; cursor: pointer;">Agregar</button>
+                        </form>
+                        {% else %}
+                        <p style="font-size: 14px; margin: 0;">No perteneces a ninguna colección.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if request.user == libro.autor %}
+                <a href="{% url 'materiales:edicion_material' libro.pk %}"
+                    style="text-decoration:none; display:block; width:100%; max-width:404px; margin-top: 10px;">
+                    <button class="secondary-btn" style="width:100%; max-width:none;" type="button">Editar</button>
+                </a>
+                {% endif %}
+                {% if metricas %}
+                <div class="metrics">
+                    <p class="meta">Visualizaciones: {{ metricas.visualizaciones }}</p>
+                    <p class="meta">Republicaciones: {{ metricas.republicaciones }}</p>
+                    <p class="meta">Descargas: {{ metricas.descargas }}</p>
+                </div>
+                {% endif %}
+            </div>
         </section>
     </div>
 </body>
+
 </html>

@@ -236,11 +236,6 @@ def step_intenta_gestionar_participantes(context):
     except PermissionError:
         pass
 
-    try:
-        context.coleccion.retirar_participante(admin_usuario=context.usuario_principal, participante_usuario=context.tercero)
-    except PermissionError:
-        pass
-
     context.resultado = False
 
 # ---------------------------------------------------------------------------
@@ -268,10 +263,18 @@ def step_retira_participante(context):
 
 @then('ese participante pierde acceso de edición a la colección')
 def step_pierde_acceso_edicion(context):
-    es_participante = ParticipacionColeccion.objects.filter(
-        coleccion=context.coleccion, usuario=context.participante
+    es_participante_activo = context.coleccion.participantes_activos().filter(
+        usuario=context.participante
     ).exists()
-    context.test.assertFalse(es_participante)
+    context.test.assertFalse(es_participante_activo)
+
+@then('su estado cambia a "retirado"')
+def step_estado_cambia_a_retirado(context):
+    participacion = ParticipacionColeccion.objects.filter(
+        coleccion=context.coleccion, usuario=context.participante
+    ).first()
+    context.test.assertIsNotNone(participacion)
+    context.test.assertEqual(participacion.estado, 'retirado')
 
 @then('el contenido que aportó permanece en la colección')
 def step_contenido_permanece(context):
@@ -286,6 +289,11 @@ def step_usuario_es_participante(context):
     admin = User.objects.create_user(username='admin_aband', password='123')
     context.coleccion = Coleccion.objects.create(nombre='Col Abandonar', creador=admin)
     context.coleccion.agregar_participante(context.usuario_principal, rol=ParticipacionColeccion.PARTICIPANTE)
+
+    context.libro_aportado_abandono = Libro.objects.create(
+        titulo="Libro Abandonado", autor=context.usuario_principal, numero_paginas=10, estado=Libro.PUBLICADO
+    )
+    context.coleccion.libros.add(context.libro_aportado_abandono)
 
 @when('el usuario decide abandonar esa colección')
 def step_decide_abandonar(context):
@@ -305,6 +313,12 @@ def step_deja_ser_participante(context):
 def step_pierde_acceso_edicion_abandonar(context):
     # Verificado en el step anterior
     pass
+
+@then('los libros que aportó permanecen en la colección')
+def step_libros_aportados_permanecen(context):
+    context.test.assertTrue(
+        context.coleccion.libros.filter(id=context.libro_aportado_abandono.id).exists()
+    )
 
 # ---------------------------------------------------------------------------
 # Escenario: Cualquier participante puede agregar libros a la colección
@@ -326,7 +340,7 @@ def step_participante_sin_limite_libros(context):
 @when('el usuario agrega un libro a la colección')
 def step_agrega_libro(context):
     try:
-        context.coleccion.libros.add(context.libro)
+        context.coleccion.agregar_libro(context.usuario_principal, context.libro)
     except Exception as e:
         context.exception = e
 
@@ -342,7 +356,7 @@ def step_cambio_visible(context):
 # Escenario: Solo el administrador o el aportante puede eliminar un libro de la colección
 # ---------------------------------------------------------------------------
 
-@given('que el usuario es un participante que no agregó un libro específico y no es administrador')
+@given('que el usuario es un participante de la colección y hay un libro en ella')
 def step_participante_no_aportante(context):
     admin = User.objects.create_user(username='admin_elim_lib', password='123')
     context.coleccion = Coleccion.objects.create(nombre='Col Eliminar', creador=admin)
@@ -359,38 +373,85 @@ def step_participante_no_aportante(context):
 @when('el usuario intenta eliminar ese libro de la colección')
 def step_intenta_eliminar_libro(context):
     try:
-        if not context.coleccion.es_administrador(context.usuario_principal) and context.libro_otro.autor != context.usuario_principal:
-            raise PermissionError("No puedes eliminar este libro")
-        context.coleccion.libros.remove(context.libro_otro)
+        context.coleccion.eliminar_libro(context.usuario_principal, context.libro_otro)
+        context.resultado = True
     except PermissionError as e:
+        context.resultado = False
         context.exception_eliminar = e
 
-@then('el sistema deniega el permiso y el libro permanece')
-def step_deniega_permiso(context):
-    context.test.assertIsNotNone(getattr(context, 'exception_eliminar', None))
-    context.test.assertTrue(context.coleccion.libros.filter(id=context.libro_otro.id).exists())
+@then('la operación es exitosa')
+def step_operacion_exitosa_eliminar(context):
+    context.test.assertTrue(context.resultado)
+
 
 # ---------------------------------------------------------------------------
-# Escenario: El rol de administrador pasa al colaborador más activo si el creador es eliminado
+# Escenario: El rol de administrador pasa al participante con mayor índice de
+# reputación si el creador es eliminado
 # ---------------------------------------------------------------------------
 
-@given('que el creador de una colección es eliminado de la plataforma')
-def step_creador_eliminado(context):
+@given('que una colección tiene varios participantes activos con distintos índices de reputación de colaborador')
+def step_coleccion_con_participantes_de_distinta_reputacion(context):
     admin = User.objects.create_user(username='admin_elim', password='123')
     context.coleccion = Coleccion.objects.create(nombre='Col Creador Elim', creador=admin)
-    
-    # Participante activo
-    context.participante_activo = User.objects.create_user(username='activo', password='123')
-    context.coleccion.agregar_participante(context.participante_activo)
-    # Simular que es el más activo (por reputación)
-    
-    # Eliminar admin
-    admin.delete()
+    context.creador_a_eliminar = admin
 
-@then('el sistema asigna automáticamente el rol de administrador al participante con mayor índice de reputación de colaborador en esa colección')
-def step_asigna_nuevo_admin(context):
+    context.participante_baja_reputacion = User.objects.create_user(username='baja_rep', password='123')
+    context.coleccion.agregar_participante(context.participante_baja_reputacion)
+
+    context.participante_mayor_reputacion = User.objects.create_user(username='mayor_rep', password='123')
+    context.coleccion.agregar_participante(context.participante_mayor_reputacion)
+
+    ParticipacionColeccion.objects.filter(
+        coleccion=context.coleccion, usuario=context.participante_baja_reputacion
+    ).update(indice_reputacion=10)
+    ParticipacionColeccion.objects.filter(
+        coleccion=context.coleccion, usuario=context.participante_mayor_reputacion
+    ).update(indice_reputacion=90)
+
+@when('el creador de la colección es eliminado de la plataforma')
+def step_eliminar_creador_de_coleccion(context):
+    context.creador_a_eliminar.delete()
+
+@then('el sistema asigna automáticamente el rol de administrador al participante activo con mayor índice de reputación de colaborador')
+def step_asigna_admin_con_mayor_reputacion(context):
     context.coleccion.refresh_from_db()
-    context.test.assertEqual(context.coleccion.creador.username, context.participante_activo.username)
-    from src.materiales.models import ParticipacionColeccion
-    es_admin = context.coleccion.participaciones.filter(usuario=context.participante_activo, rol=ParticipacionColeccion.ADMINISTRADOR).exists()
+    context.test.assertEqual(context.coleccion.creador, context.participante_mayor_reputacion)
+    es_admin = context.coleccion.participaciones.filter(
+        usuario=context.participante_mayor_reputacion, rol=ParticipacionColeccion.ADMINISTRADOR
+    ).exists()
     context.test.assertTrue(es_admin)
+
+# ---------------------------------------------------------------------------
+# Escenario: Un participante retirado no hereda la administración aunque
+# tenga mayor reputación
+# ---------------------------------------------------------------------------
+
+@given('que una colección tiene un participante retirado con mayor reputación que los participantes activos')
+def step_coleccion_con_retirado_de_mayor_reputacion(context):
+    admin = User.objects.create_user(username='admin_elim_retirado', password='123')
+    context.coleccion = Coleccion.objects.create(nombre='Col Creador Elim Retirado', creador=admin)
+    context.creador_a_eliminar = admin
+
+    context.participante_mayor_reputacion = User.objects.create_user(username='activo_rep', password='123')
+    context.coleccion.agregar_participante(context.participante_mayor_reputacion)
+    ParticipacionColeccion.objects.filter(
+        coleccion=context.coleccion, usuario=context.participante_mayor_reputacion
+    ).update(indice_reputacion=20)
+
+    context.participante_retirado = User.objects.create_user(username='retirado_rep', password='123')
+    context.coleccion.agregar_participante(context.participante_retirado)
+    ParticipacionColeccion.objects.filter(
+        coleccion=context.coleccion, usuario=context.participante_retirado
+    ).update(indice_reputacion=100, estado=ParticipacionColeccion.RETIRADO)
+
+@then('el sistema asigna el rol de administrador al participante activo con mayor índice de reputación de colaborador')
+def step_asigna_admin_activo_con_mayor_reputacion(context):
+    context.coleccion.refresh_from_db()
+    context.test.assertEqual(context.coleccion.creador, context.participante_mayor_reputacion)
+
+@then('el participante retirado no es considerado para el rol de administrador')
+def step_retirado_no_es_considerado_para_admin(context):
+    es_admin = context.coleccion.participaciones.filter(
+        usuario=context.participante_retirado, rol=ParticipacionColeccion.ADMINISTRADOR
+    ).exists()
+    context.test.assertFalse(es_admin)

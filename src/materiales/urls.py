@@ -25,10 +25,10 @@ urlpatterns = [
     path('colecciones/<int:coleccion_id>/', views.detalle_coleccion, name='detalle_coleccion'),
     path('colecciones/<int:coleccion_id>/invitar/', views.invitar_a_coleccion, name='invitar_a_coleccion'),
     path('colecciones/<int:coleccion_id>/solicitar-acceso/', views.solicitar_acceso_coleccion, name='solicitar_acceso_coleccion'),
-    path('colecciones/<int:coleccion_id>/abandonar/', views.abandonar_coleccion, name='abandonar_coleccion'),
-    path('colecciones/<int:coleccion_id>/retirar/<int:participante_id>/', views.retirar_de_coleccion, name='retirar_de_coleccion'),
+    path('colecciones/<int:coleccion_id>/agregar_libro/', views.agregar_libro_coleccion, name='agregar_libro_coleccion'),
+    path('colecciones/<int:coleccion_id>/eliminar_libro/<int:libro_id>/', views.eliminar_libro_coleccion, name='eliminar_libro_coleccion'),
     path('colecciones/invitaciones/<int:invitacion_id>/procesar/<str:accion>/', views.procesar_invitacion, name='procesar_invitacion'),
     path('colecciones/solicitudes/<int:solicitud_id>/procesar/<str:accion>/', views.procesar_solicitud, name='procesar_solicitud'),
     path('api/buscar-usuarios/', views.api_buscar_usuarios, name='api_buscar_usuarios'),
-    path('colecciones/<int:coleccion_id>/ajustar-limite/', views.ajustar_limite, name='ajustar_limite'),
+    path('api/buscar-libros/', views.api_buscar_libros, name='api_buscar_libros'),
 ]

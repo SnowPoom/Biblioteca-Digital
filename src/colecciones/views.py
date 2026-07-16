@@ -27,3 +27,27 @@ def crear_coleccion(request):
     return render(request, 'colecciones/crear_coleccion.html', {
         'form': form
     })
+
+@login_required
+def editar_coleccion(request, coleccion_id):
+    coleccion = get_object_or_404(Coleccion, id=coleccion_id)
+    
+    es_admin = coleccion.participaciones.filter(usuario=request.user, rol=ParticipacionColeccion.ADMINISTRADOR).exists()
+    if not es_admin:
+        messages.error(request, "No tienes permisos para editar esta colección.")
+        return redirect('materiales:detalle_coleccion', coleccion_id=coleccion.id)
+
+    if request.method == 'POST':
+        form = ColeccionForm(request.POST, instance=coleccion)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Colección actualizada exitosamente.")
+            return redirect('materiales:detalle_coleccion', coleccion_id=coleccion.id)
+    else:
+        form = ColeccionForm(instance=coleccion)
+        
+    return render(request, 'colecciones/crear_coleccion.html', {
+        'form': form,
+        'es_edicion': True,
+        'coleccion': coleccion
+    })

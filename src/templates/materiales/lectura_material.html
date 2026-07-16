@@ -199,8 +199,8 @@
             background: var(--accent);
             color: var(--text);
             border: none;
-            padding: 14px 32px;
-            font-size: 25px;
+            padding: 10px 20px;
+            font-size: 16px;
             font-weight: 600;
             cursor: pointer;
         }
@@ -392,6 +392,39 @@
                     <button id="btn-next" class="print-btn">&rarr;</button>
                 </div>
                 <div class="download-wrapper"
+                    style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
+                    
+                    <div style="position: relative; width: 100%;">
+                        <button class="print-btn" type="button" style="width: 100%; margin: 0;" id="btn-descargar"
+                            onclick="document.getElementById('download-menu').classList.toggle('show')">
+                            Descargar &#9662;
+                        </button>
+                        <div id="download-menu" class="download-menu" style="width: 100%; text-align: center;">
+                            <a href="{% url 'materiales:confirmar_descarga' libro.id 'pdf' %}">📄 Descargar PDF</a>
+                            <a href="{% url 'materiales:confirmar_descarga' libro.id 'epub' %}">📕 Descargar EPUB</a>
+                        </div>
+                    </div>
+
+                    <div style="position: relative; width: 100%;">
+                        <button class="print-btn" type="button" style="width: 100%; margin: 0;" onclick="document.getElementById('add-collection-form-{{ libro.id }}').classList.toggle('show')">
+                            Añadir a colección &#9662;
+                        </button>
+                        <div id="add-collection-form-{{ libro.id }}" class="download-menu" style="width: 100%; padding: 10px; box-sizing: border-box; background: white; text-align: left;">
+                            {% if colecciones_usuario %}
+                            <form method="post" id="form-col-{{ libro.id }}">
+                                {% csrf_token %}
+                                <input type="hidden" name="libro_id" value="{{ libro.id }}">
+                                <select onchange="document.getElementById('form-col-{{ libro.id }}').action='/colecciones/' + this.value + '/agregar_libro/'" style="padding: 5px; width: 100%; border: 1px solid var(--border);" required>
+                                    <option value="">Selecciona colección</option>
+                                    {% for col in colecciones_usuario %}
+                                    <option value="{{ col.id }}">{{ col.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" style="margin-top:5px; width: 100%; padding: 5px; background: var(--accent); border: 1px solid var(--border); font-weight: 600; cursor: pointer;">Agregar</button>
+                            </form>
+                            {% else %}
+                            <p style="font-size: 14px; margin: 0;">No perteneces a ninguna colección.</p>
+                            {% endif %}
                     style="position: relative; margin-top: 20px; display: flex; justify-content: flex-end;">
                     <button class="print-btn" type="button" id="btn-descargar"
                         onclick="document.getElementById('download-menu').classList.toggle('show')">

@@ -538,6 +538,20 @@ class Anotacion(models.Model):
         ).first()
 
 
+class LibroColeccion(models.Model):
+    coleccion = models.ForeignKey('Coleccion', on_delete=models.CASCADE)
+    libro = models.ForeignKey('Libro', on_delete=models.CASCADE)
+    agregado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+    fecha_agregado = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('coleccion', 'libro')
+
 class Coleccion(models.Model):
     PUBLICA = 'publica'
     PRIVADA = 'privada'
@@ -575,6 +589,7 @@ class Coleccion(models.Model):
         Libro,
         blank=True,
         related_name='colecciones_pertenecientes',
+        through='LibroColeccion'
     )
     creado = models.DateTimeField(auto_now_add=True)
     actualizado = models.DateTimeField(auto_now=True)
@@ -602,21 +617,81 @@ class Coleccion(models.Model):
         self.save()
         return True, "Colección publicada"
 
+    def agregar_libro(self, usuario, libro):
+        """Agrega un libro a la colección respetando el límite máximo.
+        
+        Regla de negocio aplicada:
+        - RN-COL-08: Todos los participantes pueden añadir libros a la colección,
+          sujeto al límite máximo configurado de libros por colección.
+        """
+        if self.libros.filter(id=libro.id).exists():
+            raise ValidationError("El libro ya se encuentra en la colección.")
+        if self.libros.count() >= self.limite_libros:
+            raise ValidationError(f"La colección ha alcanzado su límite máximo de {self.limite_libros} libros.")
+        LibroColeccion.objects.create(
+            coleccion=self,
+            libro=libro,
+            agregado_por=usuario
+        )
+
+    def eliminar_libro(self, usuario, libro):
+        """Elimina un libro de la colección sin borrarlo de la plataforma.
+        
+        Reglas de negocio aplicadas:
+        - RN-COL-09: Solo el administrador o el participante que añadió un libro puede eliminarlo.
+        - RN-PUB-16: Eliminar un libro de una colección no lo elimina de la biblioteca general.
+        """
+        if not self.participaciones.filter(usuario=usuario).exists():
+            raise PermissionError("Solo los participantes de la colección pueden eliminar libros.")
+            
+        self.libros.remove(libro)
+
     def es_administrador(self, usuario):
-        return self.participaciones.filter(usuario=usuario, rol=ParticipacionColeccion.ADMINISTRADOR).exists()
+        return self.participantes_activos().filter(usuario=usuario, rol=ParticipacionColeccion.ADMINISTRADOR).exists()
+
+    def participantes_activos(self):
+        return self.participaciones.filter(estado=ParticipacionColeccion.ACTIVO)
+
+    def reasignar_administrador(self, candidato_a_excluir=None):
+        """Promueve al participante activo con mayor indice de reputacion de
+        colaborador como nuevo administrador (creador) de la coleccion.
+
+        Regla de negocio aplicada:
+        - RN-COL-03B: si la coleccion se queda sin creador, la administracion
+          pasa al participante activo con mayor indice de reputacion.
+        """
+        candidatos = self.participantes_activos()
+        if candidato_a_excluir is not None:
+            candidatos = candidatos.exclude(usuario=candidato_a_excluir)
+        nuevo_admin = candidatos.order_by('-indice_reputacion', 'id').first()
+
+        if nuevo_admin is None:
+            self.creador = None
+            self.save()
+            return None
+
+        nuevo_admin.rol = ParticipacionColeccion.ADMINISTRADOR
+        nuevo_admin.save()
+        self.creador = nuevo_admin.usuario
+        self.save()
+        return nuevo_admin.usuario
 
     def agregar_participante(self, usuario, rol='participante'):
-        ParticipacionColeccion.objects.get_or_create(
+        participacion, creada = ParticipacionColeccion.objects.get_or_create(
             coleccion=self,
             usuario=usuario,
-            defaults={'rol': rol}
+            defaults={'rol': rol, 'estado': ParticipacionColeccion.ACTIVO}
         )
+        if not creada and participacion.estado == ParticipacionColeccion.RETIRADO:
+            participacion.estado = ParticipacionColeccion.ACTIVO
+            participacion.rol = rol
+            participacion.save()
 
     def invitar_usuario(self, admin, usuario_invitado):
         if not self.es_administrador(admin):
             raise PermissionError("Solo el administrador puede invitar usuarios.")
-        
-        if self.participaciones.count() >= 15:
+
+        if self.participantes_activos().count() >= 15:
             return False, "Se ha alcanzado el límite máximo de 15 participantes."
             
         invitacion = InvitacionColeccion.objects.filter(coleccion=self, usuario_invitado=usuario_invitado).first()
@@ -643,15 +718,16 @@ class Coleccion(models.Model):
     def solicitar_acceso(self, usuario_solicitante):
         if self.visibilidad != self.PUBLICA:
             return False, "No se puede solicitar acceso a una colección privada."
-            
-        if self.participaciones.count() >= 15:
+
+        if self.participantes_activos().count() >= 15:
             return False, "Se ha alcanzado el límite máximo de 15 participantes."
             
-        solicitud = SolicitudAccesoColeccion.objects.filter(coleccion=self, usuario_solicitante=usuario_solicitante).first()
-        if solicitud:
-            if solicitud.estado != SolicitudAccesoColeccion.PENDIENTE:
-                return False, "Ya existe una solicitud procesada para este usuario."
-            return True, "La solicitud ya había sido enviada."
+        if self.participaciones.filter(usuario=usuario_solicitante).exists():
+            return False, "El usuario ya es miembro de la colección."
+
+        solicitud_pendiente = SolicitudAccesoColeccion.objects.filter(coleccion=self, usuario_solicitante=usuario_solicitante, estado=SolicitudAccesoColeccion.PENDIENTE).first()
+        if solicitud_pendiente:
+            return False, "Ya tienes una solicitud pendiente para esta colección."
             
         solicitud = SolicitudAccesoColeccion.objects.create(
             coleccion=self,
@@ -670,14 +746,15 @@ class Coleccion(models.Model):
         return True, "Solicitud enviada."
         
     def retirar_participante(self, admin_usuario, participante_usuario):
-        if not self.participaciones.filter(usuario=admin_usuario, rol=ParticipacionColeccion.ADMINISTRADOR).exists():
+        if not self.es_administrador(admin_usuario):
             raise PermissionError("Solo un administrador puede retirar participantes.")
         if self.creador == participante_usuario:
             raise PermissionError("No se puede retirar al creador de la colección.")
-            
-        participacion = self.participaciones.filter(usuario=participante_usuario).first()
+
+        participacion = self.participantes_activos().filter(usuario=participante_usuario).first()
         if participacion:
-            participacion.delete()
+            participacion.estado = ParticipacionColeccion.RETIRADO
+            participacion.save()
             from src.feed.models import Notificacion
             Notificacion.objects.create(
                 usuario=participante_usuario,
@@ -694,16 +771,7 @@ class Coleccion(models.Model):
             return False
             
         if self.creador == usuario:
-            otros_miembros = self.participaciones.exclude(usuario=usuario)
-            if otros_miembros.exists():
-                nuevo_admin = otros_miembros.first()
-                nuevo_admin.rol = ParticipacionColeccion.ADMINISTRADOR
-                nuevo_admin.save()
-                self.creador = nuevo_admin.usuario
-                self.save()
-            else:
-                self.creador = None
-                self.save()
+            self.reasignar_administrador(candidato_a_excluir=usuario)
                 
         participacion.delete()
         
@@ -727,6 +795,14 @@ class ParticipacionColeccion(models.Model):
         (PARTICIPANTE, 'Participante'),
     ]
 
+    ACTIVO = 'activo'
+    RETIRADO = 'retirado'
+
+    OPCIONES_ESTADO = [
+        (ACTIVO, 'Activo'),
+        (RETIRADO, 'Retirado'),
+    ]
+
     coleccion = models.ForeignKey(
         Coleccion,
         on_delete=models.CASCADE,
@@ -742,6 +818,17 @@ class ParticipacionColeccion(models.Model):
         choices=OPCIONES_ROL,
         default=PARTICIPANTE,
     )
+    estado = models.CharField(
+        max_length=20,
+        choices=OPCIONES_ESTADO,
+        default=ACTIVO,
+    )
+    # RN-COL-04: indice de reputacion de colaborador, calculado en funcion de
+    # las contribuciones activas (libros anadidos, ediciones, revisiones).
+    # El calculo aun no esta implementado; el campo queda listo con un valor
+    # base para que RN-COL-03B (sucesion de administrador) ya opere sobre el
+    # en cuanto ese calculo se incorpore.
+    indice_reputacion = models.PositiveIntegerField(default=0)
     fecha_union = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -778,9 +865,9 @@ class InvitacionColeccion(models.Model):
                 return False, "La invitación ya no está pendiente."
                 
             coleccion = Coleccion.objects.select_for_update().get(id=self.coleccion.id)
-            if coleccion.participaciones.count() >= 15:
+            if coleccion.participantes_activos().count() >= 15:
                 return False, "La colección ya ha alcanzado el límite máximo de participantes."
-                
+
             invitacion.estado = self.ACEPTADA
             invitacion.save()
             coleccion.agregar_participante(usuario, rol=ParticipacionColeccion.PARTICIPANTE)
@@ -850,16 +937,16 @@ class SolicitudAccesoColeccion(models.Model):
 
     def aprobar(self, admin_usuario):
         from django.db import transaction
-        if not self.coleccion.participaciones.filter(usuario=admin_usuario, rol=ParticipacionColeccion.ADMINISTRADOR).exists():
+        if not self.coleccion.es_administrador(admin_usuario):
             raise PermissionError("Solo un administrador puede aprobar solicitudes.")
-            
+
         with transaction.atomic():
             solicitud = SolicitudAccesoColeccion.objects.select_for_update().get(id=self.id)
             if solicitud.estado != self.PENDIENTE:
                 return False, "La solicitud ya no está pendiente."
-                
+
             coleccion = Coleccion.objects.select_for_update().get(id=self.coleccion.id)
-            if coleccion.participaciones.count() >= 15:
+            if coleccion.participantes_activos().count() >= 15:
                 return False, "La colección ya ha alcanzado el límite de participantes."
                 
             solicitud.estado = self.APROBADA
@@ -879,7 +966,7 @@ class SolicitudAccesoColeccion(models.Model):
 
     def rechazar(self, admin_usuario):
         from django.db import transaction
-        if not self.coleccion.participaciones.filter(usuario=admin_usuario, rol=ParticipacionColeccion.ADMINISTRADOR).exists():
+        if not self.coleccion.es_administrador(admin_usuario):
             raise PermissionError("Solo un administrador puede rechazar solicitudes.")
             
         with transaction.atomic():
@@ -909,20 +996,22 @@ class SolicitudAccesoColeccion(models.Model):
                 n.extra_data['estado'] = self.estado
                 n.save()
 
-from django.db.models.signals import pre_delete
+from django.db.models.signals import post_delete
 from django.dispatch import receiver
 
-@receiver(pre_delete, sender=ParticipacionColeccion)
-def reasingar_creador_al_eliminar_participacion(sender, instance, **kwargs):
-    coleccion = instance.coleccion
-    if coleccion.creador == instance.usuario:
-        otros = coleccion.participaciones.exclude(usuario=instance.usuario)
-        if otros.exists():
-            nuevo_admin = otros.first()
-            nuevo_admin.rol = ParticipacionColeccion.ADMINISTRADOR
-            nuevo_admin.save()
-            coleccion.creador = nuevo_admin.usuario
-            coleccion.save()
-        else:
-            coleccion.creador = None
-            coleccion.save()
+@receiver(post_delete, sender=ParticipacionColeccion)
+def reasignar_creador_al_eliminar_participacion(sender, instance, **kwargs):
+    """RN-COL-03B: si el creador de una coleccion es eliminado de la
+    plataforma, el rol de administrador pasa al participante activo con
+    mayor indice de reputacion de colaborador.
+
+    Se engancha en post_delete (no en pre_delete): Django aplica el
+    SET_NULL de Coleccion.creador dentro de la misma operacion de borrado,
+    despues de que se envian las senales pre_delete pero antes de las
+    post_delete. Reasignar en pre_delete quedaria sobrescrito por ese
+    SET_NULL; en post_delete la reasignacion es la ultima escritura.
+    """
+    coleccion = Coleccion.objects.filter(pk=instance.coleccion_id).first()
+    if coleccion is None or coleccion.creador_id is not None:
+        return
+    coleccion.reasignar_administrador()
