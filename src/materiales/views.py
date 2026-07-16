@@ -7,17 +7,21 @@ from .models import Libro
 
 
 def inicio(request):
+
     if request.user.is_authenticated:
         from src.recomendaciones.motor import MotorRecomendaciones
         motor = MotorRecomendaciones(request.user)
         recomendaciones = motor.obtener_recomendaciones()
     else:
         recomendaciones = []
-
+    from src.materiales.models import Coleccion
+    colecciones = Coleccion.objects.filter(visibilidad=Coleccion.PUBLICA).order_by('-creado')
     libros = Libro.objects.filter(estado=Libro.PUBLICADO)
+
     return render(request, 'inicio/inicio.html', {
         'libros': libros,
         'recomendaciones': recomendaciones,
+        'colecciones': colecciones,
     })
 
 
