@@ -106,6 +106,9 @@ class Libro(models.Model):
             self.estado = self.PUBLICADO
             self.save()
 
+            # RN-EXP-03: Incrementar la cuota del autor por cada libro publicado
+            self.autor.perfil.incrementar_cuota_por_publicacion()
+
             # Crear o actualizar la publicación para el feed
             from src.feed.models import Publicacion, Categoria as FeedCategoria
             pub, created = Publicacion.objects.get_or_create(
@@ -207,6 +210,192 @@ class Libro(models.Model):
         # elimina para que deje de mostrarse en feeds y republicaciones ajenas.
         from src.feed.models import Publicacion
         Publicacion.objects.filter(pk=self.pk).delete()
+
+    def registrar_descarga(self):
+        """RN-EXP-05: Incrementa el contador de descargas como metrica de la publicacion."""
+        self.descargas += 1
+        self.save()
+
+    def generar_contenido_descarga(self, formato='pdf'):
+        """Genera un archivo en formato PDF o EPUB con el contenido del libro
+        y metadatos de autoria original (RN-EXP-06)."""
+        if formato == 'epub':
+            return self._generar_epub()
+        return self._generar_pdf()
+
+    def _extraer_texto_plano(self):
+        """Extrae texto plano del contenido HTML del libro."""
+        import re
+        texto = self.contenido_texto or ''
+        # Reemplazar saltos de parrafo/divs con saltos de linea
+        texto = re.sub(r'<br\s*/?>', '\n', texto)
+        texto = re.sub(r'</p>', '\n', texto)
+        texto = re.sub(r'</div>', '\n', texto)
+        texto = re.sub(r'<[^>]+>', '', texto)
+        # Decodificar entidades HTML basicas
+        texto = texto.replace('&amp;', '&')
+        texto = texto.replace('&lt;', '<')
+        texto = texto.replace('&gt;', '>')
+        texto = texto.replace('&nbsp;', ' ')
+        texto = texto.replace('&quot;', '"')
+        return texto.strip()
+
+    def _generar_pdf(self):
+        """Genera un PDF valido con el contenido real del libro y metadatos obligatorios."""
+        nombre_autor = self.autor.get_full_name() or self.autor.username
+        fuente = "Biblioteca Digital"
+        texto_contenido = self._extraer_texto_plano()
+
+        linea_meta = f"Autor original: {nombre_autor}  |  Fuente: {fuente}"
+        lineas = [linea_meta, f"Titulo: {self.titulo}", ""]
+        for parrafo in texto_contenido.split('\n'):
+            parrafo = parrafo.strip()
+            if not parrafo:
+                lineas.append("")
+                continue
+            while len(parrafo) > 80:
+                corte = parrafo.rfind(' ', 0, 80)
+                if corte == -1:
+                    corte = 80
+                lineas.append(parrafo[:corte])
+                parrafo = parrafo[corte:].strip()
+            if parrafo:
+                lineas.append(parrafo)
+
+        y_inicio = 740
+        interlineado = 14
+        comandos = ["/F1 11 Tf"]
+        y = y_inicio
+        for linea in lineas:
+            linea_safe = linea.replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+            comandos.append(f"BT 60 {y} Td ({linea_safe}) Tj ET")
+            y -= interlineado
+            if y < 50:
+                break
+
+        stream = "\n".join(comandos)
+        largo_stream = len(stream)
+
+        objetos = []
+        objetos.append("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj")
+        objetos.append("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj")
+        objetos.append(
+            "3 0 obj\n<< /Type /Page /Parent 2 0 R "
+            "/MediaBox [0 0 612 792] "
+            "/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj"
+        )
+        objetos.append(
+            f"4 0 obj\n<< /Length {largo_stream} >>\n"
+            f"stream\n{stream}\nendstream\nendobj"
+        )
+        objetos.append(
+            "5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj"
+        )
+        objetos.append(
+            f"6 0 obj\n<< /Author ({nombre_autor}) "
+            f"/Title ({self.titulo}) "
+            f"/Producer ({fuente}) >>\nendobj"
+        )
+
+        cuerpo = "\n".join(objetos)
+        encabezado = "%PDF-1.4\n"
+        offset = len(encabezado)
+        offsets = []
+        for obj in objetos:
+            offsets.append(offset)
+            offset += len(obj) + 1
+
+        xref_inicio = offset
+        xref = "xref\n"
+        xref += f"0 {len(objetos) + 1}\n"
+        xref += "0000000000 65535 f \n"
+        for pos in offsets:
+            xref += f"{pos:010d} 00000 n \n"
+
+        trailer = (
+            f"trailer\n<< /Size {len(objetos) + 1} /Root 1 0 R /Info 6 0 R >>\n"
+            f"startxref\n{xref_inicio}\n%%EOF"
+        )
+
+        return (encabezado + cuerpo + "\n" + xref + trailer).encode('latin-1')
+
+    def _generar_epub(self):
+        """Genera un EPUB valido con el contenido real del libro y metadatos obligatorios."""
+        import io
+        import zipfile
+
+        nombre_autor = self.autor.get_full_name() or self.autor.username
+        fuente = "Biblioteca Digital"
+        contenido_html = self.contenido_texto or '<p>Sin contenido.</p>'
+        mimetype = 'application/epub+zip'
+        container_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">\n'
+            '  <rootfiles>\n'
+            '    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>\n'
+            '  </rootfiles>\n'
+            '</container>'
+        )
+        content_opf = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="uid">\n'
+            '  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">\n'
+            f'    <dc:title>{self.titulo}</dc:title>\n'
+            f'    <dc:creator>{nombre_autor}</dc:creator>\n'
+            f'    <dc:publisher>{fuente}</dc:publisher>\n'
+            f'    <dc:source>{fuente}</dc:source>\n'
+            '    <dc:language>es</dc:language>\n'
+            f'    <dc:identifier id="uid">libro-{self.pk}</dc:identifier>\n'
+            '    <meta property="dcterms:modified">2026-01-01T00:00:00Z</meta>\n'
+            '  </metadata>\n'
+            '  <manifest>\n'
+            '    <item id="chapter1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>\n'
+            '    <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>\n'
+            '  </manifest>\n'
+            '  <spine>\n'
+            '    <itemref idref="chapter1"/>\n'
+            '  </spine>\n'
+            '</package>'
+        )
+        nav_xhtml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<!DOCTYPE html>\n'
+            '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">\n'
+            '<head><title>Navegacion</title></head>\n'
+            '<body>\n'
+            '<nav epub:type="toc">\n'
+            '  <ol><li><a href="chapter1.xhtml">Contenido</a></li></ol>\n'
+            '</nav>\n'
+            '</body></html>'
+        )
+        chapter_xhtml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<!DOCTYPE html>\n'
+            '<html xmlns="http://www.w3.org/1999/xhtml">\n'
+            '<head>\n'
+            f'  <title>{self.titulo}</title>\n'
+            '  <style>body { font-family: serif; margin: 2em; } '
+            '.metadata { color: #555; border-bottom: 1px solid #ccc; padding-bottom: 1em; margin-bottom: 2em; }</style>\n'
+            '</head>\n'
+            '<body>\n'
+            f'  <div class="metadata">\n'
+            f'    <p><strong>Autor original:</strong> {nombre_autor}</p>\n'
+            f'    <p><strong>Fuente:</strong> {fuente}</p>\n'
+            f'  </div>\n'
+            f'  <h1>{self.titulo}</h1>\n'
+            f'  {contenido_html}\n'
+            '</body></html>'
+        )
+
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as epub:
+            epub.writestr('mimetype', mimetype, compress_type=zipfile.ZIP_STORED)
+            epub.writestr('META-INF/container.xml', container_xml)
+            epub.writestr('OEBPS/content.opf', content_opf)
+            epub.writestr('OEBPS/nav.xhtml', nav_xhtml)
+            epub.writestr('OEBPS/chapter1.xhtml', chapter_xhtml)
+
+        return buffer.getvalue()
 
     def metricas_para(self, usuario):
         """Devuelve las métricas acumuladas del libro si el usuario es el autor.

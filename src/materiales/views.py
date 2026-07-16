@@ -292,6 +292,37 @@ def republicar_libro(request, pk):
 
 
 @login_required(login_url='/auth/')
+def confirmar_descarga(request, libro_id, formato='pdf'):
+    libro = get_object_or_404(Libro, pk=libro_id)
+    perfil = request.user.perfil
+
+    formato = formato.lower()
+    if formato not in ('pdf', 'epub'):
+        formato = 'pdf'
+
+    # RN-EXP-02: Renovar la cuota si han pasado 30 dias antes de validarla
+    perfil.renovar_cuota_si_corresponde()
+
+    cuota_actual = perfil.cuota_descarga
+    paginas_libro = libro.numero_paginas
+    cuota_restante = cuota_actual - paginas_libro
+    puede_descargar = perfil.puede_descargar(paginas_libro)
+
+    # RN-EXP-02: Calcular la fecha de proxima renovacion para informar al usuario
+    fecha_renovacion = perfil.fecha_proxima_renovacion()
+
+    return render(request, 'materiales/confirmar_descarga.html', {
+        'libro': libro,
+        'formato': formato,
+        'cuota_actual': cuota_actual,
+        'paginas_libro': paginas_libro,
+        'cuota_restante': cuota_restante,
+        'puede_descargar': puede_descargar,
+        'fecha_renovacion': fecha_renovacion,
+    })
+
+
+@login_required(login_url='/auth/')
 def descargar_libro(request, libro_id, formato='pdf'):
     libro = get_object_or_404(Libro, pk=libro_id)
     perfil = request.user.perfil
@@ -302,6 +333,9 @@ def descargar_libro(request, libro_id, formato='pdf'):
 
     # RN-EXP-05: La descarga se registra como metrica sin importar si supera la cuota
     libro.registrar_descarga()
+
+    # RN-EXP-02: Renovar la cuota si han pasado 30 dias antes de intentar usarla
+    perfil.renovar_cuota_si_corresponde()
 
     # RN-EXP-01: Solo se permite la descarga si las paginas no exceden la cuota disponible
     if not perfil.puede_descargar(libro.numero_paginas):
