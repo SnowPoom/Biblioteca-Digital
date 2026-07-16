@@ -7,12 +7,21 @@ from .models import Libro
 
 
 def inicio(request):
-    libros = Libro.objects.filter(estado=Libro.PUBLICADO)
+
+    if request.user.is_authenticated:
+        from src.recomendaciones.motor import MotorRecomendaciones
+        motor = MotorRecomendaciones(request.user)
+        recomendaciones = motor.obtener_recomendaciones()
+    else:
+        recomendaciones = []
     from src.materiales.models import Coleccion
     colecciones = Coleccion.objects.filter(visibilidad=Coleccion.PUBLICA).order_by('-creado')
+    libros = Libro.objects.filter(estado=Libro.PUBLICADO)
+
     return render(request, 'inicio/inicio.html', {
         'libros': libros,
-        'colecciones': colecciones
+        'recomendaciones': recomendaciones,
+        'colecciones': colecciones,
     })
 
 
@@ -47,12 +56,29 @@ def lectura_material(request, libro_id):
     fragmentos_resaltados = []
     if request.user.is_authenticated:
         from .models import Anotacion
+        from src.recomendaciones.models import HistorialLectura
+        from src.feed.models import Publicacion
+        from django.utils import timezone
+
         anotaciones = Anotacion.objects.filter(
             usuario=request.user,
             libro=libro,
         )
         # RN-ANO-05: fragmentos que deben mostrarse destacados durante la lectura
         fragmentos_resaltados = libro.fragmentos_anotados_por(request.user)
+
+        # Registrar la lectura para alimentar el motor de recomendaciones (RN-REC-01, RN-REC-03)
+        pub = Publicacion.objects.filter(pk=libro.pk).first()
+        if pub:
+            historial, created = HistorialLectura.objects.get_or_create(
+                usuario=request.user,
+                publicacion=pub,
+            )
+            if not created:
+                # Si ya lo habia leido, actualizamos la fecha para dar mas peso (RN-REC-08)
+                historial.fecha = timezone.now()
+                historial.save(update_fields=['fecha'])
+
     return render(request, 'materiales/lectura_material.html', {
         'libro': libro,
         'anotaciones': anotaciones,

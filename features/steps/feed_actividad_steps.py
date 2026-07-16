@@ -483,13 +483,89 @@ def step_dado_usuario_accede_feed(context):
 
 @given('que el usuario no sigue a nadie o sus seguidos no tienen publicaciones recientes')
 def step_no_sigue_a_nadie_o_sin_publicaciones(context):
-    # El usuario_principal creado en step_usuario_autenticado no sigue a nadie
-    pass
+    """
+    Asegura que el usuario no sigue a nadie y crea contenido popular
+    en la plataforma para verificar que se muestran recomendaciones
+    generales en la redireccion. RN-FED-07, US-27.
+    """
+    from src.materiales.models import Libro, Categoria
+    from src.feed.models import Publicacion, Categoria as FeedCategoria
+
+    # El usuario_principal creado en el antecedente no sigue a nadie
+    Seguimiento.objects.filter(seguidor=context.usuario_principal).delete()
+
+    otro_autor = User.objects.create_user(
+        username='autor_contenido_feed_vacio',
+        email='autor_feed_vacio@ejemplo.com',
+        password='password123',
+        first_name='Autor Feed Vacio',
+    )
+    PerfilUsuario.objects.create(
+        usuario=otro_autor,
+        rol=PerfilUsuario.ESTUDIANTE,
+    )
+
+    cat_general = Categoria.objects.create(nombre='General Feed')
+
+    # Crear libro popular para que aparezca en recomendaciones de arranque en frio
+    libro_popular = Libro.objects.create(
+        titulo='Libro popular para feed vacio',
+        autor=otro_autor,
+        estado=Libro.PUBLICADO,
+        contenido_texto='Contenido de prueba.',
+        numero_paginas=10,
+        visualizaciones=800,
+        descargas=300,
+    )
+    pub = Publicacion.objects.create(
+        pk=libro_popular.pk,
+        autor=otro_autor,
+        titulo=libro_popular.titulo,
+        tipo=Publicacion.LIBRO,
+    )
+    feed_cat, _ = FeedCategoria.objects.get_or_create(nombre=cat_general.nombre)
+    pub.categorias.add(feed_cat)
+
+    context.libro_popular_feed_vacio = libro_popular
+
 
 @then('el sistema muestra el feed de recomendaciones en su lugar')
 def step_muestra_feed_recomendaciones(context):
-    # El sistema debe redirigir a la página de inicio (materiales:inicio)
+    """
+    Verifica que cuando el feed de seguimiento esta vacio, el sistema
+    redirige a la pagina de inicio donde se muestra el contenido de
+    mayor consumo general de la plataforma (recomendaciones de
+    arranque en frio). RN-FED-07, RN-REC-05.
+    """
+    # El feed vacio debe redirigir a la pagina de inicio
+    context.test.assertEqual(
+        context.response.status_code,
+        302,
+        'El feed vacio no genero una redireccion.',
+    )
     context.test.assertRedirects(context.response, reverse('materiales:inicio'))
+
+    # Seguir la redireccion para verificar que la pagina de inicio
+    # contiene recomendaciones basadas en el consumo general
+    response_inicio = context.test.client.get(reverse('materiales:inicio'))
+    context.test.assertEqual(
+        response_inicio.status_code,
+        200,
+        'La pagina de inicio no respondio con HTTP 200.',
+    )
+
+    recomendaciones = list(response_inicio.context.get('recomendaciones', []))
+    ids_recomendados = [pub.pk for pub in recomendaciones]
+    context.test.assertIn(
+        context.libro_popular_feed_vacio.pk,
+        ids_recomendados,
+        'El libro popular predeterminado no se encuentra en las recomendaciones del feed vacio.',
+    )
+    context.test.assertGreater(
+        len(recomendaciones),
+        0,
+        'La pagina de inicio no muestra recomendaciones generales cuando el feed de seguimiento esta vacio.',
+    )
 
 
 # ---------------------------------------------------------------------------

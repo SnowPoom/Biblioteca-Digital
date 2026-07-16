@@ -26,6 +26,7 @@ urlpatterns = [
     path('feed/', include('src.feed.urls', namespace='feed')),
     path('busqueda/', include('src.busqueda.urls', namespace='busqueda')),
     path('colecciones/', include('src.colecciones.urls', namespace='colecciones')),
+    path('recomendaciones/', include('src.recomendaciones.urls', namespace='recomendaciones')),
 ]
 
 if settings.DEBUG:
