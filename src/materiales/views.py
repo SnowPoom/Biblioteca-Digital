@@ -384,7 +384,7 @@ User = get_user_model()
 @login_required
 def detalle_coleccion(request, coleccion_id):
     coleccion = get_object_or_404(Coleccion, id=coleccion_id)
-    participaciones = coleccion.participaciones.select_related('usuario').all()
+    participaciones = coleccion.participantes_activos().select_related('usuario')
     es_miembro = participaciones.filter(usuario=request.user).exists()
     es_admin = participaciones.filter(usuario=request.user, rol=ParticipacionColeccion.ADMINISTRADOR).exists()
     
@@ -547,8 +547,7 @@ def api_buscar_usuarios(request):
 def ajustar_limite(request, coleccion_id):
     if request.method == 'POST':
         coleccion = get_object_or_404(Coleccion, id=coleccion_id)
-        from src.materiales.models import ParticipacionColeccion
-        if not coleccion.participaciones.filter(usuario=request.user, rol=ParticipacionColeccion.ADMINISTRADOR).exists():
+        if not coleccion.es_administrador(request.user):
             messages.error(request, "Solo los administradores pueden ajustar el límite.")
             return redirect('materiales:detalle_coleccion', coleccion_id=coleccion_id)
         
