@@ -334,6 +334,7 @@
                     <div class="card-content">
                         <h3>{{ participacion.usuario.get_full_name|default:participacion.usuario.username }}</h3>
                         <p>@{{ participacion.usuario.username }} {% if participacion.usuario == coleccion.creador %}(Administrador){% endif %}</p>
+                        <p>Reputación de colaborador: {{ participacion.indice_reputacion }}</p>
                     </div>
                     {% if es_admin and participacion.usuario != coleccion.creador %}
                     <form action="{% url 'materiales:retirar_de_coleccion' coleccion.pk participacion.usuario.id %}" method="post">

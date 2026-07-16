@@ -591,6 +591,30 @@ class Coleccion(models.Model):
     def participantes_activos(self):
         return self.participaciones.filter(estado=ParticipacionColeccion.ACTIVO)
 
+    def reasignar_administrador(self, candidato_a_excluir=None):
+        """Promueve al participante activo con mayor indice de reputacion de
+        colaborador como nuevo administrador (creador) de la coleccion.
+
+        Regla de negocio aplicada:
+        - RN-COL-03B: si la coleccion se queda sin creador, la administracion
+          pasa al participante activo con mayor indice de reputacion.
+        """
+        candidatos = self.participantes_activos()
+        if candidato_a_excluir is not None:
+            candidatos = candidatos.exclude(usuario=candidato_a_excluir)
+        nuevo_admin = candidatos.order_by('-indice_reputacion', 'id').first()
+
+        if nuevo_admin is None:
+            self.creador = None
+            self.save()
+            return None
+
+        nuevo_admin.rol = ParticipacionColeccion.ADMINISTRADOR
+        nuevo_admin.save()
+        self.creador = nuevo_admin.usuario
+        self.save()
+        return nuevo_admin.usuario
+
     def agregar_participante(self, usuario, rol='participante'):
         participacion, creada = ParticipacionColeccion.objects.get_or_create(
             coleccion=self,
@@ -685,16 +709,7 @@ class Coleccion(models.Model):
             return False
             
         if self.creador == usuario:
-            otros_miembros = self.participantes_activos().exclude(usuario=usuario)
-            if otros_miembros.exists():
-                nuevo_admin = otros_miembros.first()
-                nuevo_admin.rol = ParticipacionColeccion.ADMINISTRADOR
-                nuevo_admin.save()
-                self.creador = nuevo_admin.usuario
-                self.save()
-            else:
-                self.creador = None
-                self.save()
+            self.reasignar_administrador(candidato_a_excluir=usuario)
                 
         participacion.delete()
         
@@ -746,6 +761,12 @@ class ParticipacionColeccion(models.Model):
         choices=OPCIONES_ESTADO,
         default=ACTIVO,
     )
+    # RN-COL-04: indice de reputacion de colaborador, calculado en funcion de
+    # las contribuciones activas (libros anadidos, ediciones, revisiones).
+    # El calculo aun no esta implementado; el campo queda listo con un valor
+    # base para que RN-COL-03B (sucesion de administrador) ya opere sobre el
+    # en cuanto ese calculo se incorpore.
+    indice_reputacion = models.PositiveIntegerField(default=0)
     fecha_union = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -913,20 +934,22 @@ class SolicitudAccesoColeccion(models.Model):
                 n.extra_data['estado'] = self.estado
                 n.save()
 
-from django.db.models.signals import pre_delete
+from django.db.models.signals import post_delete
 from django.dispatch import receiver
 
-@receiver(pre_delete, sender=ParticipacionColeccion)
-def reasingar_creador_al_eliminar_participacion(sender, instance, **kwargs):
-    coleccion = instance.coleccion
-    if coleccion.creador == instance.usuario:
-        otros = coleccion.participantes_activos().exclude(usuario=instance.usuario)
-        if otros.exists():
-            nuevo_admin = otros.first()
-            nuevo_admin.rol = ParticipacionColeccion.ADMINISTRADOR
-            nuevo_admin.save()
-            coleccion.creador = nuevo_admin.usuario
-            coleccion.save()
-        else:
-            coleccion.creador = None
-            coleccion.save()
+@receiver(post_delete, sender=ParticipacionColeccion)
+def reasignar_creador_al_eliminar_participacion(sender, instance, **kwargs):
+    """RN-COL-03B: si el creador de una coleccion es eliminado de la
+    plataforma, el rol de administrador pasa al participante activo con
+    mayor indice de reputacion de colaborador.
+
+    Se engancha en post_delete (no en pre_delete): Django aplica el
+    SET_NULL de Coleccion.creador dentro de la misma operacion de borrado,
+    despues de que se envian las senales pre_delete pero antes de las
+    post_delete. Reasignar en pre_delete quedaria sobrescrito por ese
+    SET_NULL; en post_delete la reasignacion es la ultima escritura.
+    """
+    coleccion = Coleccion.objects.filter(pk=instance.coleccion_id).first()
+    if coleccion is None or coleccion.creador_id is not None:
+        return
+    coleccion.reasignar_administrador()
