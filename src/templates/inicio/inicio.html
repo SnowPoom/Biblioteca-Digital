@@ -263,7 +263,8 @@
             <a href="{% url 'busqueda:busqueda' %}">Buscar</a>
             <a class="activo" href="{% url 'materiales:inicio' %}">Para ti</a>
             <a href="{% url 'feed:feed' %}">Siguiendo</a>
-            <a href="{% url 'materiales:creacion_material' %}">Crear Material</a>
+            <a href="{% url 'materiales:creacion_material' %}">Crear material</a>
+            <a href="{% url 'colecciones:crear_coleccion' %}">Crear colección</a>
         </nav>
     </aside>
 
@@ -313,23 +314,23 @@
                         </section>
 
                         <section id="collections-view" class="view-panel hidden">
+                            {% for col in colecciones %}
                             <div class="collection-card">
-                                <h3>Título de la colección</h3>
+                                <h3>{{ col.nombre }}</h3>
+                                <div class="autor-original" style="margin-top: -10px; margin-bottom: 10px;">Por: {% firstof col.creador.get_full_name col.creador.username %}</div>
                                 <div class="tags">
-                                    <span class="tag">categoria</span>
-                                    <span class="tag">categoria</span>
-                                    <span class="tag">categoria</span>
+                                    {% for cat in col.categorias.all %}
+                                    <span class="tag">{{ cat.nombre }}</span>
+                                    {% endfor %}
+                                </div>
+                                <p style="font-size: 15px; color: #111; margin-bottom: 10px;">{{ col.descripcion|default:"Sin descripción proporcionada." }}</p>
+                                <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px;">
+                                    <span>Libros: {{ col.libros.count }}</span>
                                 </div>
                             </div>
-
-                            <div class="collection-card">
-                                <h3>Título de la colección</h3>
-                                <div class="tags">
-                                    <span class="tag">categoria</span>
-                                    <span class="tag">categoria</span>
-                                    <span class="tag">categoria</span>
-                                </div>
-                            </div>
+                            {% empty %}
+                            <p style="font-size: 18px; color: #555;">No hay colecciones públicas aún.</p>
+                            {% endfor %}
                         </section>
             </div>
         </div>
