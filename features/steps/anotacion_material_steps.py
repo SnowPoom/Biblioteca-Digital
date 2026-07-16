@@ -289,6 +289,72 @@ def step_anotaciones_visibles_tras_sesion(context):
 
 
 # ---------------------------------------------------------------------------
+# Escenario: Los fragmentos anotados se muestran destacados al leer una
+# pagina con anotaciones guardadas
+# RN-ANO-05: Los fragmentos anotados deben mostrarse visualmente
+# diferenciados durante la lectura, no solo en el momento en que se crean.
+# ---------------------------------------------------------------------------
+
+@when('el usuario abre la página del libro que contiene ese fragmento')
+def step_usuario_abre_pagina_con_fragmento(context):
+    context.fragmentos_resaltados = context.libro.fragmentos_anotados_por(
+        context.usuario_principal
+    )
+
+
+@then('el fragmento anotado se muestra visualmente destacado en la página')
+def step_fragmento_anotado_destacado(context):
+    context.test.assertIn(
+        context.fragmento_seleccionado,
+        context.fragmentos_resaltados,
+        "El fragmento con anotacion guardada debe mostrarse destacado al leer la pagina.",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Escenario: Tocar un fragmento anotado permite editar o eliminar la
+# anotacion directamente
+# RN-ANO-06: El usuario puede editar o eliminar cualquiera de sus propias
+# anotaciones accediendo directamente desde el fragmento resaltado.
+# ---------------------------------------------------------------------------
+
+@when('el usuario toca el fragmento anotado en la página')
+def step_usuario_toca_fragmento_anotado(context):
+    context.anotacion_tocada = Anotacion.para_fragmento(
+        usuario=context.usuario_principal,
+        libro=context.libro,
+        fragmento_texto=context.fragmento_seleccionado,
+    )
+
+
+@then('el sistema le permite editar el texto de la anotación')
+def step_sistema_permite_editar_desde_fragmento(context):
+    context.test.assertIsNotNone(
+        context.anotacion_tocada,
+        "Tocar el fragmento anotado debe recuperar la anotacion para poder editarla.",
+    )
+    context.test.assertEqual(
+        context.anotacion_tocada.pk,
+        context.anotacion.pk,
+        "La anotacion recuperada al tocar el fragmento debe ser la anotacion guardada sobre ese fragmento.",
+    )
+
+
+@then('el sistema le permite eliminar la anotación directamente')
+def step_sistema_permite_eliminar_desde_fragmento(context):
+    context.test.assertIsNotNone(
+        context.anotacion_tocada,
+        "Tocar el fragmento anotado debe recuperar la anotacion para poder eliminarla.",
+    )
+    context.anotacion_tocada.eliminar()
+    existe = Anotacion.objects.filter(pk=context.anotacion.pk).exists()
+    context.test.assertFalse(
+        existe,
+        "El sistema debe permitir eliminar la anotacion directamente desde el fragmento tocado.",
+    )
+
+
+# ---------------------------------------------------------------------------
 # Escenario: Editar una anotacion existente
 # RN-ANO-06: El usuario puede editar cualquiera de sus propias anotaciones
 # ---------------------------------------------------------------------------

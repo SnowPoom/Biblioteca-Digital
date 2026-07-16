@@ -32,15 +32,19 @@ def detalle_libro(request, pk):
 def lectura_material(request, libro_id):
     libro = get_object_or_404(Libro, id=libro_id)
     anotaciones = []
+    fragmentos_resaltados = []
     if request.user.is_authenticated:
         from .models import Anotacion
         anotaciones = Anotacion.objects.filter(
             usuario=request.user,
             libro=libro,
         )
+        # RN-ANO-05: fragmentos que deben mostrarse destacados durante la lectura
+        fragmentos_resaltados = libro.fragmentos_anotados_por(request.user)
     return render(request, 'materiales/lectura_material.html', {
         'libro': libro,
         'anotaciones': anotaciones,
+        'fragmentos_resaltados': fragmentos_resaltados,
     })
 
 
