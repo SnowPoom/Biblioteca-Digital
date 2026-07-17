@@ -1119,3 +1119,128 @@ class BitacoraColeccion(models.Model):
 
     def __str__(self):
         return f"{self.usuario.username} - {self.get_accion_display()} en {self.coleccion.nombre}"
+
+class ComentarioRetroalimentacion(models.Model):
+    coleccion = models.ForeignKey(Coleccion, on_delete=models.CASCADE, related_name='comentarios')
+    libro = models.ForeignKey(Libro, on_delete=models.CASCADE, related_name='comentarios_coleccion')
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='comentarios_retroalimentacion')
+    texto = models.TextField()
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Comentario de Retroalimentación'
+        verbose_name_plural = 'Comentarios de Retroalimentación'
+        ordering = ['fecha']
+
+    def __str__(self):
+        return f"Comentario de {self.usuario.username} en {self.libro.titulo}"
+
+    @classmethod
+    def crear_comentario(cls, coleccion, libro, usuario, texto):
+        if not coleccion.participantes_activos().filter(usuario=usuario).exists():
+            raise PermissionError("Solo los participantes pueden dejar comentarios.")
+            
+        import os
+        from better_profanity import profanity
+        
+        # Cargar lista extendida basada en LDNOOBW
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        lista_groserias_path = os.path.join(base_dir, 'bad_words_es.txt')
+        profanity.load_censor_words_from_file(lista_groserias_path)
+        
+        import re
+        import string
+        texto_limpio = texto.lower()
+        texto_limpio = texto_limpio.translate(str.maketrans('', '', string.punctuation))
+        texto_limpio = re.sub(r'(.)\1+', r'\1', texto_limpio)
+        
+        if profanity.contains_profanity(texto) or profanity.contains_profanity(texto_limpio):
+            raise ValidationError("El comentario contiene lenguaje inapropiado.")
+            
+        return cls.objects.create(coleccion=coleccion, libro=libro, usuario=usuario, texto=texto)
+
+    def es_visible_para(self, usuario):
+        return self.coleccion.participantes_activos().filter(usuario=usuario).exists()
+
+    def eliminar(self):
+        raise PermissionError("El historial de comentarios es permanente y no puede ser eliminado.")
+
+
+class PropuestaCambioColeccion(models.Model):
+    INCLUSION = 'inclusion'
+    EXCLUSION = 'exclusion'
+    OPCIONES_TIPO = [
+        (INCLUSION, 'Inclusión'),
+        (EXCLUSION, 'Exclusión'),
+    ]
+    
+    PENDIENTE = 'pendiente'
+    APROBADA = 'aprobada'
+    RECHAZADA = 'rechazada'
+    ESTADOS = [
+        (PENDIENTE, 'Pendiente'),
+        (APROBADA, 'Aprobada'),
+        (RECHAZADA, 'Rechazada'),
+    ]
+
+    coleccion = models.ForeignKey(Coleccion, on_delete=models.CASCADE, related_name='propuestas_cambio')
+    libro = models.ForeignKey(Libro, on_delete=models.CASCADE, related_name='propuestas_coleccion')
+    usuario_solicitante = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    tipo_cambio = models.CharField(max_length=20, choices=OPCIONES_TIPO)
+    justificacion = models.TextField()
+    estado = models.CharField(max_length=20, choices=ESTADOS, default=PENDIENTE)
+    fecha_solicitud = models.DateTimeField(auto_now_add=True)
+
+    @classmethod
+    def crear_propuesta_inclusion(cls, coleccion, libro, usuario_solicitante, justificacion):
+        if not coleccion.participantes_activos().filter(usuario=usuario_solicitante).exists():
+            raise PermissionError("Solo los participantes pueden proponer cambios.")
+        return cls.objects.create(
+            coleccion=coleccion, libro=libro, usuario_solicitante=usuario_solicitante,
+            tipo_cambio=cls.INCLUSION, justificacion=justificacion
+        )
+
+    @classmethod
+    def crear_propuesta_exclusion(cls, coleccion, libro, usuario_solicitante, justificacion):
+        if not coleccion.participantes_activos().filter(usuario=usuario_solicitante).exists():
+            raise PermissionError("Solo los participantes pueden proponer cambios.")
+        return cls.objects.create(
+            coleccion=coleccion, libro=libro, usuario_solicitante=usuario_solicitante,
+            tipo_cambio=cls.EXCLUSION, justificacion=justificacion
+        )
+
+    def aprobar(self, admin_usuario):
+        from django.db import transaction
+        if not self.coleccion.es_administrador(admin_usuario):
+            raise PermissionError("Solo el administrador puede aprobar propuestas.")
+            
+        with transaction.atomic():
+            if self.estado != self.PENDIENTE:
+                return False
+                
+            if self.tipo_cambio == self.INCLUSION:
+                self.coleccion.agregar_libro(self.usuario_solicitante, self.libro)
+            elif self.tipo_cambio == self.EXCLUSION:
+                self.coleccion.eliminar_libro(self.usuario_solicitante, self.libro)
+                
+            self.estado = self.APROBADA
+            self.save()
+            return True
+
+    def rechazar(self, admin_usuario):
+        if not self.coleccion.es_administrador(admin_usuario):
+            raise PermissionError("Solo el administrador puede rechazar propuestas.")
+            
+        if self.estado != self.PENDIENTE:
+            return False
+            
+        self.estado = self.RECHAZADA
+        self.save()
+        
+        from src.feed.models import Notificacion
+        Notificacion.objects.create(
+            usuario=self.usuario_solicitante,
+            tipo='sistema',
+            mensaje=f'Tu propuesta de {self.get_tipo_cambio_display().lower()} del libro "{self.libro.titulo}" ha sido rechazada.'
+        )
+        return True

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retroalimentación - {{ coleccion.nombre }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text: #000000;
+            --accent: #3ff5a9;
+            --surface: #d9d9d9;
+            --surface-soft: #f4f4f4;
+            --border: #000000;
+            --text-muted: #555555;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: 'Roboto', Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar-frame {
+            width: 180px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 28px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            align-self: flex-start;
+        }
+
+        .sidebar-nav { display: flex; flex-direction: column; gap: 8px; }
+
+        .sidebar-nav a {
+            display: block;
+            padding: 14px 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+            text-decoration: none;
+            transition: opacity 0.15s ease;
+        }
+
+        .sidebar-nav a:hover { opacity: 0.55; }
+        .sidebar-nav .activo { font-weight: 600; }
+
+        .content-frame {
+            flex: 1;
+            padding: 60px;
+            max-width: 900px;
+        }
+
+        .title {
+            font-size: 32px;
+            font-weight: 600;
+            margin: 0 0 8px 0;
+            line-height: 1.2;
+        }
+
+        .btn {
+            background: var(--border);
+            color: var(--bg);
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            font-family: inherit;
+        }
+
+        .btn:hover { opacity: 0.8; }
+
+        .messages { margin-bottom: 24px; }
+        .alert {
+            padding: 16px;
+            border: 1px solid var(--border);
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+        .alert-success { background: #d1fae5; border-color: #065f46; color: #065f46; }
+        .alert-error { background: #fee2e2; border-color: #991b1b; color: #991b1b; }
+
+        .book-section {
+            border: 1px solid var(--border);
+            background: var(--surface-soft);
+            margin-bottom: 30px;
+            padding: 24px;
+        }
+
+        .book-header {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0 0 16px 0;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 10px;
+        }
+
+        .comment-history {
+            margin-bottom: 20px;
+        }
+
+        .comment-item {
+            background: #fff;
+            border: 1px solid #ccc;
+            padding: 16px;
+            margin-bottom: 10px;
+        }
+
+        .comment-meta {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .comment-text {
+            font-size: 16px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            font-family: inherit;
+            font-size: 15px;
+            resize: vertical;
+            margin-bottom: 12px;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #3ff5a9;
+        }
+
+        .no-comments {
+            color: var(--text-muted);
+            font-style: italic;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="sidebar-frame">
+        <nav class="sidebar-nav" aria-label="Navegacion principal">
+            <a href="{% url 'busqueda:busqueda' %}">Buscar</a>
+            <a href="{% url 'materiales:inicio' %}">Para ti</a>
+            <a href="{% url 'feed:feed' %}">Siguiendo</a>
+            <a href="{% url 'materiales:creacion_material' %}">Crear material</a>
+            <a href="{% url 'colecciones:crear_coleccion' %}">Crear colección</a>
+        </nav>
+    </div>
+
+    <div class="content-frame">
+        <a href="{% url 'materiales:detalle_coleccion' coleccion.id %}"
+            style="display:inline-block; margin-bottom: 20px; text-decoration: none; color: var(--text-muted); font-weight: 600;">← Volver a la colección</a>
+
+        {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+            <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <h1 class="title">Retroalimentación</h1>
+        <p style="margin-top: 10px; font-size: 18px; color: var(--text-muted); margin-bottom: 40px;">
+            Deja tus comentarios y sugerencias de mejora sobre los libros incluidos en la colección <strong>{{ coleccion.nombre }}</strong>.
+        </p>
+
+        {% if libros_con_comentarios %}
+            {% for item in libros_con_comentarios %}
+            <div class="book-section">
+                <h2 class="book-header">{{ item.libro.titulo }} <span style="font-size:16px; font-weight:normal; color:#555;">(Autor: {{ item.libro.autor.username }})</span></h2>
+                
+                <div class="comment-history">
+                    {% if item.comentarios %}
+                        {% for comentario in item.comentarios %}
+                        <div class="comment-item">
+                            <div class="comment-meta">{{ comentario.usuario.username }} &bull; {{ comentario.fecha|date:"d M Y, H:i" }}</div>
+                            <div class="comment-text">{{ comentario.texto }}</div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="no-comments">No hay comentarios para este libro todavía. ¡Sé el primero en sugerir una mejora!</p>
+                    {% endif %}
+                </div>
+
+                <form method="post" action="{% url 'materiales:crear_comentario_coleccion' coleccion.id item.libro.id %}">
+                    {% csrf_token %}
+                    {{ formulario.texto }}
+                    <button type="submit" class="btn">Publicar comentario</button>
+                </form>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert" style="background:#fff3cd; border-color:#ffeeba;">
+                Esta colección aún no tiene libros.
+            </div>
+        {% endif %}
+    </div>
+
+</body>
+</html>
