@@ -572,7 +572,7 @@
                         alert("La portada no puede descargarse individualmente.");
                         return;
                     }
-                    url = `/materiales/${libroId}/descargar/pagina/${currentPageIndex}/${formato}/`;
+                    url = `/materiales/${libroId}/descargar/confirmar/${formato}/?tipo=pagina&pag=${currentPageIndex}`;
                 } else if (tipo === 'rango') {
                     const inicio = parseInt(document.getElementById('descarga-inicio').value);
                     const fin = parseInt(document.getElementById('descarga-fin').value);
@@ -585,7 +585,7 @@
                         alert(`El libro solo tiene ${maxPages} páginas de contenido.`);
                         return;
                     }
-                    url = `/materiales/${libroId}/descargar/rango/${inicio}/${fin}/${formato}/`;
+                    url = `/materiales/${libroId}/descargar/confirmar/${formato}/?tipo=rango&ini=${inicio}&fin=${fin}`;
                 }
                 
                 // Cerrar menu
