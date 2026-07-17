@@ -368,7 +368,7 @@ def step_participante_no_aportante(context):
     context.libro_otro = Libro.objects.create(
         titulo='Libro Otro', autor=otro, numero_paginas=50, estado=Libro.PUBLICADO
     )
-    pass
+    context.coleccion.agregar_libro(otro, context.libro_otro)
 
 @when('el usuario intenta eliminar ese libro de la colección')
 def step_intenta_eliminar_libro(context):

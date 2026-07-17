@@ -354,8 +354,41 @@
         <div class="content-panel">
 
             <button class="btn" type="button"
-                onclick="document.getElementById('participantes-section').style.display = document.getElementById('participantes-section').style.display === 'none' ? 'block' : 'none';"
+                onclick="
+                    var ps = document.getElementById('participantes-section');
+                    var bs = document.getElementById('bitacora-section');
+                    if (bs && bs.style.display === 'block') { bs.style.display = 'none'; }
+                    ps.style.display = ps.style.display === 'none' ? 'block' : 'none';
+                "
                 style="margin-bottom: 20px;">Ver participantes</button>
+
+            {% if es_miembro %}
+            <button class="btn btn-secondary" type="button"
+                onclick="
+                    var ps = document.getElementById('participantes-section');
+                    var bs = document.getElementById('bitacora-section');
+                    if (ps && ps.style.display === 'block') { ps.style.display = 'none'; }
+                    bs.style.display = bs.style.display === 'none' ? 'block' : 'none';
+                "
+                style="margin-bottom: 20px; margin-left: 10px;">Ver bitácora</button>
+
+            <div id="bitacora-section" style="display: none; margin-bottom: 32px;">
+                <h2 class="seccion-titulo">Bitácora de la Colección</h2>
+                <div class="card">
+                    <div class="card-content" style="width: 100%;">
+                        {% for registro in bitacora %}
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; font-size: 14px; padding: 12px 0; border-bottom: 1px solid var(--border);">
+                            <span style="flex: 1; padding-right: 30px; line-height: 1.5; margin: 0;"><strong>{{ registro.usuario.username }}</strong>: {{ registro.get_accion_display }} {% if registro.detalles %}{{ registro.detalles }}{% endif %}</span>
+                            <span style="color: var(--text-muted); font-size: 12px; white-space: nowrap; text-align: right; min-width: 140px; margin-top: 2px;">{{ registro.fecha|date:"d M Y, H:i" }}</span>
+                        </div>
+                        {% empty %}
+                        <p>No hay actividad registrada aún.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
             <div id="participantes-section" style="display: none;">
                 {% if es_admin %}
                 <div
