@@ -120,5 +120,10 @@ def panel(request):
 
 
 def cerrar_sesion(request):
+    # Consumir y limpiar todos los mensajes pendientes para evitar que aparezcan en el login
+    from django.contrib import messages
+    storage = messages.get_messages(request)
+    for _ in storage:
+        pass
     logout(request)
     return redirect('login:inicio')

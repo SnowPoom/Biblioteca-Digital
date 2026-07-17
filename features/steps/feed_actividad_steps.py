@@ -619,7 +619,7 @@ def step_redirige_a_detalle(context):
     context.test.assertEqual(context.response_detalle.status_code, 200)
     context.test.assertEqual(
         context.response_detalle.context['libro'].pk,
-        context.publicacion_a_seleccionar.pk
+        context.publicacion_a_seleccionar.libro.pk
     )
 
 

@@ -23,7 +23,7 @@ from src.feed import views as feed_views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('src.materiales.urls')),
-    path('perfil/<str:username>/', feed_views.perfil_publico, name='perfil_publico_global'),
+    path('perfil/<str:username>/', feed_views.perfil_publico, name='perfil_publico'),
     path('auth/', include('src.login.urls', namespace='login')),
     path('feed/', include('src.feed.urls', namespace='feed')),
     path('busqueda/', include('src.busqueda.urls', namespace='busqueda')),

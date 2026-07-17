@@ -62,13 +62,13 @@ def seguir_usuario(request, usuario_id):
 
     # Un usuario no puede seguirse a sí mismo
     if usuario_objetivo == request.user:
-        return redirect('perfil_publico_global', username=request.user.username)
+        return redirect('perfil_publico', username=request.user.username)
 
     Seguimiento.objects.get_or_create(
         seguidor=request.user,
         seguido=usuario_objetivo,
     )
-    return redirect('perfil_publico_global', username=usuario_objetivo.username)
+    return redirect('perfil_publico', username=usuario_objetivo.username)
 
 
 @login_required
@@ -85,7 +85,7 @@ def dejar_de_seguir(request, usuario_id):
         seguido=usuario_objetivo,
     ).delete()
 
-    return redirect('perfil_publico_global', username=usuario_objetivo.username)
+    return redirect('perfil_publico', username=usuario_objetivo.username)
 
 
 @login_required

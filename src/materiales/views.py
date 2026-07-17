@@ -242,9 +242,9 @@ def creacion_material(request):
             if resultado:
                 from django.contrib import messages
                 messages.success(request, f'El libro "{libro.titulo}" ha sido publicado con éxito.')
-                return redirect('perfil_publico_global', username=request.user.username)
+                return redirect('perfil_publico', username=request.user.username)
             else:
-                return redirect('perfil_publico_global', username=request.user.username)
+                return redirect('perfil_publico', username=request.user.username)
         else:
             mensaje_error = 'Corrige los errores indicados en el formulario.'
 
@@ -279,9 +279,9 @@ def edicion_material(request, pk):
             if resultado:
                 from django.contrib import messages
                 messages.success(request, f'El libro "{libro.titulo}" ha sido publicado con éxito.')
-                return redirect('perfil_publico_global', username=request.user.username)
+                return redirect('perfil_publico', username=request.user.username)
             else:
-                return redirect('perfil_publico_global', username=request.user.username)
+                return redirect('perfil_publico', username=request.user.username)
         else:
             mensaje_error = 'Corrige los errores indicados en el formulario.'
 

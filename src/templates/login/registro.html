@@ -5,176 +5,257 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Registro</title>
     <style>
-      html,
+      :root {
+          --primary: #008080;
+          --primary-hover: #006666;
+          --secondary: #475569;
+          --bg-color: #F8FAFC;
+          --text-color: #0F172A;
+          --muted-text: #64748B;
+          --border-color: rgba(71, 85, 105, 0.1);
+      }
+
+      * { box-sizing: border-box; }
       body {
-        margin: 0;
-        font-family: Roboto, Arial, sans-serif;
-        background: #ffffff;
-        min-height: 100vh;
+          margin: 0;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          background-color: var(--bg-color);
+          color: var(--text-color);
+          display: flex;
+          min-height: 100vh;
+          overflow-x: hidden;
       }
+
+      /* Glassmorphic Background Blobs */
+      .bg-blobs {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          z-index: -2;
+          pointer-events: none;
+          overflow: hidden;
+      }
+      .bg-blob {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(120px);
+          opacity: 0.12;
+      }
+      .bg-blob-1 {
+          width: 500px;
+          height: 500px;
+          background: var(--primary);
+          top: -100px;
+          right: -100px;
+      }
+      .bg-blob-2 {
+          width: 400px;
+          height: 400px;
+          background: var(--secondary);
+          bottom: -50px;
+          left: -50px;
+      }
+
       .login-shell {
-        min-height: 100vh;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 32px 16px;
+          min-height: 100vh;
+          width: 100%;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          padding: 32px 16px;
       }
+
       .login-card {
-        position: relative;
-        width: min(685px, calc(100% - 32px));
-        max-width: 685px;
-        border: 1px solid #70cdde;
-        border-radius: 1px;
-        background: #fff9f9;
-        padding: 40px 32px;
-        box-sizing: border-box;
+          position: relative;
+          width: min(550px, calc(100% - 32px));
+          background: rgba(255, 255, 255, 0.55);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid var(--border-color);
+          border-radius: 24px;
+          padding: 48px 40px;
+          box-shadow: 0 12px 40px rgba(15, 23, 42, 0.05);
       }
+
       .login-title {
-        margin: 0 auto 24px;
-        font-size: 40px;
-        font-weight: 600;
-        letter-spacing: -0.4px;
-        line-height: 1.1;
-        color: #000;
-        max-width: 279px;
-        text-align: center;
+          margin: 0 auto 24px;
+          font-size: 32px;
+          font-weight: 700;
+          letter-spacing: -0.02em;
+          color: var(--text-color);
+          text-align: center;
       }
+
       .input-group {
-        display: grid;
-        gap: 8px;
+          display: grid;
+          gap: 8px;
       }
+
       .field-label {
-        font-size: 16px;
-        font-weight: 600;
-        letter-spacing: -0.16px;
-        color: #000;
-        margin: 24px 0 8px;
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--text-color);
+          margin: 20px 0 6px;
       }
+
       .field-input {
-        width: 100%;
-        min-height: 52px;
-        border-radius: 8px;
-        border: 1px solid #d9d9d9;
-        background: #d9d9d9;
-        padding: 0 16px;
-        font-size: 16px;
-        color: #000;
-        box-sizing: border-box;
+          width: 100%;
+          min-height: 48px;
+          border-radius: 10px;
+          border: 1px solid var(--border-color);
+          background: rgba(255, 255, 255, 0.6);
+          padding: 0 16px;
+          font-size: 15px;
+          color: var(--text-color);
+          box-sizing: border-box;
+          outline: none;
+          transition: all 0.2s ease;
       }
+
       .field-input:focus {
-        outline: 2px solid #70cdde;
-        outline-offset: 2px;
-        background: #fff;
+          background: #ffffff;
+          border-color: var(--primary);
       }
+
       .login-action {
-        width: 100%;
-        height: 41px;
-        background: #6798f2;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 32px 0 16px;
-        border: none;
-        cursor: pointer;
+          width: 100%;
+          height: 48px;
+          background: var(--primary);
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 32px 0 16px;
+          border: none;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(0, 128, 128, 0.15);
+          transition: all 0.2s ease;
       }
+
+      .login-action:hover {
+          background: var(--primary-hover);
+          transform: translateY(-1px);
+          box-shadow: 0 6px 16px rgba(0, 128, 128, 0.2);
+      }
+
       .login-action span {
-        font-size: 18px;
-        font-weight: 500;
-        letter-spacing: -0.18px;
-        color: #000;
+          font-size: 16px;
+          font-weight: 600;
+          color: #ffffff;
       }
+
       .link-text {
-        display: inline-flex;
-        gap: 4px;
-        font-size: 18px;
-        font-weight: 500;
-        letter-spacing: -0.18px;
-        color: #000;
+          display: flex;
+          justify-content: center;
+          gap: 6px;
+          font-size: 15px;
+          font-weight: 500;
+          color: var(--secondary);
+          margin-top: 24px;
       }
+
       .link-text a {
-        color: #70cdde;
-        text-decoration: none;
+          color: var(--primary);
+          text-decoration: none;
+          font-weight: 600;
       }
-      .link-text a:hover,
-      .link-text a:focus {
-        text-decoration: underline;
+
+      .link-text a:hover {
+          color: var(--primary-hover);
+          text-decoration: underline;
       }
+
       .message {
-        margin: 20px 0 0;
-        padding: 12px 16px;
-        border-radius: 8px;
-        font-size: 15px;
+          margin: 20px 0 0;
+          padding: 14px 16px;
+          border-radius: 10px;
+          font-size: 14px;
+          font-weight: 600;
       }
-      .success {
-        background: #ecfdf5;
-        color: #166534;
-        border: 1px solid #a7f3d0;
-      }
+
       .error {
-        background: #fdecea;
-        color: #9b1c1c;
-        border: 1px solid #f5c2c7;
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.2);
+          color: #b91c1c;
+      }
+
+      .success {
+          background: rgba(16, 185, 129, 0.1);
+          border: 1px solid rgba(16, 185, 129, 0.2);
+          color: #047857;
       }
 
       /* Carrusel de avatares */
       .avatar-section {
-        margin: 24px 0 0;
+          margin: 24px 0 0;
       }
+
       .avatar-carousel {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-top: 8px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-top: 8px;
       }
+
       .avatar-carousel-btn {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        border: 1px solid #d9d9d9;
-        background: #fff;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-        font-weight: 700;
-        color: #333;
-        flex-shrink: 0;
-        transition: background 0.2s ease, border-color 0.2s ease;
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          border: 1px solid var(--border-color);
+          background: rgba(255, 255, 255, 0.7);
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 18px;
+          font-weight: 700;
+          color: var(--secondary);
+          flex-shrink: 0;
+          transition: all 0.2s ease;
       }
+
       .avatar-carousel-btn:hover {
-        background: #70cdde;
-        border-color: #70cdde;
-        color: #fff;
+          background: var(--primary);
+          border-color: var(--primary);
+          color: #ffffff;
       }
+
       .avatar-track {
-        display: flex;
-        gap: 16px;
-        overflow: hidden;
-        flex: 1;
-        padding: 4px 0;
+          display: flex;
+          gap: 16px;
+          overflow: hidden;
+          flex: 1;
+          padding: 4px 0;
       }
+
       .avatar-option {
-        width: 72px;
-        height: 72px;
-        border-radius: 50%;
-        border: 3px solid transparent;
-        cursor: pointer;
-        flex-shrink: 0;
-        transition: border-color 0.2s ease, transform 0.2s ease;
-        object-fit: cover;
+          width: 72px;
+          height: 72px;
+          border-radius: 50%;
+          border: 3px solid transparent;
+          cursor: pointer;
+          flex-shrink: 0;
+          transition: border-color 0.2s ease, transform 0.2s ease;
+          object-fit: cover;
       }
+
       .avatar-option:hover {
-        transform: scale(1.08);
+          transform: scale(1.08);
       }
+
       .avatar-option.seleccionado {
-        border-color: #008080;
-        box-shadow: 0 0 0 2px rgba(0, 128, 128, 0.3);
+          border-color: var(--primary);
+          box-shadow: 0 0 0 2px rgba(0, 128, 128, 0.3);
       }
     </style>
-  </head>
-  <body>
+</head>
+<body>
+    <div class="bg-blobs">
+        <div class="bg-blob bg-blob-1"></div>
+        <div class="bg-blob bg-blob-2"></div>
+    </div>
     <main class="login-shell">
       <section class="login-card">
         <h1 class="login-title">Registro</h1>
