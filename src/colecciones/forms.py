@@ -30,3 +30,11 @@ class ColeccionForm(forms.ModelForm):
         if not categorias or categorias.count() == 0:
             raise forms.ValidationError("Debe asignar al menos una categoría temática.")
         return categorias
+
+    def clean_limite_libros(self):
+        limite = self.cleaned_data.get('limite_libros')
+        if limite is not None and self.instance and self.instance.pk:
+            count = self.instance.libros.count()
+            if limite < count:
+                raise forms.ValidationError(f"El límite no puede ser menor a la cantidad de libros actuales ({count}).")
+        return limite

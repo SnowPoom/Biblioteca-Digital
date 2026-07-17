@@ -521,6 +521,20 @@ class Anotacion(models.Model):
         ).first()
 
 
+class LibroColeccion(models.Model):
+    coleccion = models.ForeignKey('Coleccion', on_delete=models.CASCADE)
+    libro = models.ForeignKey('Libro', on_delete=models.CASCADE)
+    agregado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+    fecha_agregado = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('coleccion', 'libro')
+
 class Coleccion(models.Model):
     PUBLICA = 'publica'
     PRIVADA = 'privada'
@@ -558,6 +572,7 @@ class Coleccion(models.Model):
         Libro,
         blank=True,
         related_name='colecciones_pertenecientes',
+        through='LibroColeccion'
     )
     creado = models.DateTimeField(auto_now_add=True)
     actualizado = models.DateTimeField(auto_now=True)
@@ -584,6 +599,51 @@ class Coleccion(models.Model):
         self.visibilidad = self.PUBLICA
         self.save()
         return True, "Colección publicada"
+
+    def agregar_libro(self, usuario, libro):
+        """Agrega un libro a la colección respetando el límite máximo.
+        
+        Regla de negocio aplicada:
+        - RN-COL-08: Todos los participantes pueden añadir libros a la colección,
+          sujeto al límite máximo configurado de libros por colección.
+        """
+        if not self.participantes_activos().filter(usuario=usuario).exists():
+            raise ValidationError("Solo los participantes activos de la colección pueden añadir libros.")
+
+        from django.db import transaction, IntegrityError
+        with transaction.atomic():
+            col = type(self).objects.select_for_update().get(pk=self.pk)
+            if col.libros.filter(id=libro.id).exists():
+                raise ValidationError("El libro ya se encuentra en la colección.")
+            if col.libros.count() >= col.limite_libros:
+                raise ValidationError(f"La colección ha alcanzado su límite máximo de {col.limite_libros} libros.")
+            try:
+                LibroColeccion.objects.create(
+                    coleccion=col,
+                    libro=libro,
+                    agregado_por=usuario
+                )
+            except IntegrityError:
+                raise ValidationError("El libro ya se encuentra en la colección.")
+
+    def eliminar_libro(self, usuario, libro):
+        """Elimina un libro de la colección sin borrarlo de la plataforma.
+
+        Reglas de negocio aplicadas:
+        - RN-COL-09: Solo el administrador o el participante que añadió un libro puede eliminarlo.
+        - RN-PUB-16: Eliminar un libro de una colección no lo elimina de la biblioteca general.
+        """
+        lc = LibroColeccion.objects.filter(coleccion=self, libro=libro).first()
+        if not lc:
+            raise ValueError("El libro no pertenece a la colección.")
+            
+        es_admin = self.es_administrador(usuario)
+        es_agregador = lc.agregado_por == usuario and self.participantes_activos().filter(usuario=usuario).exists()
+        
+        if not (es_admin or es_agregador):
+            raise PermissionError("Solo el administrador o el participante activo que añadió el libro puede eliminarlo.")
+
+        lc.delete()
 
     def es_administrador(self, usuario):
         return self.participantes_activos().filter(usuario=usuario, rol=ParticipacionColeccion.ADMINISTRADOR).exists()
@@ -661,11 +721,12 @@ class Coleccion(models.Model):
         if self.participantes_activos().count() >= 15:
             return False, "Se ha alcanzado el límite máximo de 15 participantes."
             
-        solicitud = SolicitudAccesoColeccion.objects.filter(coleccion=self, usuario_solicitante=usuario_solicitante).first()
-        if solicitud:
-            if solicitud.estado != SolicitudAccesoColeccion.PENDIENTE:
-                return False, "Ya existe una solicitud procesada para este usuario."
-            return True, "La solicitud ya había sido enviada."
+        if self.participantes_activos().filter(usuario=usuario_solicitante).exists():
+            return False, "El usuario ya es miembro activo de la colección."
+
+        solicitud_pendiente = SolicitudAccesoColeccion.objects.filter(coleccion=self, usuario_solicitante=usuario_solicitante, estado=SolicitudAccesoColeccion.PENDIENTE).first()
+        if solicitud_pendiente:
+            return False, "Ya tienes una solicitud pendiente para esta colección."
             
         solicitud = SolicitudAccesoColeccion.objects.create(
             coleccion=self,
