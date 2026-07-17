@@ -445,6 +445,17 @@
                             </div>
                         </div>
                     </div>
+
+                    {% if user.is_authenticated and libro.autor != request.user %}
+                    <div style="position: relative; width: 100%;">
+                        <form action="{% url 'materiales:republicar_libro' libro.pk %}" method="post" style="margin: 0;">
+                            {% csrf_token %}
+                            <button class="print-btn" type="submit" style="width: 100%; margin: 0;">
+                                Republicar
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </section>
