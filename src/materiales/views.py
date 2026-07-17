@@ -2,17 +2,27 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import redirect, render, get_object_or_404
 
+from django.core.exceptions import ValidationError
 from .forms import PublicacionLibroFormulario
 from .models import Libro
 
 
 def inicio(request):
-    libros = Libro.objects.filter(estado=Libro.PUBLICADO)
+
+    if request.user.is_authenticated:
+        from src.recomendaciones.motor import MotorRecomendaciones
+        motor = MotorRecomendaciones(request.user)
+        recomendaciones = motor.obtener_recomendaciones()
+    else:
+        recomendaciones = []
     from src.materiales.models import Coleccion
     colecciones = Coleccion.objects.filter(visibilidad=Coleccion.PUBLICA).order_by('-creado')
+    libros = Libro.objects.filter(estado=Libro.PUBLICADO)
+
     return render(request, 'inicio/inicio.html', {
         'libros': libros,
-        'colecciones': colecciones
+        'recomendaciones': recomendaciones,
+        'colecciones': colecciones,
     })
 
 
@@ -26,13 +36,16 @@ def vista_previa_material(request):
 def detalle_libro(request, pk):
     from src.feed.models import Publicacion
     from django.shortcuts import get_object_or_404
+    from .models import Coleccion
     libro = get_object_or_404(Publicacion, pk=pk)
 
     # RN-PUB-13: Las métricas del material solo se exponen al autor.
     material = Libro.objects.filter(pk=pk).first()
     metricas = material.metricas_para(request.user) if material else None
+    colecciones_usuario = Coleccion.objects.filter(participaciones__usuario=request.user) if request.user.is_authenticated else []
 
     return render(request, 'materiales/vista_previa_material.html', {
+        'colecciones_usuario': colecciones_usuario,
         'libro': libro,
         'titulo': libro.titulo,
         'autor': libro.autor,
@@ -45,18 +58,39 @@ def lectura_material(request, libro_id):
     libro = get_object_or_404(Libro, id=libro_id)
     anotaciones = []
     fragmentos_resaltados = []
+    from .models import Coleccion
+    colecciones_usuario = Coleccion.objects.filter(participaciones__usuario=request.user) if request.user.is_authenticated else []
+    
     if request.user.is_authenticated:
         from .models import Anotacion
+        from src.recomendaciones.models import HistorialLectura
+        from src.feed.models import Publicacion
+        from django.utils import timezone
+
         anotaciones = Anotacion.objects.filter(
             usuario=request.user,
             libro=libro,
         )
         # RN-ANO-05: fragmentos que deben mostrarse destacados durante la lectura
         fragmentos_resaltados = libro.fragmentos_anotados_por(request.user)
+
+        # Registrar la lectura para alimentar el motor de recomendaciones (RN-REC-01, RN-REC-03)
+        pub = Publicacion.objects.filter(pk=libro.pk).first()
+        if pub:
+            historial, created = HistorialLectura.objects.get_or_create(
+                usuario=request.user,
+                publicacion=pub,
+            )
+            if not created:
+                # Si ya lo habia leido, actualizamos la fecha para dar mas peso (RN-REC-08)
+                historial.fecha = timezone.now()
+                historial.save(update_fields=['fecha'])
+
     return render(request, 'materiales/lectura_material.html', {
         'libro': libro,
         'anotaciones': anotaciones,
         'fragmentos_resaltados': fragmentos_resaltados,
+        'colecciones_usuario': colecciones_usuario,
     })
 
 
@@ -398,6 +432,9 @@ def detalle_coleccion(request, coleccion_id):
         solicitudes = coleccion.solicitudes.filter(estado=SolicitudAccesoColeccion.PENDIENTE)
         invitaciones = coleccion.invitaciones.filter(estado=InvitacionColeccion.PENDIENTE)
         
+    libros_disponibles = Libro.objects.filter(estado=Libro.PUBLICADO).exclude(id__in=coleccion.libros.all()) if es_miembro else []
+    libros_coleccion = coleccion.librocoleccion_set.select_related('libro', 'agregado_por').all()
+    
     context = {
         'coleccion': coleccion,
         'participaciones': participaciones,
@@ -405,8 +442,46 @@ def detalle_coleccion(request, coleccion_id):
         'es_admin': es_admin,
         'solicitudes': solicitudes,
         'invitaciones': invitaciones,
+        'libros_disponibles': libros_disponibles,
+        'libros_coleccion': libros_coleccion,
     }
-    return render(request, 'materiales/detalle_coleccion.html', context)
+    return render(request, 'colecciones/detalle_coleccion.html', context)
+
+@login_required
+def agregar_libro_coleccion(request, coleccion_id):
+    if request.method == 'POST':
+        coleccion = get_object_or_404(Coleccion, id=coleccion_id)
+        if not coleccion.participaciones.filter(usuario=request.user).exists():
+            messages.error(request, "No eres participante de esta colección.")
+            return redirect('materiales:detalle_coleccion', coleccion_id=coleccion.id)
+            
+        libro_id = request.POST.get('libro_id')
+        if libro_id:
+            try:
+                libro = get_object_or_404(Libro, id=libro_id, estado=Libro.PUBLICADO)
+                coleccion.agregar_libro(request.user, libro)
+                messages.success(request, f"Libro '{libro.titulo}' agregado a la colección.")
+            except ValidationError as e:
+                messages.error(request, str(e.message) if hasattr(e, 'message') else str(e))
+            except Exception as e:
+                messages.error(request, str(e))
+        return redirect('materiales:detalle_coleccion', coleccion_id=coleccion.id)
+    return redirect('materiales:inicio')
+
+@login_required
+def eliminar_libro_coleccion(request, coleccion_id, libro_id):
+    if request.method == 'POST':
+        coleccion = get_object_or_404(Coleccion, id=coleccion_id)
+        libro = get_object_or_404(Libro, id=libro_id)
+        try:
+            coleccion.eliminar_libro(request.user, libro)
+            messages.success(request, f"Libro '{libro.titulo}' eliminado de la colección.")
+        except PermissionError as e:
+            messages.error(request, str(e))
+        except Exception as e:
+            messages.error(request, str(e))
+        return redirect('materiales:detalle_coleccion', coleccion_id=coleccion.id)
+    return redirect('materiales:inicio')
 
 @login_required
 def invitar_a_coleccion(request, coleccion_id):
@@ -442,30 +517,7 @@ def solicitar_acceso_coleccion(request, coleccion_id):
     return redirect('materiales:detalle_coleccion', coleccion_id=coleccion_id)
 
 @login_required
-def retirar_de_coleccion(request, coleccion_id, participante_id):
-    if request.method == 'POST':
-        coleccion = get_object_or_404(Coleccion, id=coleccion_id)
-        participante = get_object_or_404(User, id=participante_id)
-        try:
-            if coleccion.retirar_participante(request.user, participante):
-                messages.success(request, "Participante retirado con éxito.")
-            else:
-                messages.error(request, "No se pudo retirar al participante.")
-        except Exception as e:
-            messages.error(request, str(e))
-    return redirect('materiales:detalle_coleccion', coleccion_id=coleccion_id)
-
 @login_required
-def abandonar_coleccion(request, coleccion_id):
-    if request.method == 'POST':
-        coleccion = get_object_or_404(Coleccion, id=coleccion_id)
-        if coleccion.abandonar(request.user):
-            messages.success(request, "Has abandonado la colección.")
-            return redirect('materiales:inicio')
-        else:
-            messages.error(request, "No eres parte de esta colección.")
-    return redirect('materiales:detalle_coleccion', coleccion_id=coleccion_id)
-
 @login_required
 def procesar_invitacion(request, invitacion_id, accion):
     if request.method != 'POST':
@@ -543,7 +595,16 @@ def api_buscar_usuarios(request):
         })
     return JsonResponse({'users': data})
 
+from django.http import JsonResponse
 @login_required
+def api_buscar_libros(request):
+    q = request.GET.get('q', '').strip()
+    if len(q) < 2:
+        return JsonResponse({'libros': []})
+    libros = Libro.objects.filter(estado=Libro.PUBLICADO, titulo__icontains=q)[:10]
+    results = [{'id': l.id, 'titulo': l.titulo, 'autor': l.autor.username} for l in libros]
+    return JsonResponse({'libros': results})
+
 def ajustar_limite(request, coleccion_id):
     if request.method == 'POST':
         coleccion = get_object_or_404(Coleccion, id=coleccion_id)

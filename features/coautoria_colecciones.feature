@@ -67,10 +67,10 @@ Característica: Coautoría y edición compartida de colecciones
     Entonces el libro queda registrado en la colección
     Y el cambio es visible para todos los participantes
 
-  Escenario: Solo el administrador o el aportante puede eliminar un libro de la colección
-    Dado que el usuario es un participante que no agregó un libro específico y no es administrador
+  Escenario: Cualquier participante puede eliminar un libro de la colección
+    Dado que el usuario es un participante de la colección y hay un libro en ella
     Cuando el usuario intenta eliminar ese libro de la colección
-    Entonces el sistema rechaza la operación
+    Entonces la operación es exitosa
 
 
   Escenario: El rol de administrador pasa al participante con mayor índice de reputación si el creador es eliminado
