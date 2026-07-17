@@ -421,6 +421,12 @@
                             </p>
                             <p>Reputación de colaborador: {{ participacion.indice_reputacion }}</p>
                         </div>
+                        {% if es_admin and participacion.usuario != coleccion.creador %}
+                        <form action="{% url 'materiales:retirar_de_coleccion' coleccion.pk participacion.usuario.id %}" method="post">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger">Retirar</button>
+                        </form>
+                        {% endif %}
                     </div>
                     {% empty %}
                     <p>No hay otros participantes.</p>
@@ -533,6 +539,13 @@
                 </form>
             </div>
 
+            {% elif es_miembro and request.user != coleccion.creador %}
+            <div style="text-align: center; margin-top: 40px; padding-top: 40px; border-top: 1px solid var(--border);">
+                <form action="{% url 'materiales:abandonar_coleccion' coleccion.pk %}" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Abandonar Colección</button>
+                </form>
+            </div>
             {% endif %}
 
         </div>

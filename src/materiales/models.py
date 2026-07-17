@@ -825,29 +825,26 @@ class Coleccion(models.Model):
         return False
         
     def abandonar(self, usuario):
-        participacion = self.participaciones.filter(usuario=usuario).first()
-        if not participacion:
-            return False
-            
         from django.db import transaction
         with transaction.atomic():
-            if self.creador == usuario:
-                self.reasignar_administrador(candidato_a_excluir=usuario)
-                    
+            coleccion = Coleccion.objects.select_for_update().get(id=self.id)
+            participacion = coleccion.participantes_activos().select_for_update().filter(usuario=usuario).first()
+            if not participacion:
+                return False
+
+            if coleccion.creador == usuario:
+                coleccion.reasignar_administrador(candidato_a_excluir=usuario)
+
             participacion.delete()
-            
+
             BitacoraColeccion.objects.create(
-                coleccion=self,
+                coleccion=coleccion,
                 usuario=usuario,
                 accion=BitacoraColeccion.SALIDA_MIEMBRO
             )
-        
-        BitacoraColeccion.objects.create(
-            coleccion=self,
-            usuario=usuario,
-            accion=BitacoraColeccion.SALIDA_MIEMBRO
-        )
-        
+
+        self.creador = coleccion.creador
+
         if self.creador and self.creador != usuario:
             from src.feed.models import Notificacion
             Notificacion.objects.create(
