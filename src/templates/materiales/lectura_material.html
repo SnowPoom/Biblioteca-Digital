@@ -142,16 +142,11 @@
         .content-card {
             background: var(--surface);
             width: 100%;
-            /* La altura se controla por JS dependiendo si es portada o texto */
             padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-            justify-content: flex-start;
+            display: block;
             overflow: hidden;
             position: relative;
             box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
-            /* Sombreado solicitado */
             border: 1px solid #ddd;
         }
 
@@ -165,11 +160,25 @@
             font-family: 'Times New Roman', Times, serif;
             font-size: 12pt;
             line-height: 1.5;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .page-scaler p, 
+        .page-scaler h1, 
+        .page-scaler h2, 
+        .page-scaler h3, 
+        .page-scaler h4, 
+        .page-scaler ul, 
+        .page-scaler ol {
+            margin-top: 0;
+            margin-bottom: 10px;
         }
 
         .page-scaler img {
             max-width: 100%;
             height: auto;
+            display: block;
         }
 
         .notes {
@@ -491,9 +500,12 @@
             let currentChunk = document.createElement('div');
 
             Array.from(temp.children).forEach(child => {
-                if (child.classList && child.classList.contains('page-gap')) {
+                if (child.classList && child.classList.contains('page')) {
+                    // Nuevo formato: Motor de Reflujo (.page)
+                    pages.push('<div class="page-scaler">' + child.innerHTML + '</div>');
+                } else if (child.classList && child.classList.contains('page-gap')) {
+                    // Viejo formato: Separadores (.page-gap) - Compatibilidad hacia atras
                     if (currentChunk.innerHTML.trim() !== '') {
-                        // Envolvemos en el escalador
                         pages.push('<div class="page-scaler">' + currentChunk.innerHTML + '</div>');
                         currentChunk = document.createElement('div');
                     }
