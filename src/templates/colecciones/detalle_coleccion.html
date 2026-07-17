@@ -460,6 +460,31 @@
                     {% endfor %}
                 </div>
                 {% endif %}
+
+                {% if es_admin and propuestas %}
+                <h2 class="seccion-titulo">Propuestas de Cambio Pendientes</h2>
+                <div style="margin-bottom: 32px;">
+                    {% for prop in propuestas %}
+                    <div class="card">
+                        <div class="card-content">
+                            <h3>{{ prop.get_tipo_cambio_display }}: {{ prop.libro.titulo }}</h3>
+                            <p>Propuesta por @{{ prop.usuario_solicitante.username }}</p>
+                            <p><strong>Justificación:</strong> {{ prop.justificacion }}</p>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <form action="{% url 'materiales:procesar_propuesta' prop.id 'aprobar' %}" method="post">
+                                {% csrf_token %}
+                                <button type="submit" class="btn" style="background: var(--accent);">Aprobar</button>
+                            </form>
+                            <form action="{% url 'materiales:procesar_propuesta' prop.id 'rechazar' %}" method="post">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger">Rechazar</button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
             </div>
 
             {% if es_miembro %}
@@ -503,6 +528,26 @@
                 </form>
             </div>
             {% endif %}
+            
+            {% if es_miembro and not es_admin %}
+            <div
+                style="margin-bottom: 32px; padding: 24px; background: var(--surface-soft); border: 1px solid var(--border);">
+                <h3 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 600;">Proponer Inclusión de Libro</h3>
+                <form action="{% url 'materiales:proponer_inclusion_coleccion' coleccion.pk %}" method="post">
+                    {% csrf_token %}
+                    <div class="form-group" style="margin-bottom: 12px; display: block;">
+                        <input type="hidden" name="libro_id" id="libro-id-prop-input" required>
+                        <input type="text" id="libro-search-prop-input" class="form-input" style="width: 100%;"
+                            placeholder="Buscar libro por título..." autocomplete="off" required>
+                        <div id="autocomplete-libros-prop-results" class="autocomplete-results" style="position: relative;"></div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 12px; display: block;">
+                        <textarea name="justificacion" class="form-input" placeholder="Justificación de la propuesta..." required rows="2" style="width: 100%; resize: vertical;"></textarea>
+                    </div>
+                    <button type="submit" class="btn">Enviar Propuesta</button>
+                </form>
+            </div>
+            {% endif %}
 
             <div style="margin-bottom: 32px;">
                 {% for lc in libros_coleccion %}
@@ -520,11 +565,18 @@
                             {% endif %}
                         </p>
                     </div>
-                    {% if es_admin or lc.agregado_por == request.user and es_miembro %}
+                    {% if es_admin %}
                     <form action="{% url 'materiales:eliminar_libro_coleccion' coleccion.pk lc.libro.id %}"
                         method="post">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-danger">Eliminar</button>
+                    </form>
+                    {% elif es_miembro %}
+                    <form action="{% url 'materiales:proponer_exclusion_coleccion' coleccion.pk lc.libro.id %}"
+                        method="post" style="display: flex; gap: 10px; align-items: center; max-width: 400px; flex-wrap: wrap;">
+                        {% csrf_token %}
+                        <input type="text" name="justificacion" class="form-input" placeholder="Justificación de exclusión..." required style="padding: 6px; font-size: 14px; flex: 1; min-width: 150px;">
+                        <button type="submit" class="btn" style="padding: 6px 12px; font-size: 14px;">Proponer Eliminar</button>
                     </form>
                     {% endif %}
                 </div>
@@ -652,6 +704,61 @@
             document.addEventListener('click', function (e) {
                 if (!libroResultsBox.contains(e.target) && e.target !== libroInput) {
                     libroResultsBox.style.display = 'none';
+                }
+            });
+        }
+
+        const libroPropInput = document.getElementById('libro-search-prop-input');
+        const libroIdPropInput = document.getElementById('libro-id-prop-input');
+        const libroPropResultsBox = document.getElementById('autocomplete-libros-prop-results');
+
+        if (libroPropInput && libroPropResultsBox) {
+            let debounceTimerPropLibro;
+
+            libroPropInput.addEventListener('input', function () {
+                libroIdPropInput.value = ''; // clear hidden id on text change
+                clearTimeout(debounceTimerPropLibro);
+                const query = this.value.trim();
+
+                if (query.length < 2) {
+                    libroPropResultsBox.style.display = 'none';
+                    return;
+                }
+
+                debounceTimerPropLibro = setTimeout(() => {
+                    fetch('/api/buscar-libros/?q=' + encodeURIComponent(query))
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.libros && data.libros.length > 0) {
+                                libroPropResultsBox.innerHTML = '';
+                                data.libros.forEach(libro => {
+                                    const btn = document.createElement('button');
+                                    btn.type = 'button';
+                                    btn.className = 'autocomplete-item';
+                                    btn.style.width = '100%';
+                                    btn.style.textAlign = 'left';
+                                    btn.style.border = 'none';
+                                    btn.style.background = 'none';
+                                    btn.textContent = libro.titulo + ' (por ' + libro.autor + ')';
+                                    btn.addEventListener('click', () => {
+                                        libroPropInput.value = libro.titulo;
+                                        libroIdPropInput.value = libro.id;
+                                        libroPropResultsBox.style.display = 'none';
+                                    });
+                                    libroPropResultsBox.appendChild(btn);
+                                });
+                                libroPropResultsBox.style.display = 'block';
+                            } else {
+                                libroPropResultsBox.style.display = 'none';
+                            }
+                        })
+                        .catch(err => console.error(err));
+                }, 300);
+            });
+
+            document.addEventListener('click', function (e) {
+                if (!libroPropResultsBox.contains(e.target) && e.target !== libroPropInput) {
+                    libroPropResultsBox.style.display = 'none';
                 }
             });
         }

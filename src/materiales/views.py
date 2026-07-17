@@ -478,6 +478,8 @@ from django.contrib.auth import get_user_model
 from django.contrib import messages
 from .models import Coleccion, ParticipacionColeccion, InvitacionColeccion, SolicitudAccesoColeccion
 
+from .models import PropuestaCambioColeccion
+
 User = get_user_model()
 
 @login_required
@@ -493,9 +495,11 @@ def detalle_coleccion(request, coleccion_id):
         
     solicitudes = []
     invitaciones = []
+    propuestas = []
     if es_admin:
         solicitudes = coleccion.solicitudes.filter(estado=SolicitudAccesoColeccion.PENDIENTE)
         invitaciones = coleccion.invitaciones.filter(estado=InvitacionColeccion.PENDIENTE)
+        propuestas = coleccion.propuestas_cambio.filter(estado=PropuestaCambioColeccion.PENDIENTE)
         
     libros_disponibles = Libro.objects.filter(estado=Libro.PUBLICADO).exclude(id__in=coleccion.libros.all()) if es_miembro else []
     libros_coleccion = coleccion.librocoleccion_set.select_related('libro', 'agregado_por').all()
@@ -514,6 +518,7 @@ def detalle_coleccion(request, coleccion_id):
         'es_admin': es_admin,
         'solicitudes': solicitudes,
         'invitaciones': invitaciones,
+        'propuestas': propuestas,
         'libros_disponibles': libros_disponibles,
         'libros_coleccion': libros_coleccion,
         'bitacora': bitacora,
@@ -663,6 +668,75 @@ def procesar_solicitud(request, solicitud_id, accion):
     if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}):
         return redirect(next_url)
     return redirect('materiales:detalle_coleccion', coleccion_id=solicitud.coleccion.id)
+
+@login_required
+def proponer_inclusion_coleccion(request, coleccion_id):
+    if request.method == 'POST':
+        coleccion = get_object_or_404(Coleccion, id=coleccion_id)
+        libro_id = request.POST.get('libro_id')
+        justificacion = request.POST.get('justificacion', '').strip()
+        
+        if not libro_id or not justificacion:
+            messages.error(request, "Debe seleccionar un libro y proporcionar una justificación.")
+            return redirect('materiales:detalle_coleccion', coleccion_id=coleccion.id)
+            
+        try:
+            libro = get_object_or_404(Libro, id=libro_id, estado=Libro.PUBLICADO)
+            PropuestaCambioColeccion.crear_propuesta_inclusion(
+                coleccion=coleccion,
+                libro=libro,
+                usuario_solicitante=request.user,
+                justificacion=justificacion
+            )
+            messages.success(request, f"Propuesta de inclusión para '{libro.titulo}' enviada correctamente.")
+        except Exception as e:
+            messages.error(request, str(e.message) if hasattr(e, 'message') else str(e))
+            
+        return redirect('materiales:detalle_coleccion', coleccion_id=coleccion.id)
+    return redirect('materiales:inicio')
+
+@login_required
+def proponer_exclusion_coleccion(request, coleccion_id, libro_id):
+    if request.method == 'POST':
+        coleccion = get_object_or_404(Coleccion, id=coleccion_id)
+        libro = get_object_or_404(Libro, id=libro_id)
+        justificacion = request.POST.get('justificacion', '').strip()
+        
+        if not justificacion:
+            messages.error(request, "Debe proporcionar una justificación para la exclusión.")
+            return redirect('materiales:detalle_coleccion', coleccion_id=coleccion.id)
+            
+        try:
+            PropuestaCambioColeccion.crear_propuesta_exclusion(
+                coleccion=coleccion,
+                libro=libro,
+                usuario_solicitante=request.user,
+                justificacion=justificacion
+            )
+            messages.success(request, f"Propuesta de exclusión para '{libro.titulo}' enviada correctamente.")
+        except Exception as e:
+            messages.error(request, str(e.message) if hasattr(e, 'message') else str(e))
+            
+        return redirect('materiales:detalle_coleccion', coleccion_id=coleccion.id)
+    return redirect('materiales:inicio')
+
+@login_required
+def procesar_propuesta(request, propuesta_id, accion):
+    if request.method == 'POST':
+        propuesta = get_object_or_404(PropuestaCambioColeccion, id=propuesta_id)
+        
+        try:
+            if accion == 'aprobar':
+                propuesta.aprobar(request.user)
+                messages.success(request, f"Propuesta de {propuesta.usuario_solicitante.username} aprobada.")
+            elif accion == 'rechazar':
+                propuesta.rechazar(request.user)
+                messages.success(request, f"Propuesta de {propuesta.usuario_solicitante.username} rechazada.")
+        except Exception as e:
+            messages.error(request, str(e))
+            
+        return redirect('materiales:detalle_coleccion', coleccion_id=propuesta.coleccion.id)
+    return redirect('materiales:inicio')
 
 @login_required
 def api_buscar_usuarios(request):
