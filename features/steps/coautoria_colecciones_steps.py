@@ -368,7 +368,7 @@ def step_participante_no_aportante(context):
     context.libro_otro = Libro.objects.create(
         titulo='Libro Otro', autor=otro, numero_paginas=50, estado=Libro.PUBLICADO
     )
-    pass
+    context.coleccion.agregar_libro(otro, context.libro_otro)
 
 @when('el usuario intenta eliminar ese libro de la colección')
 def step_intenta_eliminar_libro(context):
@@ -455,3 +455,103 @@ def step_retirado_no_es_considerado_para_admin(context):
         usuario=context.participante_retirado, rol=ParticipacionColeccion.ADMINISTRADOR
     ).exists()
     context.test.assertFalse(es_admin)
+
+
+# ---------------------------------------------------------------------------
+# Escenario: Registrar acciones de libros en la bitácora de la colección
+# ---------------------------------------------------------------------------
+
+@given('que un participante agrega o quita un libro de la colección')
+def step_participante_agrega_quita_libro(context):
+    admin = User.objects.create_user(username='admin_bitacora', password='123')
+    context.coleccion = Coleccion.objects.create(nombre='Col Bitacora', creador=admin)
+    context.coleccion.agregar_participante(context.usuario_principal, rol=ParticipacionColeccion.PARTICIPANTE)
+    
+    from src.materiales.models import Libro
+    context.libro_bitacora = Libro.objects.create(
+        titulo='Libro Bitacora', autor=context.usuario_principal, numero_paginas=10, estado=Libro.PUBLICADO
+    )
+    # Agregar libro
+    context.coleccion.agregar_libro(context.usuario_principal, context.libro_bitacora)
+    
+    # Quitar libro para generar otro registro
+    context.coleccion.eliminar_libro(context.usuario_principal, context.libro_bitacora)
+
+@then('el sistema registra automáticamente la acción en la bitácora')
+def step_registra_accion_bitacora(context):
+    from src.materiales.models import BitacoraColeccion
+    registros = BitacoraColeccion.objects.filter(coleccion=context.coleccion)
+    context.test.assertTrue(registros.exists())
+    context.registros_bitacora = registros
+
+@then('el registro muestra el tipo de acción, el autor y la fecha')
+def step_registro_muestra_datos_libro(context):
+    from src.materiales.models import BitacoraColeccion
+    registro_agregar = context.registros_bitacora.filter(accion=BitacoraColeccion.AGREGAR_LIBRO).first()
+    context.test.assertIsNotNone(registro_agregar)
+    context.test.assertEqual(registro_agregar.usuario, context.usuario_principal)
+    context.test.assertIsNotNone(registro_agregar.fecha)
+    
+    registro_quitar = context.registros_bitacora.filter(accion=BitacoraColeccion.QUITAR_LIBRO).first()
+    context.test.assertIsNotNone(registro_quitar)
+    context.test.assertEqual(registro_quitar.usuario, context.usuario_principal)
+
+# ---------------------------------------------------------------------------
+# Escenario: Registrar ingreso y salida de miembros en la bitácora
+# ---------------------------------------------------------------------------
+
+@given('que un usuario ingresa o sale de una colección colaborativa')
+def step_usuario_ingresa_sale_coleccion(context):
+    admin = User.objects.create_user(username='admin_bitacora_miembros', password='123')
+    context.coleccion = Coleccion.objects.create(nombre='Col Bitacora Miembros', creador=admin)
+    
+    # Ingreso
+    context.coleccion.agregar_participante(context.usuario_principal)
+    
+    # Salida (abandonar)
+    context.coleccion.abandonar(usuario=context.usuario_principal)
+
+@then('el registro muestra el tipo de acción, el usuario y la fecha')
+def step_registro_muestra_datos_miembro(context):
+    from src.materiales.models import BitacoraColeccion
+    registros = BitacoraColeccion.objects.filter(coleccion=context.coleccion)
+    
+    registro_ingreso = registros.filter(accion=BitacoraColeccion.INGRESO_MIEMBRO).first()
+    context.test.assertIsNotNone(registro_ingreso)
+    context.test.assertEqual(registro_ingreso.usuario, context.usuario_principal)
+    context.test.assertIsNotNone(registro_ingreso.fecha)
+    
+    registro_salida = registros.filter(accion=BitacoraColeccion.SALIDA_MIEMBRO).first()
+    context.test.assertIsNotNone(registro_salida)
+    context.test.assertEqual(registro_salida.usuario, context.usuario_principal)
+
+# ---------------------------------------------------------------------------
+# Escenario: Solo los miembros pueden visualizar la bitácora de actividad
+# ---------------------------------------------------------------------------
+
+@given('que un usuario intenta visualizar la bitácora de una colección')
+def step_intenta_visualizar_bitacora(context):
+    admin = User.objects.create_user(username='admin_vis_bit', password='123')
+    context.coleccion = Coleccion.objects.create(nombre='Col Visibilidad Bitacora', creador=admin)
+    
+    context.usuario_no_miembro = User.objects.create_user(username='no_miembro', password='123')
+
+@when('el usuario no es miembro activo de la colección')
+def step_no_es_miembro_activo(context):
+    try:
+        context.resultado_vis_no_miembro = context.coleccion.obtener_bitacora(usuario=context.usuario_no_miembro)
+    except PermissionError as e:
+        context.exception_vis_no_miembro = e
+
+@then('el sistema deniega el acceso a la bitácora')
+def step_deniega_acceso_bitacora(context):
+    context.test.assertTrue(hasattr(context, 'exception_vis_no_miembro'))
+
+@then('si es miembro activo, el sistema muestra el historial de cambios')
+def step_si_es_miembro_muestra_historial(context):
+    context.coleccion.agregar_participante(context.usuario_principal)
+    try:
+        bitacora = context.coleccion.obtener_bitacora(usuario=context.usuario_principal)
+        context.test.assertIsNotNone(bitacora)
+    except Exception as e:
+        context.test.fail(f"No deberia fallar para miembros activos: {e}")

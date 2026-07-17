@@ -395,17 +395,6 @@
                     style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
                     
                     <div style="position: relative; width: 100%;">
-                        <button class="print-btn" type="button" style="width: 100%; margin: 0;" id="btn-descargar"
-                            onclick="document.getElementById('download-menu').classList.toggle('show')">
-                            Descargar &#9662;
-                        </button>
-                        <div id="download-menu" class="download-menu" style="width: 100%; text-align: center;">
-                            <a href="{% url 'materiales:confirmar_descarga' libro.id 'pdf' %}">📄 Descargar PDF</a>
-                            <a href="{% url 'materiales:confirmar_descarga' libro.id 'epub' %}">📕 Descargar EPUB</a>
-                        </div>
-                    </div>
-
-                    <div style="position: relative; width: 100%;">
                         <button class="print-btn" type="button" style="width: 100%; margin: 0;" onclick="document.getElementById('add-collection-form-{{ libro.id }}').classList.toggle('show')">
                             Añadir a colección &#9662;
                         </button>
@@ -425,31 +414,35 @@
                             {% else %}
                             <p style="font-size: 14px; margin: 0;">No perteneces a ninguna colección.</p>
                             {% endif %}
-                    style="position: relative; margin-top: 20px; display: flex; justify-content: flex-end;">
-                    <button class="print-btn" type="button" id="btn-descargar"
-                        onclick="document.getElementById('download-menu').classList.toggle('show')">
-                        Descargar &#9662;
-                    </button>
-                    <div id="download-menu" class="download-menu" style="padding: 10px; width: 250px;">
-                        <h4 style="margin: 5px 10px; font-size: 14px; color: #555;">Libro Completo</h4>
-                        <a href="{% url 'materiales:confirmar_descarga' libro.id 'pdf' %}">📄 Completo PDF</a>
-                        <a href="{% url 'materiales:confirmar_descarga' libro.id 'epub' %}">📕 Completo EPUB</a>
-                        
-                        <hr style="margin: 10px 0; border: 0; border-top: 1px solid #ddd;">
-                        
-                        <h4 style="margin: 5px 10px; font-size: 14px; color: #555;">Página Actual</h4>
-                        <a href="javascript:void(0)" onclick="descargarParcial('pagina', 'pdf')">📄 PDF (Pág. actual)</a>
-                        
-                        <hr style="margin: 10px 0; border: 0; border-top: 1px solid #ddd;">
-                        
-                        <h4 style="margin: 5px 10px; font-size: 14px; color: #555;">Rango de Páginas</h4>
-                        <div style="padding: 0 10px 10px 10px; display: flex; flex-direction: column; gap: 8px;">
-                            <div style="display: flex; gap: 5px; align-items: center;">
-                                <input type="number" id="descarga-inicio" min="1" placeholder="Ini" style="width: 100%; padding: 5px; border: 1px solid #ccc;">
-                                <span>-</span>
-                                <input type="number" id="descarga-fin" min="1" placeholder="Fin" style="width: 100%; padding: 5px; border: 1px solid #ccc;">
+                        </div>
+                    </div>
+
+                    <div style="position: relative; width: 100%;">
+                        <button class="print-btn" type="button" style="width: 100%; margin: 0;" id="btn-descargar"
+                            onclick="document.getElementById('download-menu').classList.toggle('show')">
+                            Descargar &#9662;
+                        </button>
+                        <div id="download-menu" class="download-menu" style="width: 100%; padding: 10px; box-sizing: border-box; background: white; text-align: left;">
+                            <h4 style="margin: 5px 10px; font-size: 14px; color: #555;">Libro Completo</h4>
+                            <a href="{% url 'materiales:confirmar_descarga' libro.id 'pdf' %}" style="display: block; padding: 5px 10px; color: #333; text-decoration: none;">📄 Completo PDF</a>
+                            <a href="{% url 'materiales:confirmar_descarga' libro.id 'epub' %}" style="display: block; padding: 5px 10px; color: #333; text-decoration: none;">📕 Completo EPUB</a>
+                            
+                            <hr style="margin: 10px 0; border: 0; border-top: 1px solid #ddd;">
+                            
+                            <h4 style="margin: 5px 10px; font-size: 14px; color: #555;">Página Actual</h4>
+                            <a href="javascript:void(0)" onclick="descargarParcial('pagina', 'pdf')" style="display: block; padding: 5px 10px; color: #333; text-decoration: none;">📄 PDF (Pág. actual)</a>
+                            
+                            <hr style="margin: 10px 0; border: 0; border-top: 1px solid #ddd;">
+                            
+                            <h4 style="margin: 5px 10px; font-size: 14px; color: #555;">Rango de Páginas</h4>
+                            <div style="padding: 0 10px 10px 10px; display: flex; flex-direction: column; gap: 8px;">
+                                <div style="display: flex; gap: 5px; align-items: center;">
+                                    <input type="number" id="descarga-inicio" min="1" placeholder="Ini" style="width: 100%; padding: 5px; border: 1px solid #ccc; box-sizing: border-box;">
+                                    <span>-</span>
+                                    <input type="number" id="descarga-fin" min="1" placeholder="Fin" style="width: 100%; padding: 5px; border: 1px solid #ccc; box-sizing: border-box;">
+                                </div>
+                                <button onclick="descargarParcial('rango', 'pdf')" style="background: var(--accent); border: 1px solid var(--border); padding: 8px; cursor: pointer; font-weight: bold;">Descargar Rango (PDF)</button>
                             </div>
-                            <button onclick="descargarParcial('rango', 'pdf')" style="background: var(--accent); border: none; padding: 8px; cursor: pointer; font-weight: bold;">Descargar Rango (PDF)</button>
                         </div>
                     </div>
                 </div>
