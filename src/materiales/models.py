@@ -217,6 +217,11 @@ class Libro(models.Model):
         self.descargas += 1
         self.save()
 
+    def registrar_visualizacion(self):
+        """RN-PUB-13: Incrementa el contador de visualizaciones del libro."""
+        self.visualizaciones += 1
+        self.save(update_fields=['visualizaciones'])
+
     def _obtener_contenido_paginas(self, inicio=None, fin=None):
         """Extrae unicamente el HTML correspondiente al rango de paginas indicado."""
         import re

@@ -323,6 +323,17 @@
                     <button class="secondary-btn" style="width:100%; max-width:none;" type="button">Editar</button>
                 </a>
                 {% endif %}
+                {% if puede_retirar %}
+                <form method="post" action="{% url 'materiales:retirar_libro' libro.pk %}"
+                    style="width:100%; max-width:404px; margin-top: 10px;"
+                    onsubmit="return confirm('¿Seguro que deseas retirar este material? Dejará de ser visible para la comunidad y se eliminarán las anotaciones que otros usuarios hayan hecho en él.');">
+                    {% csrf_token %}
+                    <button class="secondary-btn" style="width:100%; max-width:none;" type="submit">Retirar</button>
+                </form>
+                {% endif %}
+                {% if esta_retirado %}
+                <p class="meta" style="margin-top:10px;">Este material está retirado: solo tú puedes verlo.</p>
+                {% endif %}
                 {% if metricas %}
                 <div class="metrics">
                     <p class="meta">Visualizaciones: {{ metricas.visualizaciones }}</p>

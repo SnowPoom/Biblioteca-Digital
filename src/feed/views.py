@@ -126,11 +126,17 @@ def perfil_publico(request, username):
     es_propio = request.user == usuario_perfil
     
     borradores = []
+    retirados = []
     if es_propio:
         from src.materiales.models import Libro
         borradores = Libro.objects.filter(
             autor=usuario_perfil,
             estado=Libro.BORRADOR,
+        ).order_by('-creado')
+        # RN-PUB-10: el autor conserva acceso privado a su material retirado.
+        retirados = Libro.objects.filter(
+            autor=usuario_perfil,
+            estado=Libro.RETIRADO,
         ).order_by('-creado')
 
     from src.materiales.models import Coleccion
@@ -152,6 +158,7 @@ def perfil_publico(request, username):
         'cantidad_seguidos': cantidad_seguidos,
         'publicaciones': publicaciones,
         'borradores': borradores,
+        'retirados': retirados,
         'colecciones': colecciones,
         'es_propio': es_propio,
     }

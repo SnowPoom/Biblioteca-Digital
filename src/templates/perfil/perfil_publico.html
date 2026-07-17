@@ -569,6 +569,39 @@
                 {% endfor %}
                 {% endif %}
             </div>
+            <hr class="separador">
+            <h3 class="seccion-titulo">Retirados</h3>
+            <div class="main">
+                {% if not retirados %}
+                <div class="estado-vacio">
+                    <strong>Sin retirados</strong>
+                    No tienes libros retirados actualmente.
+                </div>
+                {% else %}
+                {% for item in retirados %}
+                <a href="{% url 'materiales:detalle_libro' item.pk %}" style="text-decoration:none; color:inherit; display:block;">
+                    <article class="card" aria-label="{{ item.titulo }}">
+                        {% if item.portada %}
+                            <img src="{{ item.portada.url }}" alt="Portada de {{ item.titulo }}" class="image-placeholder" style="object-fit: cover;">
+                        {% else %}
+                            <div class="image-placeholder" aria-hidden="true">Sin Portada</div>
+                        {% endif %}
+                        <div class="card-content">
+                            <h2>{{ item.titulo }}</h2>
+                            <div class="tags">
+                                {% for cat in item.categorias.all %}
+                                <span class="tag">{{ cat.nombre }}</span>
+                                {% empty %}
+                                <span class="tag">Sin categoría</span>
+                                {% endfor %}
+                            </div>
+                            <p style="color: #666; font-weight: bold; margin-top: 8px;">Retirado (solo visible para ti)</p>
+                        </div>
+                    </article>
+                </a>
+                {% endfor %}
+                {% endif %}
+            </div>
             {% endif %}
             <hr class="separador">
             <h3 class="seccion-titulo">Colecciones</h3>
