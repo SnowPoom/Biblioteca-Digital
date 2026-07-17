@@ -483,6 +483,13 @@ def detalle_coleccion(request, coleccion_id):
     libros_disponibles = Libro.objects.filter(estado=Libro.PUBLICADO).exclude(id__in=coleccion.libros.all()) if es_miembro else []
     libros_coleccion = coleccion.librocoleccion_set.select_related('libro', 'agregado_por').all()
     
+    bitacora = []
+    if es_miembro:
+        try:
+            bitacora = coleccion.obtener_bitacora(request.user)
+        except PermissionError:
+            pass
+    
     context = {
         'coleccion': coleccion,
         'participaciones': participaciones,
@@ -492,6 +499,7 @@ def detalle_coleccion(request, coleccion_id):
         'invitaciones': invitaciones,
         'libros_disponibles': libros_disponibles,
         'libros_coleccion': libros_coleccion,
+        'bitacora': bitacora,
     }
     return render(request, 'colecciones/detalle_coleccion.html', context)
 

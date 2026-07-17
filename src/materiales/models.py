@@ -640,6 +640,12 @@ class Coleccion(models.Model):
                     libro=libro,
                     agregado_por=usuario
                 )
+                BitacoraColeccion.objects.create(
+                    coleccion=col,
+                    usuario=usuario,
+                    accion=BitacoraColeccion.AGREGAR_LIBRO,
+                    detalles=f'"{libro.titulo}"'
+                )
             except IntegrityError:
                 raise ValidationError("El libro ya se encuentra en la colección.")
 
@@ -661,6 +667,12 @@ class Coleccion(models.Model):
             raise PermissionError("Solo el administrador o el participante activo que añadió el libro puede eliminarlo.")
 
         lc.delete()
+        BitacoraColeccion.objects.create(
+            coleccion=self,
+            usuario=usuario,
+            accion=BitacoraColeccion.QUITAR_LIBRO,
+            detalles=f'"{libro.titulo}"'
+        )
 
     def es_administrador(self, usuario):
         return self.participantes_activos().filter(usuario=usuario, rol=ParticipacionColeccion.ADMINISTRADOR).exists()
@@ -698,10 +710,21 @@ class Coleccion(models.Model):
             usuario=usuario,
             defaults={'rol': rol, 'estado': ParticipacionColeccion.ACTIVO}
         )
-        if not creada and participacion.estado == ParticipacionColeccion.RETIRADO:
+        if creada:
+            BitacoraColeccion.objects.create(
+                coleccion=self,
+                usuario=usuario,
+                accion=BitacoraColeccion.INGRESO_MIEMBRO
+            )
+        elif participacion.estado == ParticipacionColeccion.RETIRADO:
             participacion.estado = ParticipacionColeccion.ACTIVO
             participacion.rol = rol
             participacion.save()
+            BitacoraColeccion.objects.create(
+                coleccion=self,
+                usuario=usuario,
+                accion=BitacoraColeccion.INGRESO_MIEMBRO
+            )
 
     def invitar_usuario(self, admin, usuario_invitado):
         if not self.es_administrador(admin):
@@ -771,6 +794,11 @@ class Coleccion(models.Model):
         if participacion:
             participacion.estado = ParticipacionColeccion.RETIRADO
             participacion.save()
+            BitacoraColeccion.objects.create(
+                coleccion=self,
+                usuario=admin_usuario,
+                accion=BitacoraColeccion.SALIDA_MIEMBRO
+            )
             from src.feed.models import Notificacion
             Notificacion.objects.create(
                 usuario=participante_usuario,
@@ -791,6 +819,12 @@ class Coleccion(models.Model):
                 
         participacion.delete()
         
+        BitacoraColeccion.objects.create(
+            coleccion=self,
+            usuario=usuario,
+            accion=BitacoraColeccion.SALIDA_MIEMBRO
+        )
+        
         if self.creador and self.creador != usuario:
             from src.feed.models import Notificacion
             Notificacion.objects.create(
@@ -801,6 +835,11 @@ class Coleccion(models.Model):
             )
             
         return True
+
+    def obtener_bitacora(self, usuario):
+        if not self.participantes_activos().filter(usuario=usuario).exists():
+            raise PermissionError("Solo los miembros activos pueden ver la bitácora.")
+        return BitacoraColeccion.objects.filter(coleccion=self).order_by('-fecha')
 
 class ParticipacionColeccion(models.Model):
     ADMINISTRADOR = 'administrador'
@@ -1031,3 +1070,32 @@ def reasignar_creador_al_eliminar_participacion(sender, instance, **kwargs):
     if coleccion is None or coleccion.creador_id is not None:
         return
     coleccion.reasignar_administrador()
+
+class BitacoraColeccion(models.Model):
+    AGREGAR_LIBRO = 'agregar_libro'
+    QUITAR_LIBRO = 'quitar_libro'
+    INGRESO_MIEMBRO = 'ingreso_miembro'
+    SALIDA_MIEMBRO = 'salida_miembro'
+    CAMBIO_CONFIGURACION = 'cambio_configuracion'
+
+    OPCIONES_ACCION = [
+        (AGREGAR_LIBRO, 'Agregar libro'),
+        (QUITAR_LIBRO, 'Quitar libro'),
+        (INGRESO_MIEMBRO, 'Ingreso miembro'),
+        (SALIDA_MIEMBRO, 'Salida miembro'),
+        (CAMBIO_CONFIGURACION, 'Cambio configuración'),
+    ]
+
+    coleccion = models.ForeignKey(Coleccion, on_delete=models.CASCADE, related_name='bitacora')
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    accion = models.CharField(max_length=50, choices=OPCIONES_ACCION)
+    detalles = models.CharField(max_length=255, null=True, blank=True)
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Registro de Bitácora'
+        verbose_name_plural = 'Registros de Bitácora'
+        ordering = ['-fecha']
+
+    def __str__(self):
+        return f"{self.usuario.username} - {self.get_accion_display()} en {self.coleccion.nombre}"

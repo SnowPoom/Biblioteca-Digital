@@ -354,8 +354,33 @@
         <div class="content-panel">
 
             <button class="btn" type="button"
-                onclick="document.getElementById('participantes-section').style.display = document.getElementById('participantes-section').style.display === 'none' ? 'block' : 'none';"
+                onclick="
+                    var ps = document.getElementById('participantes-section');
+                    var bs = document.getElementById('bitacora-section');
+                    if (ps.style.display === 'none') {
+                        ps.style.display = 'block';
+                        if (bs) bs.style.display = 'none';
+                    } else {
+                        ps.style.display = 'none';
+                    }
+                "
                 style="margin-bottom: 20px;">Ver participantes</button>
+
+            {% if es_miembro %}
+            <button class="btn" type="button"
+                onclick="
+                    var ps = document.getElementById('participantes-section');
+                    var bs = document.getElementById('bitacora-section');
+                    if (bs.style.display === 'none') {
+                        bs.style.display = 'block';
+                        if (ps) ps.style.display = 'none';
+                    } else {
+                        bs.style.display = 'none';
+                    }
+                "
+                style="margin-bottom: 20px; margin-left: 10px;">Ver bitácora</button>
+            {% endif %}
+
             <div id="participantes-section" style="display: none;">
                 {% if es_admin %}
                 <div
@@ -420,6 +445,26 @@
                 </div>
                 {% endif %}
             </div>
+
+            {% if es_miembro %}
+            <div id="bitacora-section" style="display: none;">
+                <h2 class="seccion-titulo">Bitácora de Actividad</h2>
+                <div style="margin-bottom: 32px;">
+                    {% for registro in bitacora %}
+                    <div class="card" style="padding: 16px; margin-bottom: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px;">
+                            <span style="margin: 0;"><strong>{{ registro.usuario.username }}</strong>: {{ registro.get_accion_display }}{% if registro.detalles %} {{ registro.detalles }}{% endif %}</span>
+                            <span style="color: var(--text-muted); font-size: 12px; margin-left: 10px;">
+                                {{ registro.fecha|date:"d/m/Y H:i" }}
+                            </span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p>No hay registros en la bitácora.</p>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
 
             <h2 class="seccion-titulo">
                 Libros en la Colección ({{ coleccion.libros.count }}/{{ coleccion.limite_libros }})
