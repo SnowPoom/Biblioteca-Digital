@@ -47,6 +47,20 @@ Característica: Coautoría y edición compartida de colecciones
     Cuando el usuario intenta invitar, aceptar solicitudes o retirar participantes
     Entonces el sistema rechaza la operación
 
+  Escenario: Retirar a un participante de la colección
+    Dado que el usuario es administrador de una colección
+    Cuando el usuario retira a un participante de la colección
+    Entonces ese participante pierde acceso de edición a la colección
+    Y su estado cambia a "retirado"
+    Y el contenido que aportó permanece en la colección
+
+  Escenario: Abandonar una colección voluntariamente
+    Dado que el usuario es participante de una colección
+    Cuando el usuario decide abandonar esa colección
+    Entonces deja de ser participante
+    Y pierde acceso de edición a la colección
+    Y los libros que aportó permanecen en la colección
+
   Escenario: Cualquier participante puede agregar libros a la colección
     Dado que el usuario es participante de una colección que no ha alcanzado su límite de libros
     Cuando el usuario agrega un libro a la colección
@@ -59,6 +73,13 @@ Característica: Coautoría y edición compartida de colecciones
     Entonces la operación es exitosa
 
 
-  Escenario: El rol de administrador pasa al colaborador más activo si el creador es eliminado
-    Dado que el creador de una colección es eliminado de la plataforma
-    Entonces el sistema asigna automáticamente el rol de administrador al participante con mayor índice de reputación de colaborador en esa colección
+  Escenario: El rol de administrador pasa al participante con mayor índice de reputación si el creador es eliminado
+    Dado que una colección tiene varios participantes activos con distintos índices de reputación de colaborador
+    Cuando el creador de la colección es eliminado de la plataforma
+    Entonces el sistema asigna automáticamente el rol de administrador al participante activo con mayor índice de reputación de colaborador
+
+  Escenario: Un participante retirado no hereda la administración aunque tenga mayor reputación
+    Dado que una colección tiene un participante retirado con mayor reputación que los participantes activos
+    Cuando el creador de la colección es eliminado de la plataforma
+    Entonces el sistema asigna el rol de administrador al participante activo con mayor índice de reputación de colaborador
+    Y el participante retirado no es considerado para el rol de administrador
