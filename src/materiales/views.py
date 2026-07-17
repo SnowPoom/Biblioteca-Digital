@@ -511,9 +511,7 @@ def agregar_libro_coleccion(request, coleccion_id):
                 messages.success(request, f"Libro '{libro.titulo}' agregado a la colección.")
             except ValidationError as e:
                 messages.error(request, str(e.message) if hasattr(e, 'message') else str(e))
-            except Exception as e:
-                messages.error(request, str(e))
-        return redirect('materiales:detalle_coleccion', coleccion_id=coleccion.id)
+            return redirect('materiales:detalle_coleccion', coleccion_id=coleccion.id)
     return redirect('materiales:inicio')
 
 @login_required
@@ -525,8 +523,6 @@ def eliminar_libro_coleccion(request, coleccion_id, libro_id):
             coleccion.eliminar_libro(request.user, libro)
             messages.success(request, f"Libro '{libro.titulo}' eliminado de la colección.")
         except PermissionError as e:
-            messages.error(request, str(e))
-        except Exception as e:
             messages.error(request, str(e))
         return redirect('materiales:detalle_coleccion', coleccion_id=coleccion.id)
     return redirect('materiales:inicio')
@@ -650,5 +646,25 @@ def api_buscar_libros(request):
     if len(q) < 2:
         return JsonResponse({'libros': []})
     libros = Libro.objects.filter(estado=Libro.PUBLICADO, titulo__icontains=q)[:10]
-    results = [{'id': l.id, 'titulo': l.titulo, 'autor': l.autor.username} for l in libros]
+    results = [{'id': libro.id, 'titulo': libro.titulo, 'autor': libro.autor.username} for libro in libros]
     return JsonResponse({'libros': results})
+
+def ajustar_limite(request, coleccion_id):
+    if request.method == 'POST':
+        coleccion = get_object_or_404(Coleccion, id=coleccion_id)
+        if not coleccion.es_administrador(request.user):
+            messages.error(request, "Solo los administradores pueden ajustar el límite.")
+            return redirect('materiales:detalle_coleccion', coleccion_id=coleccion_id)
+        
+        try:
+            nuevo_limite = int(request.POST.get('limite_libros', 20))
+            if 5 <= nuevo_limite <= 20:
+                coleccion.limite_libros = nuevo_limite
+                coleccion.save()
+                messages.success(request, f"Límite de libros actualizado a {nuevo_limite}.")
+            else:
+                messages.error(request, "El límite debe estar entre 5 y 20.")
+        except ValueError:
+            messages.error(request, "Límite inválido.")
+            
+    return redirect('materiales:detalle_coleccion', coleccion_id=coleccion_id)

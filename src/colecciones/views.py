@@ -32,7 +32,7 @@ def crear_coleccion(request):
 def editar_coleccion(request, coleccion_id):
     coleccion = get_object_or_404(Coleccion, id=coleccion_id)
     
-    es_admin = coleccion.participaciones.filter(usuario=request.user, rol=ParticipacionColeccion.ADMINISTRADOR).exists()
+    es_admin = coleccion.es_administrador(request.user)
     if not es_admin:
         messages.error(request, "No tienes permisos para editar esta colección.")
         return redirect('materiales:detalle_coleccion', coleccion_id=coleccion.id)

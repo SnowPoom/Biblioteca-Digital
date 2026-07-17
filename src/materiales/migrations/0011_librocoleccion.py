@@ -5,6 +5,13 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def copy_books(apps, schema_editor):
+    Coleccion = apps.get_model('materiales', 'Coleccion')
+    LibroColeccion = apps.get_model('materiales', 'LibroColeccion')
+    ThroughModel = Coleccion._meta.get_field('libros').remote_field.through
+    for obj in ThroughModel.objects.all():
+        LibroColeccion.objects.get_or_create(coleccion_id=obj.coleccion_id, libro_id=obj.libro_id)
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -13,10 +20,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='coleccion',
-            name='libros',
-        ),
         migrations.CreateModel(
             name='LibroColeccion',
             fields=[
@@ -29,6 +32,11 @@ class Migration(migrations.Migration):
             options={
                 'unique_together': {('coleccion', 'libro')},
             },
+        ),
+        migrations.RunPython(copy_books, migrations.RunPython.noop),
+        migrations.RemoveField(
+            model_name='coleccion',
+            name='libros',
         ),
         migrations.AddField(
             model_name='coleccion',

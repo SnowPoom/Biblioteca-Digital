@@ -380,14 +380,20 @@
                     <div class="card">
                         <div class="card-content">
                             <h3>{{ participacion.usuario.get_full_name|default:participacion.usuario.username }}</h3>
-                            <p>@{{ participacion.usuario.username }} {% if participacion.usuario == coleccion.creador
-                                %}(Administrador){% endif %}</p>
+                            <p>
+                                @{{ participacion.usuario.username }}
+                                {% if participacion.usuario == coleccion.creador %}
+                                    (Administrador)
+                                {% endif %}
+                            </p>
+                            <p>Reputación de colaborador: {{ participacion.indice_reputacion }}</p>
                         </div>
                     </div>
                     {% empty %}
                     <p>No hay otros participantes.</p>
                     {% endfor %}
                 </div>
+
 
                 {% if es_admin and solicitudes %}
                 <h2 class="seccion-titulo">Solicitudes de Acceso Pendientes</h2>
@@ -415,8 +421,10 @@
                 {% endif %}
             </div>
 
-            <h2 class="seccion-titulo">Libros en la Colección ({{ coleccion.libros.count }}/{{ coleccion.limite_libros
-                }})</h2>
+            <h2 class="seccion-titulo">
+                Libros en la Colección ({{ coleccion.libros.count }}/{{ coleccion.limite_libros }})
+            </h2>
+
 
             {% if es_miembro %}
             <div
@@ -442,10 +450,16 @@
                         <h3><a href="{% url 'materiales:lectura_material' lc.libro.id %}"
                                 style="text-decoration: none; color: inherit;">{{ lc.libro.titulo }}</a></h3>
                         <p>Por @{{ lc.libro.autor.username }} | {{ lc.libro.numero_paginas }} páginas</p>
-                        <p style="font-size: 0.9em; color: #555;">Añadido por {% if lc.agregado_por %}@{{
-                            lc.agregado_por.username }}{% else %}Sistema{% endif %}</p>
+                        <p style="font-size: 0.9em; color: #555;">
+                            Añadido por
+                            {% if lc.agregado_por %}
+                                @{{ lc.agregado_por.username }}
+                            {% else %}
+                                Sistema
+                            {% endif %}
+                        </p>
                     </div>
-                    {% if es_miembro %}
+                    {% if es_admin or lc.agregado_por == request.user and es_miembro %}
                     <form action="{% url 'materiales:eliminar_libro_coleccion' coleccion.pk lc.libro.id %}"
                         method="post">
                         {% csrf_token %}
@@ -527,6 +541,7 @@
             let debounceTimerLibro;
 
             libroInput.addEventListener('input', function () {
+                libroIdInput.value = ''; // clear hidden id on text change
                 clearTimeout(debounceTimerLibro);
                 const query = this.value.trim();
 
@@ -542,15 +557,20 @@
                             if (data.libros && data.libros.length > 0) {
                                 libroResultsBox.innerHTML = '';
                                 data.libros.forEach(libro => {
-                                    const div = document.createElement('div');
-                                    div.className = 'autocomplete-item';
-                                    div.textContent = libro.titulo + ' (por ' + libro.autor + ')';
-                                    div.addEventListener('click', () => {
+                                    const btn = document.createElement('button');
+                                    btn.type = 'button';
+                                    btn.className = 'autocomplete-item';
+                                    btn.style.width = '100%';
+                                    btn.style.textAlign = 'left';
+                                    btn.style.border = 'none';
+                                    btn.style.background = 'none';
+                                    btn.textContent = libro.titulo + ' (por ' + libro.autor + ')';
+                                    btn.addEventListener('click', () => {
                                         libroInput.value = libro.titulo;
                                         libroIdInput.value = libro.id;
                                         libroResultsBox.style.display = 'none';
                                     });
-                                    libroResultsBox.appendChild(div);
+                                    libroResultsBox.appendChild(btn);
                                 });
                                 libroResultsBox.style.display = 'block';
                             } else {

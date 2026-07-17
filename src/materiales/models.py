@@ -624,27 +624,43 @@ class Coleccion(models.Model):
         - RN-COL-08: Todos los participantes pueden añadir libros a la colección,
           sujeto al límite máximo configurado de libros por colección.
         """
-        if self.libros.filter(id=libro.id).exists():
-            raise ValidationError("El libro ya se encuentra en la colección.")
-        if self.libros.count() >= self.limite_libros:
-            raise ValidationError(f"La colección ha alcanzado su límite máximo de {self.limite_libros} libros.")
-        LibroColeccion.objects.create(
-            coleccion=self,
-            libro=libro,
-            agregado_por=usuario
-        )
+        if not self.participantes_activos().filter(usuario=usuario).exists():
+            raise ValidationError("Solo los participantes activos de la colección pueden añadir libros.")
+
+        from django.db import transaction, IntegrityError
+        with transaction.atomic():
+            col = type(self).objects.select_for_update().get(pk=self.pk)
+            if col.libros.filter(id=libro.id).exists():
+                raise ValidationError("El libro ya se encuentra en la colección.")
+            if col.libros.count() >= col.limite_libros:
+                raise ValidationError(f"La colección ha alcanzado su límite máximo de {col.limite_libros} libros.")
+            try:
+                LibroColeccion.objects.create(
+                    coleccion=col,
+                    libro=libro,
+                    agregado_por=usuario
+                )
+            except IntegrityError:
+                raise ValidationError("El libro ya se encuentra en la colección.")
 
     def eliminar_libro(self, usuario, libro):
         """Elimina un libro de la colección sin borrarlo de la plataforma.
-        
+
         Reglas de negocio aplicadas:
         - RN-COL-09: Solo el administrador o el participante que añadió un libro puede eliminarlo.
         - RN-PUB-16: Eliminar un libro de una colección no lo elimina de la biblioteca general.
         """
-        if not self.participaciones.filter(usuario=usuario).exists():
-            raise PermissionError("Solo los participantes de la colección pueden eliminar libros.")
+        lc = LibroColeccion.objects.filter(coleccion=self, libro=libro).first()
+        if not lc:
+            raise ValueError("El libro no pertenece a la colección.")
             
-        self.libros.remove(libro)
+        es_admin = self.es_administrador(usuario)
+        es_agregador = lc.agregado_por == usuario and self.participantes_activos().filter(usuario=usuario).exists()
+        
+        if not (es_admin or es_agregador):
+            raise PermissionError("Solo el administrador o el participante activo que añadió el libro puede eliminarlo.")
+
+        lc.delete()
 
     def es_administrador(self, usuario):
         return self.participantes_activos().filter(usuario=usuario, rol=ParticipacionColeccion.ADMINISTRADOR).exists()
@@ -722,8 +738,8 @@ class Coleccion(models.Model):
         if self.participantes_activos().count() >= 15:
             return False, "Se ha alcanzado el límite máximo de 15 participantes."
             
-        if self.participaciones.filter(usuario=usuario_solicitante).exists():
-            return False, "El usuario ya es miembro de la colección."
+        if self.participantes_activos().filter(usuario=usuario_solicitante).exists():
+            return False, "El usuario ya es miembro activo de la colección."
 
         solicitud_pendiente = SolicitudAccesoColeccion.objects.filter(coleccion=self, usuario_solicitante=usuario_solicitante, estado=SolicitudAccesoColeccion.PENDIENTE).first()
         if solicitud_pendiente:
