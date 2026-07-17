@@ -463,9 +463,7 @@ def agregar_libro_coleccion(request, coleccion_id):
                 messages.success(request, f"Libro '{libro.titulo}' agregado a la colección.")
             except ValidationError as e:
                 messages.error(request, str(e.message) if hasattr(e, 'message') else str(e))
-            except Exception as e:
-                messages.error(request, str(e))
-        return redirect('materiales:detalle_coleccion', coleccion_id=coleccion.id)
+            return redirect('materiales:detalle_coleccion', coleccion_id=coleccion.id)
     return redirect('materiales:inicio')
 
 @login_required
@@ -477,8 +475,6 @@ def eliminar_libro_coleccion(request, coleccion_id, libro_id):
             coleccion.eliminar_libro(request.user, libro)
             messages.success(request, f"Libro '{libro.titulo}' eliminado de la colección.")
         except PermissionError as e:
-            messages.error(request, str(e))
-        except Exception as e:
             messages.error(request, str(e))
         return redirect('materiales:detalle_coleccion', coleccion_id=coleccion.id)
     return redirect('materiales:inicio')
@@ -602,5 +598,5 @@ def api_buscar_libros(request):
     if len(q) < 2:
         return JsonResponse({'libros': []})
     libros = Libro.objects.filter(estado=Libro.PUBLICADO, titulo__icontains=q)[:10]
-    results = [{'id': l.id, 'titulo': l.titulo, 'autor': l.autor.username} for l in libros]
+    results = [{'id': libro.id, 'titulo': libro.titulo, 'autor': libro.autor.username} for libro in libros]
     return JsonResponse({'libros': results})
