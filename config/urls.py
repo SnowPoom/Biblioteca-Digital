@@ -18,10 +18,12 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from src.feed import views as feed_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('src.materiales.urls')),
+    path('perfil/<str:username>/', feed_views.perfil_publico, name='perfil_publico'),
     path('auth/', include('src.login.urls', namespace='login')),
     path('feed/', include('src.feed.urls', namespace='feed')),
     path('busqueda/', include('src.busqueda.urls', namespace='busqueda')),

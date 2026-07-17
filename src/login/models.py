@@ -28,6 +28,10 @@ class PerfilUsuario(models.Model):
         choices=TIPOS_USUARIO,
         default=ESTUDIANTE,
     )
+    avatar = models.CharField(
+        max_length=50,
+        default='avatar1.png',
+    )
     cuota_descarga = models.IntegerField(default=CUOTA_BASE)
     # RN-EXP-02: Fecha de la ultima renovacion de cuota para el ciclo de 30 dias
     fecha_ultima_renovacion = models.DateTimeField(null=True, blank=True)

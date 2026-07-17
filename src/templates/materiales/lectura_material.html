@@ -7,90 +7,153 @@
     <title>Lectura del material</title>
     <style>
         :root {
-            --bg: #ffffff;
-            --text: #000000;
-            --accent: #6798f2;
-            --surface: #d9d9d9;
-            --border: #000000;
+            --primary: #008080;
+            --primary-hover: #006666;
+            --secondary: #475569;
+            --bg-color: #F8FAFC;
+            --text-color: #0F172A;
+            --muted-text: #64748B;
+            --border-color: rgba(71, 85, 105, 0.1);
         }
 
-        * {
-            box-sizing: border-box;
-        }
-
+        * { box-sizing: border-box; }
         body {
             margin: 0;
-            font-family: 'Roboto', Arial, sans-serif;
-            background: var(--bg);
-            color: var(--text);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
             display: flex;
             min-height: 100vh;
+            overflow-x: hidden;
         }
 
+        /* Glassmorphic Background Blobs */
+        .bg-blobs {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .bg-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.12;
+        }
+        .bg-blob-1 {
+            width: 500px;
+            height: 500px;
+            background: var(--primary);
+            top: -100px;
+            right: -100px;
+        }
+        .bg-blob-2 {
+            width: 400px;
+            height: 400px;
+            background: var(--secondary);
+            bottom: -50px;
+            left: -50px;
+        }
+
+        /* Sidebar Glassmorphism */
         .sidebar-frame {
-            width: 180px;
-            flex-shrink: 0;
-            border-right: 1px solid var(--border);
+            width: 280px;
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-right: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            padding: 0 28px;
+            padding: 40px 20px;
             position: sticky;
             top: 0;
             height: 100vh;
             align-self: flex-start;
+            z-index: 100;
         }
 
         .sidebar-nav {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
         }
 
         .sidebar-nav a {
-            display: block;
-            padding: 14px 0;
-            font-size: 20px;
-            font-weight: 600;
-            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--secondary);
             text-decoration: none;
-            transition: opacity 0.15s ease;
+            border-radius: 12px;
+            transition: all 0.2s ease;
         }
 
         .sidebar-nav a:hover {
-            opacity: 0.55;
+            background: rgba(0, 128, 128, 0.06);
+            color: var(--primary);
         }
 
-        .sidebar-nav .activo {
+        .sidebar-nav a.activo {
+            background: var(--primary);
+            color: #ffffff;
             font-weight: 600;
+            box-shadow: 0 4px 14px rgba(0, 128, 128, 0.18);
         }
 
-        /* Icono de campana */
-        .notificacion-link {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 14px 0;
-            font-size: 20px;
-            font-weight: 600;
-            color: var(--text);
-            text-decoration: none;
-            transition: opacity 0.15s ease;
+        .sidebar-dropdown {
             position: relative;
         }
-
-        .notificacion-link:hover {
-            opacity: 0.55;
+        .dropdown-toggle {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+        .dropdown-content {
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            padding: 6px;
+            margin-top: 4px;
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+        }
+        .dropdown-content.show {
+            display: flex;
+        }
+        .dropdown-content a {
+            padding: 8px 12px;
+            font-size: 14px;
+            color: var(--secondary);
+            font-weight: 500;
+        }
+        .dropdown-content a:hover {
+            background: rgba(0, 128, 128, 0.04);
+            color: var(--primary);
         }
 
+        /* Notificacion link badge */
+        .notificacion-link {
+            position: relative;
+        }
         .notificacion-link svg {
-            width: 22px;
-            height: 22px;
+            width: 20px;
+            height: 20px;
         }
-
         .badge {
-            background: #ff3b3b;
-            color: #fff;
+            background: #ef4444;
+            color: #ffffff;
             font-size: 11px;
             font-weight: 600;
             min-width: 18px;
@@ -102,52 +165,97 @@
             padding: 0 5px;
             position: absolute;
             top: 10px;
-            left: 14px;
+            right: 16px;
         }
 
+        /* Sidebar Footer (Avatar & Logout) */
+        .sidebar-footer {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+        .sidebar-profile-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--text-color);
+            font-weight: 600;
+            font-size: 15px;
+            padding: 8px;
+            border-radius: 10px;
+            transition: background 0.2s ease;
+        }
+        .sidebar-profile-link:hover {
+            background: rgba(0, 128, 128, 0.05);
+        }
+        .sidebar-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--primary);
+        }
+        .sidebar-avatar-placeholder {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+        .sidebar-logout-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #dc2626;
+            font-weight: 500;
+            font-size: 14px;
+            text-decoration: none;
+            padding: 10px 14px;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+        }
+        .sidebar-logout-btn:hover {
+            background: rgba(220, 38, 38, 0.06);
+        }
+
+        /* Content Area */
         .content-frame-page {
             flex: 1;
             min-width: 0;
-            padding: 24px 32px 40px;
+            padding: 48px 40px 60px;
             position: relative;
         }
 
         .title {
-            font-size: 48px;
-            font-weight: 600;
-            margin: 40px 0 0 0;
-            letter-spacing: -0.48px;
+            font-size: 36px;
+            font-weight: 700;
+            margin: 0 0 12px;
+            letter-spacing: -0.02em;
+            color: var(--text-color);
         }
 
-        .avatar {
-            width: 74px;
-            height: 72px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #d9d9d9, #bfbfbf);
-            position: absolute;
-            top: 24px;
-            right: 10px;
-        }
-
+        /* Reader Layout */
         .reader {
-            margin-top: 40px;
-            border: 1px solid var(--border);
-            padding: 24px 24px 28px;
+            margin-top: 32px;
             display: grid;
-            grid-template-columns: minmax(320px, 480px) 300px;
+            grid-template-columns: minmax(320px, 1fr) 320px;
             gap: 28px;
             align-items: start;
         }
 
         .content-card {
-            background: var(--surface);
+            background: #ffffff;
             width: 100%;
             padding: 0;
             display: block;
             overflow: hidden;
             position: relative;
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
-            border: 1px solid #ddd;
+            box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
         }
 
         .page-scaler {
@@ -182,22 +290,58 @@
         }
 
         .notes {
-            border: 1px solid var(--border);
-            background: #ffffff;
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
             min-height: 400px;
-            padding: 20px 16px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(15, 23, 42, 0.02);
         }
 
         .notes h2 {
-            margin: 0 0 18px;
-            font-size: 25px;
-            font-weight: 600;
+            margin: 0 0 16px;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-color);
         }
 
         .notes p {
             margin: 0;
-            font-size: 25px;
-            line-height: 1.4;
+            font-size: 15px;
+            line-height: 1.5;
+            color: var(--secondary);
+        }
+
+        /* Buttons and Controls */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: #ffffff;
+            color: var(--secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+        .btn:hover {
+            background: rgba(0, 128, 128, 0.05);
+            color: var(--primary);
+            border-color: rgba(0, 128, 128, 0.2);
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: #ffffff;
+            border: none;
+        }
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            color: #ffffff;
         }
 
         .print-btn {
@@ -205,13 +349,19 @@
             align-items: center;
             justify-content: center;
             margin: 18px 0 0 auto;
-            background: var(--accent);
-            color: var(--text);
+            background: var(--primary);
+            color: #ffffff;
             border: none;
             padding: 10px 20px;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 600;
+            border-radius: 8px;
             cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 128, 128, 0.15);
+        }
+        .print-btn:hover {
+            background: var(--primary-hover);
         }
 
         .nav-controls {
@@ -219,27 +369,51 @@
             justify-content: space-between;
             align-items: center;
             margin-top: 20px;
+            gap: 12px;
         }
 
         .nav-controls button {
-            margin: 0;
             padding: 10px 20px;
-            font-size: 20px;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: #ffffff;
+            color: var(--secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .nav-controls button:hover:not(:disabled) {
+            background: rgba(0, 128, 128, 0.05);
+            color: var(--primary);
+            border-color: rgba(0, 128, 128, 0.2);
         }
 
         .nav-controls button:disabled {
-            background: #ccc;
+            opacity: 0.5;
             cursor: not-allowed;
         }
 
-        @media (max-width: 980px) {
-            .reader {
-                grid-template-columns: 1fr;
-            }
-
-            .title {
-                margin-left: 0;
-            }
+        /* Go Back button styled */
+        .btn-atras {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(71, 85, 105, 0.08);
+            color: var(--secondary);
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            margin-bottom: 24px;
+        }
+        .btn-atras:hover {
+            background: rgba(71, 85, 105, 0.15);
+            color: var(--text-color);
+            transform: translateX(-2px);
         }
 
         .download-menu {
@@ -248,36 +422,41 @@
             bottom: 100%;
             right: 0;
             margin-bottom: 8px;
-            background: #fff;
-            border: 1px solid var(--border);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            z-index: 10;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+            z-index: 100;
             min-width: 200px;
         }
 
         .download-menu.show {
             display: flex;
             flex-direction: column;
+            padding: 6px;
         }
 
         .download-menu a {
-            padding: 14px 20px;
+            padding: 10px 16px;
             text-decoration: none;
-            color: var(--text);
-            font-size: 18px;
+            color: var(--secondary);
+            font-size: 14px;
             font-weight: 500;
-            transition: background 0.15s;
+            border-radius: 8px;
+            transition: all 0.2s ease;
         }
 
         .download-menu a:hover {
-            background: #f0f4ff;
+            background: rgba(0, 128, 128, 0.05);
+            color: var(--primary);
         }
 
         /* RN-ANO-05: resaltado visual de fragmentos con anotacion guardada */
         .fragmento-anotado {
             background: #fff3b0;
             cursor: pointer;
-            border-bottom: 2px solid var(--accent);
+            border-bottom: 2px solid var(--primary);
         }
 
         #menu-fragmento-anotado {
@@ -285,14 +464,15 @@
             position: fixed;
             z-index: 1000;
             background: #fff;
-            border: 1px solid var(--border);
+            border: 1px solid var(--border-color);
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            border-radius: 8px;
         }
 
         #menu-fragmento-anotado button {
             display: block;
             width: 100%;
-            padding: 6px 16px;
+            padding: 8px 16px;
             font-size: 13px;
             font-weight: 600;
             background: #fff;
@@ -301,37 +481,95 @@
             text-align: left;
         }
 
-        #menu-fragmento-anotado button:hover { background: var(--surface-soft, #f4f4f4); }
-        #menu-fragmento-anotado .opcion-eliminar { color: #c00; }
+        #menu-fragmento-anotado button:hover { background: rgba(0, 128, 128, 0.05); }
+        #menu-fragmento-anotado .opcion-eliminar { color: #dc2626; }
     </style>
 </head>
 
 <body>
+    <div class="bg-blobs">
+        <div class="bg-blob bg-blob-1"></div>
+        <div class="bg-blob bg-blob-2"></div>
+    </div>
+
     <aside class="sidebar-frame">
-        <nav class="sidebar-nav" aria-label="Navegacion principal">
-            <a href="{% url 'feed:notificaciones' %}" class="notificacion-link" aria-label="Notificaciones">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                    stroke-linejoin="round" aria-hidden="true">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        <nav class="sidebar-nav" aria-label="Navegación principal">
+            <a href="{% url 'materiales:inicio' %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
                 </svg>
+                <span>Para ti</span>
+            </a>
+            <a href="{% url 'feed:feed' %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                <span>Siguiendo</span>
+            </a>
+            <a href="{% url 'busqueda:busqueda' %}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <span>Buscar</span>
+            </a>
+            <a href="{% url 'feed:notificaciones' %}" class="notificacion-link" aria-label="Notificaciones">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                <span>Notificaciones</span>
                 {% if unread_notifications_count > 0 %}
                 <span class="badge">{{ unread_notifications_count }}</span>
                 {% endif %}
             </a>
-            <a href="{% url 'busqueda:busqueda' %}">Buscar</a>
-            <a href="{% url 'materiales:inicio' %}">Para ti</a>
-            <a href="{% url 'feed:feed' %}">Siguiendo</a>
-            <a href="{% url 'materiales:creacion_material' %}">Crear material</a>
-            <a href="{% url 'colecciones:crear_coleccion' %}">Crear colección</a>
+            <div class="sidebar-dropdown">
+                <a href="#" class="dropdown-toggle" onclick="this.nextElementSibling.classList.toggle('show'); return false;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        <span>Crear</span>
+                    </div>
+                    <span>▼</span>
+                </a>
+                <div class="dropdown-content">
+                    <a href="{% url 'materiales:creacion_material' %}">Material</a>
+                    <a href="{% url 'colecciones:crear_coleccion' %}">Colección</a>
+                </div>
+            </div>
         </nav>
+
+        <div class="sidebar-footer">
+            <a href="{% url 'perfil_publico' request.user.username %}" class="sidebar-profile-link">
+                {% if request.user.perfil.avatar %}
+                    <img src="/media/avatares/{{ request.user.perfil.avatar }}" class="sidebar-avatar" alt="Perfil" />
+                {% else %}
+                    <div class="sidebar-avatar-placeholder"></div>
+                {% endif %}
+                <span class="sidebar-username">{% firstof request.user.get_full_name request.user.username %}</span>
+            </a>
+            <a href="{% url 'login:cerrar_sesion' %}" class="sidebar-logout-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/>
+                    <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                <span>Cerrar sesión</span>
+            </a>
+        </div>
     </aside>
 
     <div class="content-frame-page">
         <h1 class="title">{{ libro.titulo }}</h1>
-        <a href="{% url 'feed:perfil_publico' request.user.username %}" style="text-decoration:none; color:inherit;">
-            <div class="avatar" aria-label="Perfil"></div>
-        </a>
+        <div>
+            <a href="javascript:history.back()" class="btn-atras">← Volver atrás</a>
+        </div>
 
         <section class="reader">
             <div class="content-card" id="page-display">

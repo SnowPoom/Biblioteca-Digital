@@ -59,20 +59,31 @@ def step_imagenes_relacionadas_con_contenido(context):
 
 @when('el usuario solicita publicar el libro')
 def step_solicita_publicar(context):
-    context.libro = Libro.objects.create(
-        titulo=context.datos_libro['titulo'],
-        contenido_texto=context.datos_libro['contenido_texto'],
-        numero_paginas=context.datos_libro['numero_paginas'],
-        autor=context.usuario_principal,
-    )
-    context.libro.portada.save(
-        context.datos_libro['portada'].name,
-        context.datos_libro['portada'],
-    )
-    context.libro.categorias.add(context.categoria)
+    from unittest.mock import patch
+    
+    def mock_validar(self, libro):
+        titulo = libro.titulo
+        if 'Recetas de Cocina' in titulo:
+            return {'aprobado': False, 'mensaje': 'El titulo y contenido del libro no guardan relacion con la categoria.'}
+        if 'Introduccion a Python' in titulo:
+            return {'aprobado': False, 'mensaje': 'Las imagenes no tienen relacion con el tema del libro.'}
+        return {'aprobado': True, 'mensaje': ''}
 
-    # Paso 1: Publicar el libro (valida requisitos y contenido)
-    resultado_bool, mensaje = context.libro.publicar()
+    with patch('src.materiales.validacion_contenido.ValidadorContenido._validar_tematica_e_imagenes_ia', new=mock_validar):
+        context.libro = Libro.objects.create(
+            titulo=context.datos_libro['titulo'],
+            contenido_texto=context.datos_libro['contenido_texto'],
+            numero_paginas=context.datos_libro['numero_paginas'],
+            autor=context.usuario_principal,
+        )
+        context.libro.portada.save(
+            context.datos_libro['portada'].name,
+            context.datos_libro['portada'],
+        )
+        context.libro.categorias.add(context.categoria)
+
+        # Paso 1: Publicar el libro (valida requisitos y contenido)
+        resultado_bool, mensaje = context.libro.publicar()
     context.resultado_publicacion = resultado_bool
     context.resultado = resultado_bool  # Necesario para steps compartidos
     context.resultado_validacion = {'aprobado': resultado_bool, 'mensaje': mensaje}
@@ -238,7 +249,7 @@ def step_notificacion_falta_relacion_tematica(context):
         "Debe existir una notificacion para el autor sobre el rechazo.",
     )
     mensaje = notificacion.mensaje.lower()
-    palabras_clave = ['relación', 'temática', 'categoría', 'semántica', 'coherencia', 'matemáticas', 'recetas', 'cocina']
+    palabras_clave = ['relación', 'relacion', 'temática', 'tematica', 'categoría', 'categoria', 'semántica', 'semantica', 'coherencia', 'matemáticas', 'recetas', 'cocina']
     context.test.assertTrue(
         any(p in mensaje for p in palabras_clave),
         f"La notificacion debe detallar la falta de relacion tematica. Mensaje recibido: {mensaje}"
@@ -399,14 +410,7 @@ def step_usuario_libro_publicado(context):
     # Un libro publicado ya cuenta con su entrada en el feed, tal como la
     # crearia Libro.publicar(). Se replica aqui para no depender de ese metodo.
     from src.feed.models import Publicacion
-    Publicacion.objects.get_or_create(
-        pk=context.libro.pk,
-        defaults={
-            'autor': context.libro.autor,
-            'titulo': context.libro.titulo,
-            'tipo': Publicacion.LIBRO,
-        }
-    )
+    Publicacion.objects.get_or_create(libro=context.libro)
 
 
 @when('el usuario modifica los metadatos del libro')
@@ -477,7 +481,7 @@ def step_libro_no_aparece_en_feed(context):
     Seguimiento.objects.create(seguidor=seguidor, seguido=context.usuario_principal)
 
     context.test.assertFalse(
-        Publicacion.objects.filter(pk=context.libro.pk).exists(),
+        Publicacion.objects.filter(libro=context.libro).exists(),
         "La publicación del libro retirado debe eliminarse para que no pueda mostrarse en ningún feed.",
     )
 

@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from src.login.models import PerfilUsuario
-from src.feed.models import Publicacion, Categoria as FeedCategoria
+from src.feed.models import Publicacion
 from src.materiales.models import Libro, Categoria
 
 User = get_user_model()
@@ -26,30 +26,32 @@ def _crear_libro_publicado(autor, titulo, categorias=None, visualizaciones=0,
         descargas=descargas,
         republicaciones=republicaciones,
     )
-    pub = Publicacion.objects.create(
-        pk=libro.pk,
-        autor=autor,
-        titulo=titulo,
-        tipo=Publicacion.LIBRO,
-    )
+    pub = Publicacion.objects.create(libro=libro)
     if categorias:
         for cat in categorias:
-            feed_cat, _ = FeedCategoria.objects.get_or_create(nombre=cat.nombre)
-            pub.categorias.add(feed_cat)
+            if pub.libro:
+                pub.libro.categorias.add(cat)
+            elif pub.coleccion:
+                pub.coleccion.categorias.add(cat)
     return libro, pub
 
 
 def _crear_coleccion_publicada(autor, titulo, categorias=None):
     """Crea una Publicacion de tipo coleccion en el feed."""
-    pub = Publicacion.objects.create(
-        autor=autor,
-        titulo=titulo,
-        tipo=Publicacion.COLECCION,
+    from src.materiales.models import Coleccion
+    col = Coleccion.objects.create(
+        nombre=titulo,
+        creador=autor,
+        visibilidad=Coleccion.PUBLICA,
+        descripcion='Coleccion generada para pruebas'
     )
+    pub = Publicacion.objects.create(coleccion=col)
     if categorias:
         for cat in categorias:
-            feed_cat, _ = FeedCategoria.objects.get_or_create(nombre=cat.nombre)
-            pub.categorias.add(feed_cat)
+            if pub.libro:
+                pub.libro.categorias.add(cat)
+            elif pub.coleccion:
+                pub.coleccion.categorias.add(cat)
     return pub
 
 
@@ -88,7 +90,7 @@ def step_usuario_con_historial_lectura(context):
     )
     HistorialLectura.objects.create(
         usuario=context.usuario_principal,
-        publicacion=Publicacion.objects.get(pk=libro_leido.pk),
+        publicacion=Publicacion.objects.get(libro=libro_leido),
     )
     context.libro_leido = libro_leido
 
@@ -142,7 +144,7 @@ def step_presenta_contenido_areas_exploradas(context):
     )
 
     # Validar el limite maximo de 10 libros y 10 colecciones
-    libros_recomendados = [pub for pub in recomendaciones if pub.tipo == Publicacion.LIBRO]
+    libros_recomendados = [pub for pub in recomendaciones if pub.libro_id is not None]
     colecciones_recomendadas = [pub for pub in recomendaciones if pub.tipo == Publicacion.COLECCION]
 
     context.test.assertLessEqual(
@@ -176,7 +178,7 @@ def step_no_aparece_contenido_consumido(context):
     recomendaciones. RN-REC-03.
     """
     recomendaciones = list(context.response.context['recomendaciones'])
-    ids_recomendados = [pub.pk for pub in recomendaciones]
+    ids_recomendados = [pub.material_pk for pub in recomendaciones]
 
     context.test.assertNotIn(
         context.libro_leido.pk,
@@ -220,7 +222,7 @@ def step_usuario_ha_explorado_contenido(context):
     )
     HistorialLectura.objects.create(
         usuario=context.usuario_principal,
-        publicacion=Publicacion.objects.get(pk=libro_base.pk),
+        publicacion=Publicacion.objects.get(libro=libro_base),
     )
 
     # Libro con metricas altas (debe priorizarse)
@@ -259,7 +261,7 @@ def step_incluye_publicaciones_alta_actividad(context):
     )
 
     recomendaciones = list(context.response.context['recomendaciones'])
-    ids_recomendados = [pub.pk for pub in recomendaciones]
+    ids_recomendados = [pub.material_pk for pub in recomendaciones]
 
     context.test.assertIn(
         context.libro_popular.pk,
@@ -364,7 +366,7 @@ def step_presenta_contenido_mayor_consumo(context):
         'No se generaron recomendaciones generales para un usuario sin historial.',
     )
 
-    ids_recomendados = [pub.pk for pub in recomendaciones]
+    ids_recomendados = [pub.material_pk for pub in recomendaciones]
 
     # El contenido de alto consumo debe estar presente
     context.test.assertIn(
@@ -418,7 +420,7 @@ def step_usuario_leyo_libro(context):
     )
     HistorialLectura.objects.create(
         usuario=context.usuario_principal,
-        publicacion=Publicacion.objects.get(pk=libro_ya_leido.pk),
+        publicacion=Publicacion.objects.get(libro=libro_ya_leido),
     )
     context.libro_ya_leido = libro_ya_leido
 
@@ -441,7 +443,7 @@ def step_libro_no_aparece_en_sugerencias(context):
     )
 
     recomendaciones = list(context.response.context['recomendaciones'])
-    ids_recomendados = [pub.pk for pub in recomendaciones]
+    ids_recomendados = [pub.material_pk for pub in recomendaciones]
 
     context.test.assertNotIn(
         context.libro_ya_leido.pk,
@@ -487,7 +489,7 @@ def step_usuario_visualiza_recomendacion(context):
     )
     HistorialLectura.objects.create(
         usuario=context.usuario_principal,
-        publicacion=Publicacion.objects.get(pk=libro_historial.pk),
+        publicacion=Publicacion.objects.get(libro=libro_historial),
     )
 
     # Libro candidato que debe aparecer como recomendacion
@@ -613,7 +615,7 @@ def step_historial_periodos_distintos(context):
     )
     historial_antiguo = HistorialLectura.objects.create(
         usuario=context.usuario_principal,
-        publicacion=Publicacion.objects.get(pk=libro_antiguo.pk),
+        publicacion=Publicacion.objects.get(libro=libro_antiguo),
     )
     # Se fuerza la fecha antigua con update para no activar auto_now_add
     ahora = timezone.now()
@@ -629,7 +631,7 @@ def step_historial_periodos_distintos(context):
     )
     HistorialLectura.objects.create(
         usuario=context.usuario_principal,
-        publicacion=Publicacion.objects.get(pk=libro_reciente.pk),
+        publicacion=Publicacion.objects.get(libro=libro_reciente),
     )
 
     # Libros candidatos a recomendacion en ambas categorias
@@ -663,7 +665,7 @@ def step_prioriza_actividad_reciente(context):
     )
 
     recomendaciones = list(context.response.context['recomendaciones'])
-    ids_recomendados = [pub.pk for pub in recomendaciones]
+    ids_recomendados = [pub.material_pk for pub in recomendaciones]
 
     context.test.assertGreater(
         len(recomendaciones),
@@ -725,7 +727,7 @@ def step_usuario_en_seccion_recomendaciones(context):
     )
     HistorialLectura.objects.create(
         usuario=context.usuario_principal,
-        publicacion=Publicacion.objects.get(pk=libro_historial.pk),
+        publicacion=Publicacion.objects.get(libro=libro_historial),
     )
 
     # Libro candidato a recomendacion
@@ -742,7 +744,7 @@ def step_usuario_en_seccion_recomendaciones(context):
         titulo='Coleccion recomendable de Ingenieria',
         categorias=[cat_ingenieria],
     )
-    context.coleccion_recomendable = coleccion_rec
+    context.coleccion_recomendable = coleccion_rec.coleccion
 
     # Acceder a la seccion para tener la respuesta base
     from django.urls import reverse
@@ -768,12 +770,12 @@ def step_muestra_unicamente_tipo(context, tipo_contenido):
     )
 
     recomendaciones = list(context.response.context['recomendaciones'])
-    ids_recomendados = [pub.pk for pub in recomendaciones]
+    ids_recomendados = [pub.material_pk for pub in recomendaciones]
 
-    tipo_esperado = Publicacion.LIBRO if tipo_contenido == 'libros' else Publicacion.COLECCION
+    tipo_esperado = 'libro' if tipo_contenido == 'libros' else 'coleccion'
     
     # Primero verificar que el elemento esperado por el filtro esta presente
-    if tipo_esperado == Publicacion.LIBRO:
+    if tipo_esperado == 'libro':
         context.test.assertIn(context.libro_recomendable.pk, ids_recomendados)
     else:
         context.test.assertIn(context.coleccion_recomendable.pk, ids_recomendados)

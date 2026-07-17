@@ -34,14 +34,6 @@ class Seguimiento(models.Model):
             )
 
 
-class Categoria(models.Model):
-    """Etiqueta temática que puede asociarse a una Publicacion."""
-
-    nombre = models.CharField(max_length=100, unique=True)
-
-    def __str__(self):
-        return self.nombre
-
 
 class Publicacion(models.Model):
     """Material publicado por un usuario: libro o colección."""
@@ -49,37 +41,63 @@ class Publicacion(models.Model):
     LIBRO = 'libro'
     COLECCION = 'coleccion'
 
-    TIPOS = [
-        (LIBRO, 'Libro'),
-        (COLECCION, 'Colección'),
-    ]
-
-    autor = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+    libro = models.OneToOneField(
+        'materiales.Libro',
         on_delete=models.CASCADE,
-        related_name='publicaciones',
-    )
-    titulo = models.CharField(max_length=255)
-    descripcion = models.TextField(blank=True, default='')
-    tipo = models.CharField(max_length=20, choices=TIPOS, default=LIBRO)
-    categorias = models.ManyToManyField(
-        Categoria,
+        null=True,
         blank=True,
-        related_name='publicaciones',
+        related_name='publicacion_feed'
+    )
+    coleccion = models.OneToOneField(
+        'materiales.Coleccion',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='publicacion_feed'
     )
     creado = models.DateTimeField(auto_now_add=True)
 
     @property
+    def tipo(self):
+        return 'coleccion' if self.coleccion else 'libro'
+        
+    @property
+    def titulo(self):
+        return self.libro.titulo if self.libro else self.coleccion.nombre if self.coleccion else ''
+
+    @property
+    def descripcion(self):
+        return self.libro.contenido_texto[:100] if self.libro else self.coleccion.descripcion if self.coleccion else ''
+
+    @property
+    def autor(self):
+        return self.libro.autor if self.libro else self.coleccion.creador if self.coleccion else None
+
+    @property
+    def categorias(self):
+        return self.libro.categorias if self.libro else self.coleccion.categorias if self.coleccion else None
+
+    @property
     def portada_url(self):
-        if self.tipo == self.LIBRO:
-            from src.materiales.models import Libro
-            try:
-                libro = Libro.objects.get(pk=self.pk)
-                if libro.portada:
-                    return libro.portada.url
-            except Libro.DoesNotExist:
-                pass
+        if self.libro and self.libro.portada:
+            return self.libro.portada.url
         return None
+
+    @property
+    def url(self):
+        from django.urls import reverse
+        if self.libro:
+            return reverse('materiales:detalle_libro', args=[self.libro.pk])
+        elif self.coleccion:
+            return reverse('colecciones:detalle_coleccion', args=[self.coleccion.pk])
+        return '#'
+
+    @property
+    def material_pk(self):
+        return self.libro.pk if self.libro else self.coleccion.pk if self.coleccion else None
+
+    def get_tipo_display(self):
+        return 'Colección' if self.coleccion else 'Libro'
 
     class Meta:
         # El feed debe entregarse del más reciente al más antiguo

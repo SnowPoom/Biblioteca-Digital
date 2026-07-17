@@ -19,7 +19,7 @@ def inicio(request):
 
     if request.method == 'POST' and formulario.is_valid():
         login(request, formulario.usuario)
-        return redirect('login:panel')
+        return redirect('materiales:inicio')
 
     return render(request, 'login/login.html', {'formulario': formulario})
 
@@ -30,15 +30,17 @@ def registro(request):
 
     if request.method == 'POST' and formulario.is_valid():
         formulario.save()
-        mensaje_exito = 'Registro completado. Ya puedes iniciar sesión.'
+        mensaje_exito = 'Registro completado. Ya puedes iniciar sesion.'
         formulario = RegistroFormulario()
 
+    from .forms import AVATARES_DISPONIBLES
     return render(
         request,
         'login/registro.html',
         {
             'formulario': formulario,
             'mensaje_exito': mensaje_exito,
+            'avatares': AVATARES_DISPONIBLES,
         },
     )
 
@@ -118,5 +120,10 @@ def panel(request):
 
 
 def cerrar_sesion(request):
+    # Consumir y limpiar todos los mensajes pendientes para evitar que aparezcan en el login
+    from django.contrib import messages
+    storage = messages.get_messages(request)
+    for _ in storage:
+        pass
     logout(request)
     return redirect('login:inicio')

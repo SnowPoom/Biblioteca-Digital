@@ -9,85 +9,125 @@
 
     <style>
         :root {
-            --bg: #ffffff;
-            --text: #000000;
-            --accent: #6798f2;
-            --surface: #d9d9d9;
-            --border: #000000;
+            --primary: #008080;
+            --primary-hover: #006666;
+            --secondary: #475569;
+            --bg-color: #F8FAFC;
+            --text-color: #0F172A;
+            --muted-text: #64748B;
+            --border-color: rgba(71, 85, 105, 0.1);
         }
 
         * { box-sizing: border-box; }
         body {
             margin: 0;
-            font-family: 'Roboto', Arial, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-        }
-
-        .page {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
             min-height: 100vh;
-            padding: 24px 32px 40px;
+            overflow-x: hidden;
             display: flex;
             justify-content: center;
         }
 
+        /* Glassmorphic Background Blobs */
+        .bg-blobs {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .bg-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.12;
+        }
+        .bg-blob-1 {
+            width: 500px;
+            height: 500px;
+            background: var(--primary);
+            top: -100px;
+            right: -100px;
+        }
+        .bg-blob-2 {
+            width: 400px;
+            height: 400px;
+            background: var(--secondary);
+            bottom: -50px;
+            left: -50px;
+        }
+
+        .page {
+            width: 100%;
+            max-width: 1100px;
+            padding: 48px 24px 60px;
+        }
+
         .shell {
-            width: min(1440px, 100%);
             position: relative;
         }
 
         .title {
-            font-size: 48px;
-            font-weight: 600;
-            margin: 24px 0 0 16px;
-            letter-spacing: -0.48px;
-        }
-
-        .avatar {
-            width: 74px;
-            height: 72px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #d9d9d9, #bfbfbf);
-            position: absolute;
-            top: 24px;
-            right: 10px;
+            font-size: 36px;
+            font-weight: 700;
+            margin: 0 0 24px;
+            letter-spacing: -0.02em;
+            color: var(--text-color);
         }
 
         .editor-panel {
-            margin-top: 30px;
-            border: 1px solid var(--border);
-            padding: 28px 24px 36px;
+            margin-top: 24px;
+            background: rgba(255, 255, 255, 0.55);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: 0 8px 32px rgba(15, 23, 42, 0.03);
             position: relative;
         }
 
         .toolbar-top {
             display: flex;
             justify-content: flex-end;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
             padding-bottom: 16px;
-            border-bottom: 2px solid var(--surface);
+            border-bottom: 1px solid var(--border-color);
         }
 
         .publish-btn {
-            background: var(--accent);
-            border: none;
-            padding: 16px 28px;
-            font-size: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 28px;
+            font-size: 15px;
             font-weight: 600;
+            border-radius: 10px;
+            border: none;
+            background: var(--primary);
+            color: #ffffff;
             cursor: pointer;
-            border-radius: 4px;
-            transition: background 0.2s;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 128, 128, 0.15);
         }
         
         .publish-btn:hover {
-            background: #4a7de0;
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(0, 128, 128, 0.2);
         }
 
         .metadata-section {
-            background: #f4f4f4;
-            padding: 16px 24px;
-            margin-bottom: 20px;
-            border: 1px solid #ccc;
+            background: rgba(255, 255, 255, 0.45);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
             display: flex;
             flex-wrap: wrap;
             gap: 24px;
@@ -96,15 +136,26 @@
         .metadata-field {
             display: flex;
             flex-direction: column;
-            gap: 6px;
-            font-size: 16px;
-            font-weight: 500;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-color);
         }
 
-        .metadata-field input[type="text"] {
-            padding: 10px;
-            border: 1px solid #999;
-            font-size: 16px;
+        .metadata-field input[type="text"],
+        .metadata-field input[type="file"] {
+            padding: 10px 14px;
+            border: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .metadata-field input[type="text"]:focus {
+            background: #ffffff;
+            border-color: var(--primary);
         }
 
         /* Categorias Dinamicas */
@@ -122,84 +173,96 @@
         }
 
         .category-dropdown select {
-            padding: 8px;
+            padding: 10px 14px;
             font-size: 14px;
-            border: 1px solid #999;
-            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 8px;
+            outline: none;
         }
 
         .btn-add-cat {
-            background: var(--accent);
+            background: rgba(0, 128, 128, 0.08);
             border: none;
-            color: #000;
+            color: var(--primary);
             font-size: 18px;
             font-weight: bold;
             cursor: pointer;
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.2s;
+            transition: all 0.2s ease;
         }
 
         .btn-add-cat:hover {
-            background: #4a7de0;
+            background: var(--primary);
+            color: #ffffff;
         }
 
         .chip {
-            background: #e0e0e0;
-            padding: 6px 12px;
-            border-radius: 16px;
-            font-size: 14px;
+            background: rgba(0, 128, 128, 0.08);
+            color: var(--primary);
+            padding: 6px 14px;
+            border-radius: 12px;
+            font-size: 13px;
             display: flex;
             align-items: center;
             gap: 8px;
-            border: 1px solid #ccc;
+            border: 1px solid rgba(0, 128, 128, 0.15);
+            font-weight: 500;
         }
 
         .chip-remove {
             cursor: pointer;
             font-weight: bold;
-            color: #c0392b;
+            color: #dc2626;
+            transition: color 0.2s ease;
+        }
+
+        .chip-remove:hover {
+            color: #b91c1c;
         }
 
         .page-counter {
             text-align: right;
-            margin-top: 10px;
-            font-size: 16px;
-            color: #333;
-            font-weight: bold;
+            margin-top: 12px;
+            font-size: 14px;
+            color: var(--muted-text);
+            font-weight: 600;
         }
 
         .alert {
-            padding: 14px 20px;
+            padding: 16px;
+            border-radius: 12px;
             margin-bottom: 20px;
-            font-size: 16px;
-            font-weight: 500;
+            font-weight: 600;
+            font-size: 14px;
         }
         .alert-error {
-            background: #fdecea;
-            color: #c0392b;
-            border: 1px solid #c0392b;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #b91c1c;
         }
         .alert-success {
-            background: #eafaf1;
-            color: #27ae60;
-            border: 1px solid #27ae60;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: #047857;
         }
         .errors-list {
-            color: #c0392b;
-            font-size: 14px;
+            color: #dc2626;
+            font-size: 13px;
             margin: 4px 0 0;
             padding-left: 20px;
         }
 
-        /* TinyMCE Editor Container overrides to look nice on the outside */
+        /* TinyMCE Editor Container overrides */
         .tox-tinymce {
-            border: 1px solid #bdbdbd !important;
-            border-radius: 4px !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 12px !important;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.02) !important;
         }
         
         .tox-notifications-container {
@@ -212,15 +275,41 @@
             gap: 8px;
             align-items: center;
         }
+
+        /* Go Back button styled */
+        .btn-atras {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(71, 85, 105, 0.08);
+            color: var(--secondary);
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            margin-bottom: 24px;
+        }
+        .btn-atras:hover {
+            background: rgba(71, 85, 105, 0.15);
+            color: var(--text-color);
+            transform: translateX(-2px);
+        }
     </style>
 </head>
 <body>
+    <div class="bg-blobs">
+        <div class="bg-blob bg-blob-1"></div>
+        <div class="bg-blob bg-blob-2"></div>
+    </div>
+
     <div class="page">
         <div class="shell">
+            <div>
+                <a href="javascript:history.back()" class="btn-atras">← Volver atrás</a>
+            </div>
             <div class="title">{{ titulo }}</div>
-            <a href="{% url 'feed:perfil_publico' request.user.username %}" style="text-decoration:none; color:inherit;">
-            <div class="avatar" aria-label="Perfil"></div>
-            </a>
 
             <section class="editor-panel">
                 {% if mensaje_exito %}
