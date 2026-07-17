@@ -360,13 +360,16 @@
             let currentPage = 1;
             if (node) {
                 let parent = node;
-                while (parent && parent !== editor.getBody()) {
-                    let prevSibling = parent.previousSibling;
-                    while (prevSibling) {
-                        if (prevSibling.classList && prevSibling.classList.contains('page-gap')) {
-                            currentPage++;
+                while (parent && parent.nodeName !== 'BODY') {
+                    if (parent.classList && parent.classList.contains('page')) {
+                        let prevSibling = parent.previousSibling;
+                        while (prevSibling) {
+                            if (prevSibling.classList && prevSibling.classList.contains('page')) {
+                                currentPage++;
+                            }
+                            prevSibling = prevSibling.previousSibling;
                         }
-                        prevSibling = prevSibling.previousSibling;
+                        break;
                     }
                     parent = parent.parentElement;
                 }
@@ -376,48 +379,171 @@
 
         function enforcePagination(editor) {
             const body = editor.getBody();
-            const PAGE_HEIGHT = 864; // Alto de contenido por hoja (1056 - 96 - 96)
+            
+            // 1. Envolver todo en paginas si no lo esta (carga inicial)
+            let pages = Array.from(body.querySelectorAll('.page'));
+            if (pages.length === 0) {
+                const page = editor.getDoc().createElement('div');
+                page.className = 'page';
+                while (body.firstChild) {
+                    page.appendChild(body.firstChild);
+                }
+                body.appendChild(page);
+                pages = [page];
+            } else {
+                // Si el usuario borra todo y escribe fuera, recolectar huerfanos
+                const orphans = [];
+                for(let i=0; i<body.childNodes.length; i++) {
+                    const node = body.childNodes[i];
+                    if (node.nodeType === 1 && node.classList && node.classList.contains('page')) continue;
+                    orphans.push(node);
+                }
+                if (orphans.length > 0) {
+                    orphans.forEach(n => pages[pages.length-1].appendChild(n));
+                }
+            }
             
             const bookmark = editor.selection.getBookmark(2, true);
+            const PAGE_HEIGHT = 1056;
             
-            // Eliminar los gaps autogenerados para recalcular
-            const existingAutoGaps = body.querySelectorAll('.auto-page-gap');
-            existingAutoGaps.forEach(gap => gap.remove());
-            
-            const children = Array.from(body.children);
-            let pageSum = 0;
-            
-            for (let i = 0; i < children.length; i++) {
-                const node = children[i];
-                if (node.nodeType !== 1) continue;
+            // 2. Motor de Reflujo
+            let i = 0;
+            while (i < pages.length) {
+                const page = pages[i];
                 
-                // Si es un salto manual, reiniciamos el contador de alto
-                if (node.classList.contains('manual-page-gap')) {
-                    pageSum = 0;
-                    continue;
+                
+                // B. Desbordamiento (Push a la siguiente pagina)
+                if (page.scrollHeight > PAGE_HEIGHT) {
+                    let nextPage = page.nextElementSibling;
+                    if (!nextPage || !nextPage.classList.contains('page')) {
+                        nextPage = editor.getDoc().createElement('div');
+                        nextPage.className = 'page';
+                        body.insertBefore(nextPage, page.nextSibling);
+                        pages = Array.from(body.querySelectorAll('.page'));
+                    }
+                    
+                    let moved = false;
+                    while (page.scrollHeight > PAGE_HEIGHT && page.lastChild) {
+                        const node = page.lastChild;
+                        
+                        // PREVENCION DE BUCLE INFINITO:
+                        // Si la hoja actual tiene solo 1 nodo y sigue desbordando,
+                        // moverlo a la siguiente pagina creara un bucle infinito.
+                        // Debemos encoger las imagenes dentro de este nodo o dejar de intentar moverlo.
+                        if (page.childNodes.length === 1) {
+                            let imgs = [];
+                            if (node.nodeName === 'IMG') {
+                                imgs.push(node);
+                            } else if (node.querySelectorAll) {
+                                imgs = node.querySelectorAll('img');
+                            }
+                            
+                            if (imgs.length > 0) {
+                                imgs.forEach(img => {
+                                    img.style.maxHeight = (PAGE_HEIGHT - 40) + 'px';
+                                    img.style.width = 'auto';
+                                    img.style.objectFit = 'contain';
+                                });
+                            }
+                            break; // Romper el while de desbordamiento
+                        }
+                        
+                        // Ocultamos temporalmente el nodo para ver si la pagina sigue desbordandose sin el
+                        const originalDisplay = node.style.display;
+                        node.style.display = 'none';
+                        const overflowsWithoutNode = page.scrollHeight > PAGE_HEIGHT;
+                        node.style.display = originalDisplay;
+                        
+                        if (overflowsWithoutNode) {
+                            // La pagina ya desbordaba ANTES de este nodo, asi que este nodo debe irse entero
+                            nextPage.insertBefore(node, nextPage.firstChild);
+                            moved = true;
+                            continue;
+                        }
+                        
+                        // Si llegamos aqui, ESTE es el nodo que esta cruzando la frontera de la pagina. ¡Debemos cortarlo!
+                        if (node.nodeName === 'P' || node.nodeName === 'DIV') {
+                            const html = node.innerHTML;
+                            // Dividir en tokens: etiquetas enteras <...>, palabras, o espacios
+                            const tokens = html.match(/<[^>]+>|[^< \t\n\r]+|[ \t\n\r]+/g) || [html];
+                            
+                            let low = 0;
+                            let high = tokens.length;
+                            let bestIdx = Math.floor(tokens.length / 2);
+                            
+                            // Busqueda binaria respetando las fronteras de los tags HTML
+                            for (let step = 0; step < 7; step++) {
+                                node.innerHTML = tokens.slice(0, bestIdx).join('');
+                                
+                                if (page.scrollHeight <= PAGE_HEIGHT) {
+                                    low = bestIdx;
+                                    bestIdx = Math.floor((bestIdx + high) / 2);
+                                    if (bestIdx === low) break;
+                                } else {
+                                    high = bestIdx;
+                                    bestIdx = Math.floor((low + bestIdx) / 2);
+                                }
+                            }
+                            
+                            // Ajuste final por si todavia desborda
+                            while(page.scrollHeight > PAGE_HEIGHT && bestIdx > 0) {
+                                bestIdx--;
+                                node.innerHTML = tokens.slice(0, bestIdx).join('');
+                            }
+                            
+                            if (bestIdx <= 0) {
+                                node.innerHTML = html;
+                                nextPage.insertBefore(node, nextPage.firstChild);
+                            } else {
+                                const half2 = node.cloneNode(false);
+                                half2.innerHTML = tokens.slice(bestIdx).join('');
+                                nextPage.insertBefore(half2, nextPage.firstChild);
+                            }
+                            moved = true;
+                        } else {
+                            // Elementos indivisibles (imagenes, etc) se mueven enteros
+                            nextPage.insertBefore(node, nextPage.firstChild);
+                            moved = true;
+                        }
+                    }
+                    if (moved) continue; 
                 }
                 
-                let nodeHeight = node.offsetHeight;
-                const style = window.getComputedStyle(node);
-                let nodeMargin = parseInt(style.marginTop || 0) + parseInt(style.marginBottom || 0);
+                // C. Espacio libre (Pull de la siguiente pagina)
+                let nextPage = page.nextElementSibling;
+                if (nextPage && nextPage.classList.contains('page') && page.scrollHeight <= PAGE_HEIGHT) {
+                    while (nextPage.firstChild) {
+                        const firstNode = nextPage.firstChild;
+                        page.appendChild(firstNode);
+                        if (page.scrollHeight > PAGE_HEIGHT) {
+                            // Se trajo mucho, devolver
+                            nextPage.insertBefore(firstNode, nextPage.firstChild);
+                            break;
+                        }
+                    }
+                    if (nextPage.childNodes.length === 0 || (nextPage.childNodes.length === 1 && nextPage.innerText.trim() === '')) {
+                        nextPage.remove();
+                        pages = Array.from(body.querySelectorAll('.page'));
+                    }
+                }
                 
-                // Si este bloque supera el limite de la pagina, insertamos un gap automatico antes
-                if (pageSum + nodeHeight + nodeMargin > PAGE_HEIGHT && pageSum > 0) {
-                    const gap = editor.getDoc().createElement('div');
-                    gap.className = 'page-gap auto-page-gap';
-                    gap.contentEditable = 'false';
-                    gap.innerHTML = '&nbsp;';
-                    body.insertBefore(gap, node);
-                    
-                    pageSum = nodeHeight + nodeMargin;
+                i++;
+            }
+            
+            // Limpieza de hojas vacias sobrantes al final
+            pages = Array.from(body.querySelectorAll('.page'));
+            for (let j = pages.length - 1; j > 0; j--) {
+                const p = pages[j];
+                if (p.childNodes.length === 0 || (p.childNodes.length === 1 && p.innerText.trim() === '')) {
+                    p.remove();
                 } else {
-                    pageSum += nodeHeight + nodeMargin;
+                    break;
                 }
             }
             
             editor.selection.moveToBookmark(bookmark);
             
-            const totalPages = body.querySelectorAll('.page-gap').length + 1;
+            const totalPages = body.querySelectorAll('.page').length;
             document.getElementById('id-numero-paginas').value = totalPages;
             updateCurrentPageDisplay(editor, totalPages);
         }
@@ -425,7 +551,7 @@
         tinymce.init({
             selector: '#word-editor',
             plugins: 'link wordcount formatpainter',
-            toolbar: 'undo redo | fontfamily fontsize | bold italic underline forecolor | alignleft aligncenter alignright alignjustify | customPageBreak customInsertImage',
+            toolbar: 'undo redo | fontfamily fontsize | bold italic underline forecolor | alignleft aligncenter alignright alignjustify | customInsertImage',
             height: 800,
             menubar: false,
             elementpath: false, // Oculta la "p" en la esquina inferior izquierda
@@ -438,16 +564,25 @@
                     padding: 40px 0;
                 }
                 body { 
+                    margin: 0 !important;
+                    background: transparent;
+                }
+                .page {
                     width: 816px !important;
-                    min-height: 1056px !important;
-                    margin: 0 auto !important;
+                    height: 1056px !important;
+                    margin: 0 auto 40px auto !important;
                     background: #fff;
                     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                    padding: 96px !important; 
+                    padding: 96px 96px 120px 96px !important; 
                     box-sizing: border-box;
                     font-family: 'Times New Roman', Times, serif;
                     font-size: 12pt !important;
                     line-height: 1.5;
+                    overflow: hidden;
+                    position: relative;
+                }
+                .page:last-child {
+                    margin-bottom: 0 !important;
                 }
                 p {
                     margin-top: 0;
@@ -458,21 +593,7 @@
                     height: auto;
                     display: block;
                 }
-                .page-gap {
-                    height: 40px;
-                    background-color: #e0e0e0;
-                    margin: 96px -96px; /* Genera el margen inferior de la pag actual y superior de la nueva */
-                    border-top: 1px solid #ccc;
-                    border-bottom: 1px solid #ccc;
-                    box-shadow: inset 0 4px 4px rgba(0,0,0,0.05), inset 0 -4px 4px rgba(0,0,0,0.05);
-                    clear: both;
-                    position: relative;
-                }
-                /* Para que el cursor no intente entrar en el gap */
-                .page-gap::before {
-                    content: " ";
-                    display: block;
-                }
+
             `,
             setup: function (editor) {
                 editor.ui.registry.addButton('customInsertImage', {
@@ -494,14 +615,6 @@
                     }
                 });
 
-                editor.ui.registry.addButton('customPageBreak', {
-                    icon: 'page-break',
-                    tooltip: 'Insertar Salto de Página',
-                    onAction: function() {
-                        editor.insertContent('<div class="page-gap manual-page-gap" contenteditable="false">&nbsp;</div><p><br></p>');
-                        enforcePagination(editor);
-                    }
-                });
 
                 // Ejecutar paginacion al cargar (para edicion de libros publicados)
                 editor.on('init', function() {
