@@ -641,7 +641,6 @@ class Coleccion(models.Model):
                     libro=libro,
                     agregado_por=usuario
                 )
-                
                 detalles_str = f'"{libro.titulo}"'
                 if len(detalles_str) > 257:
                     detalles_str = f'"{libro.titulo[:252]}..."'
@@ -815,7 +814,6 @@ class Coleccion(models.Model):
                     usuario=admin_usuario,
                     accion=BitacoraColeccion.SALIDA_MIEMBRO
                 )
-                
             from src.feed.models import Notificacion
             Notificacion.objects.create(
                 usuario=participante_usuario,
@@ -844,6 +842,12 @@ class Coleccion(models.Model):
                 accion=BitacoraColeccion.SALIDA_MIEMBRO
             )
         
+        BitacoraColeccion.objects.create(
+            coleccion=self,
+            usuario=usuario,
+            accion=BitacoraColeccion.SALIDA_MIEMBRO
+        )
+        
         if self.creador and self.creador != usuario:
             from src.feed.models import Notificacion
             Notificacion.objects.create(
@@ -854,6 +858,11 @@ class Coleccion(models.Model):
             )
             
         return True
+
+    def obtener_bitacora(self, usuario):
+        if not self.participantes_activos().filter(usuario=usuario).exists():
+            raise PermissionError("Solo los miembros activos pueden ver la bitácora.")
+        return BitacoraColeccion.objects.filter(coleccion=self).order_by('-fecha')
 
 class ParticipacionColeccion(models.Model):
     ADMINISTRADOR = 'administrador'
@@ -1107,4 +1116,9 @@ class BitacoraColeccion(models.Model):
     fecha = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        verbose_name = 'Registro de Bitácora'
+        verbose_name_plural = 'Registros de Bitácora'
         ordering = ['-fecha']
+
+    def __str__(self):
+        return f"{self.usuario.username} - {self.get_accion_display()} en {self.coleccion.nombre}"
