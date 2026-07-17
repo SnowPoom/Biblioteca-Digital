@@ -1,6 +1,7 @@
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import redirect, render, get_object_or_404
+from django.urls import reverse
 
 from django.core.exceptions import ValidationError
 from .forms import PublicacionLibroFormulario
@@ -345,13 +346,27 @@ def confirmar_descarga(request, libro_id, formato='pdf'):
     if formato not in ('pdf', 'epub'):
         formato = 'pdf'
 
+    tipo = request.GET.get('tipo', 'completo')
+    
+    if tipo == 'pagina':
+        pagina = request.GET.get('pag', '1')
+        paginas_a_descargar = 1
+        url_descarga = reverse('materiales:descargar_pagina', args=[libro_id, pagina, formato])
+    elif tipo == 'rango':
+        inicio = int(request.GET.get('ini', '1'))
+        fin = int(request.GET.get('fin', '1'))
+        paginas_a_descargar = fin - inicio + 1
+        url_descarga = reverse('materiales:descargar_rango', args=[libro_id, inicio, fin, formato])
+    else:
+        paginas_a_descargar = libro.numero_paginas
+        url_descarga = reverse('materiales:descargar_libro', args=[libro_id, formato])
+
     # RN-EXP-02: Renovar la cuota si han pasado 30 dias antes de validarla
     perfil.renovar_cuota_si_corresponde()
 
     cuota_actual = perfil.cuota_descarga
-    paginas_libro = libro.numero_paginas
-    cuota_restante = cuota_actual - paginas_libro
-    puede_descargar = perfil.puede_descargar(paginas_libro)
+    cuota_restante = cuota_actual - paginas_a_descargar
+    puede_descargar = perfil.puede_descargar(paginas_a_descargar)
 
     # RN-EXP-02: Calcular la fecha de proxima renovacion para informar al usuario
     fecha_renovacion = perfil.fecha_proxima_renovacion()
@@ -359,11 +374,13 @@ def confirmar_descarga(request, libro_id, formato='pdf'):
     return render(request, 'materiales/confirmar_descarga.html', {
         'libro': libro,
         'formato': formato,
+        'tipo': tipo,
         'cuota_actual': cuota_actual,
-        'paginas_libro': paginas_libro,
+        'paginas_a_descargar': paginas_a_descargar,
         'cuota_restante': cuota_restante,
         'puede_descargar': puede_descargar,
         'fecha_renovacion': fecha_renovacion,
+        'url_descarga': url_descarga,
     })
 
 

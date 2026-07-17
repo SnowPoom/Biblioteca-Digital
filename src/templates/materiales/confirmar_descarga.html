@@ -114,8 +114,8 @@
                     <strong>{{ formato|upper }}</strong>
                 </li>
                 <li>
-                    <span class="label">Páginas del libro:</span> 
-                    <strong>{{ paginas_libro }}</strong>
+                    <span class="label">Páginas a descargar:</span> 
+                    <strong>{{ paginas_a_descargar }}</strong>
                 </li>
                 <li>
                     <span class="label">Tu cuota actual:</span> 
@@ -153,7 +153,7 @@
     <script>
         function descargar() {
             // Disparar la descarga
-            window.location.href = "{% url 'materiales:descargar_libro' libro.id formato %}";
+            window.location.href = "{{ url_descarga|safe }}";
             
             // Recargar la pagina original despues de un par de segundos
             // esto permitira ver la cuota actualizada y confirmar que funciono.
