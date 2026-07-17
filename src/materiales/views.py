@@ -569,6 +569,31 @@ def solicitar_acceso_coleccion(request, coleccion_id):
     return redirect('materiales:detalle_coleccion', coleccion_id=coleccion_id)
 
 @login_required
+def retirar_de_coleccion(request, coleccion_id, participante_id):
+    if request.method == 'POST':
+        coleccion = get_object_or_404(Coleccion, id=coleccion_id)
+        participante = get_object_or_404(User, id=participante_id)
+        try:
+            if coleccion.retirar_participante(request.user, participante):
+                messages.success(request, "Participante retirado con éxito.")
+            else:
+                messages.error(request, "No se pudo retirar al participante.")
+        except PermissionError as e:
+            messages.error(request, str(e))
+    return redirect('materiales:detalle_coleccion', coleccion_id=coleccion_id)
+
+@login_required
+def abandonar_coleccion(request, coleccion_id):
+    if request.method == 'POST':
+        coleccion = get_object_or_404(Coleccion, id=coleccion_id)
+        if coleccion.abandonar(request.user):
+            messages.success(request, "Has abandonado la colección.")
+            return redirect('materiales:inicio')
+        else:
+            messages.error(request, "No eres parte de esta colección.")
+    return redirect('materiales:detalle_coleccion', coleccion_id=coleccion_id)
+
+@login_required
 @login_required
 @login_required
 def procesar_invitacion(request, invitacion_id, accion):
