@@ -20,7 +20,7 @@ def crear_coleccion(request):
                 form.save_m2m() # Guardar las categorías
             
             messages.success(request, "Colección creada exitosamente.")
-            return redirect('feed:perfil_publico', username=request.user.username)
+            return redirect('perfil_publico_global', username=request.user.username)
     else:
         form = ColeccionForm()
         

@@ -61,6 +61,13 @@
             transition: opacity 0.15s ease;
         }
 
+        
+        .sidebar-dropdown { position: relative; }
+        .dropdown-toggle { cursor: pointer; }
+        .dropdown-content { display: none; padding-left: 20px; }
+        .dropdown-content.show { display: block; }
+        .dropdown-content a { padding: 10px 0; font-size: 18px; color: var(--muted); }
+        .dropdown-content a:hover { color: var(--text); }
         .sidebar-nav a:hover { opacity: 0.55; }
         .sidebar-nav .activo { font-weight: 600; }
 
@@ -117,18 +124,51 @@
             letter-spacing: -0.48px;
         }
 
+                .avatar-dropdown-container {
+            position: absolute;
+            top: 24px;
+            right: 0;
+            z-index: 1000;
+        }
+        .avatar-dropdown-toggle { cursor: pointer; }
+        .avatar-dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 80px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            min-width: 150px;
+            overflow: hidden;
+        }
+        .avatar-dropdown-content.show { display: block; }
+        .avatar-dropdown-content a {
+            display: block;
+            padding: 12px 16px;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background 0.15s ease;
+        }
+        .avatar-dropdown-content a:hover { background: var(--surface-soft); }
+
         .avatar {
             width: 74px;
             height: 72px;
             border-radius: 50%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .avatar-placeholder {
+            width: 74px;
+            height: 72px;
+            border-radius: 50%;
             background: linear-gradient(135deg, #d9d9d9, #bfbfbf);
-            position: absolute;
-            top: 24px;
-            right: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
+            display: block;
         }
 
         .avatar svg {
@@ -234,22 +274,38 @@
             <a href="{% url 'busqueda:busqueda' %}">Buscar</a>
             <a href="{% url 'materiales:inicio' %}">Para ti</a>
             <a href="{% url 'feed:feed' %}">Siguiendo</a>
-            <a href="{% url 'materiales:creacion_material' %}">Crear material</a>
-            <a href="{% url 'colecciones:crear_coleccion' %}">Crear colección</a>
+                        <div class="sidebar-dropdown">
+                <a href="#" class="dropdown-toggle" onclick="this.nextElementSibling.classList.toggle('show'); return false;">Crear ▼</a>
+                <div class="dropdown-content">
+                    <a href="{% url 'materiales:creacion_material' %}">Material</a>
+                    <a href="{% url 'colecciones:crear_coleccion' %}">Colección</a>
+                </div>
+            </div>
+        
+            <div style="flex:1;"></div>
+            
         </nav>
     </aside>
 
     <div class="content-frame">
         <h1 class="title">Notificaciones</h1>
-
-        <a href="{% url 'feed:perfil_publico' request.user.username %}" style="text-decoration:none; color:inherit;">
-        <div class="avatar" aria-label="Perfil de {{ request.user.get_full_name|default:request.user.username }}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                <circle cx="12" cy="8" r="4" />
-                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-            </svg>
+        <div style="margin-bottom: 20px;">
+            <a href="javascript:history.back()" style="display:inline-block; padding: 8px 16px; background:#e0e0e0; color:#333; text-decoration:none; border-radius:4px; font-weight:500;">&larr; Volver</a>
         </div>
-        </a>
+
+                <div class="avatar-dropdown-container">
+            <div class="avatar-dropdown-toggle" onclick="this.nextElementSibling.classList.toggle('show');">
+                {% if request.user.perfil.avatar %}
+                    <img src="/media/avatares/{{ request.user.perfil.avatar }}" class="avatar" alt="Perfil" />
+                {% else %}
+                    <div class="avatar-placeholder" aria-label="Perfil"></div>
+                {% endif %}
+            </div>
+            <div class="avatar-dropdown-content">
+                <a href="{% url 'perfil_publico_global' request.user.username %}">Ir al perfil</a>
+                <a href="{% url 'login:cerrar_sesion' %}" style="color: #d9534f;">Cerrar sesión</a>
+            </div>
+        </div>
 
         <div class="content-panel">
             {% if not notificaciones %}

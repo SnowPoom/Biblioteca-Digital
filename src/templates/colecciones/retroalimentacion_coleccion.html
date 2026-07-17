@@ -54,6 +54,13 @@
             transition: opacity 0.15s ease;
         }
 
+        
+        .sidebar-dropdown { position: relative; }
+        .dropdown-toggle { cursor: pointer; }
+        .dropdown-content { display: none; padding-left: 20px; }
+        .dropdown-content.show { display: block; }
+        .dropdown-content a { padding: 10px 0; font-size: 18px; color: var(--muted); }
+        .dropdown-content a:hover { color: var(--text); }
         .sidebar-nav a:hover { opacity: 0.55; }
         .sidebar-nav .activo { font-weight: 600; }
 
@@ -163,8 +170,16 @@
             <a href="{% url 'busqueda:busqueda' %}">Buscar</a>
             <a href="{% url 'materiales:inicio' %}">Para ti</a>
             <a href="{% url 'feed:feed' %}">Siguiendo</a>
-            <a href="{% url 'materiales:creacion_material' %}">Crear material</a>
-            <a href="{% url 'colecciones:crear_coleccion' %}">Crear colección</a>
+                        <div class="sidebar-dropdown">
+                <a href="#" class="dropdown-toggle" onclick="this.nextElementSibling.classList.toggle('show'); return false;">Crear ▼</a>
+                <div class="dropdown-content">
+                    <a href="{% url 'materiales:creacion_material' %}">Material</a>
+                    <a href="{% url 'colecciones:crear_coleccion' %}">Colección</a>
+                </div>
+            </div>
+        
+            <div style="flex:1;"></div>
+            
         </nav>
     </div>
 

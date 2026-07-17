@@ -61,6 +61,16 @@ class Libro(models.Model):
     def __str__(self):
         return f'{self.titulo} - {self.autor.get_full_name()}'
 
+    @property
+    def portada_url(self):
+        if self.portada:
+            return self.portada.url
+        return None
+
+    @property
+    def descripcion(self):
+        return self.contenido_texto[:100] if self.contenido_texto else ''
+
     def tiene_portada(self):
         return bool(self.portada and self.portada.name)
 
@@ -111,24 +121,9 @@ class Libro(models.Model):
             self.autor.perfil.incrementar_cuota_por_publicacion()
 
             # Crear o actualizar la publicación para el feed
-            from src.feed.models import Publicacion, Categoria as FeedCategoria
-            pub, created = Publicacion.objects.get_or_create(
-                pk=self.pk,
-                defaults={
-                    'autor': self.autor,
-                    'titulo': self.titulo,
-                    'tipo': Publicacion.LIBRO,
-                }
-            )
-            if not created:
-                pub.titulo = self.titulo
-                pub.save()
+            from src.feed.models import Publicacion
+            pub, created = Publicacion.objects.get_or_create(libro=self)
             
-            # Sincronizar categorías
-            pub.categorias.clear()
-            for cat in self.categorias.all():
-                feed_cat, _ = FeedCategoria.objects.get_or_create(nombre=cat.nombre)
-                pub.categorias.add(feed_cat)
 
             return True, "Publicación exitosa."
         else:
@@ -171,17 +166,8 @@ class Libro(models.Model):
         from src.feed.models import Publicacion, Republicacion
         
         with transaction.atomic():
-            pub, pub_created = Publicacion.objects.get_or_create(
-                pk=self.pk,
-                defaults={
-                    'autor': self.autor,
-                    'titulo': self.titulo,
-                    'tipo': Publicacion.LIBRO,
-                }
-            )
-            if not pub_created:
-                pub.titulo = self.titulo
-                pub.save(update_fields=['titulo'])
+            pub, pub_created = Publicacion.objects.get_or_create(libro=self)
+            
                 
             republicacion, created = Republicacion.objects.get_or_create(
                 publicacion=pub,
@@ -210,7 +196,7 @@ class Libro(models.Model):
         # RN-PUB-10: El libro comparte PK con su Publicacion en el feed; se
         # elimina para que deje de mostrarse en feeds y republicaciones ajenas.
         from src.feed.models import Publicacion
-        Publicacion.objects.filter(pk=self.pk).delete()
+        Publicacion.objects.filter(libro=self).delete()
 
     def registrar_descarga(self):
         """RN-EXP-05: Incrementa el contador de descargas como metrica de la publicacion."""

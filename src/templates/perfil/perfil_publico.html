@@ -80,6 +80,13 @@
             transition: opacity 0.15s ease;
         }
 
+        
+        .sidebar-dropdown { position: relative; }
+        .dropdown-toggle { cursor: pointer; }
+        .dropdown-content { display: none; padding-left: 20px; }
+        .dropdown-content.show { display: block; }
+        .dropdown-content a { padding: 10px 0; font-size: 18px; color: var(--muted); }
+        .dropdown-content a:hover { color: var(--text); }
         .sidebar-nav a:hover {
             opacity: 0.55;
         }
@@ -376,14 +383,25 @@
             <a href="{% url 'busqueda:busqueda' %}">Buscar</a>
             <a href="{% url 'materiales:inicio' %}">Para ti</a>
             <a href="{% url 'feed:feed' %}">Siguiendo</a>
-            <a href="{% url 'materiales:creacion_material' %}">Crear material</a>
-            <a href="{% url 'colecciones:crear_coleccion' %}">Crear colección</a>
+                        <div class="sidebar-dropdown">
+                <a href="#" class="dropdown-toggle" onclick="this.nextElementSibling.classList.toggle('show'); return false;">Crear ▼</a>
+                <div class="dropdown-content">
+                    <a href="{% url 'materiales:creacion_material' %}">Material</a>
+                    <a href="{% url 'colecciones:crear_coleccion' %}">Colección</a>
+                </div>
+            </div>
+        
+            <div style="flex:1;"></div>
+            
         </nav>
     </aside>
 
     <!-- Frame derecho: contenido del perfil -->
     <div class="content-frame">
         <h1 class="title">Perfil</h1>
+        <div style="margin-bottom: 20px;">
+            <a href="javascript:history.back()" style="display:inline-block; padding: 8px 16px; background:#e0e0e0; color:#333; text-decoration:none; border-radius:4px; font-weight:500;">&larr; Volver</a>
+        </div>
 
         <div class="content-panel">
             <!-- Cabecera del perfil -->
@@ -455,7 +473,7 @@
                         <!-- Es una Publicacion normal (Libro) -->
                         <div style="margin-bottom:28px;">
                             <article class="card" aria-label="{{ item.titulo }}">
-                                <a href="{% url 'materiales:detalle_libro' item.pk %}" style="text-decoration:none; color:inherit; display:block;">
+                                <a href="{{ item.url }}" style="text-decoration:none; color:inherit; display:block;">
                                     {% if item.portada_url %}
                                         <img src="{{ item.portada_url }}" alt="Portada de {{ item.titulo }}" class="image-placeholder" style="object-fit: cover;">
                                     {% else %}
@@ -463,7 +481,7 @@
                                     {% endif %}
                                 </a>
                                 <div class="card-content">
-                                    <h2><a href="{% url 'materiales:detalle_libro' item.pk %}" style="text-decoration:none; color:inherit;">{{ item.titulo }}</a></h2>
+                                    <h2><a href="{{ item.url }}" style="text-decoration:none; color:inherit;">{{ item.titulo }}</a></h2>
                                     <p class="autor-original">Por {% firstof item.autor.get_full_name item.autor.username %}</p>
                                     <div class="tags">
                                         {% for cat in item.categorias.all %}
@@ -477,7 +495,7 @@
                                     {% endif %}
                                     
                                     {% if user.is_authenticated and item.autor != request.user %}
-                                    <form action="{% url 'materiales:republicar_libro' item.pk %}" method="post" style="margin-top: 14px;">
+                                    <form action="{% url 'materiales:republicar_libro' item.material_pk %}" method="post" style="margin-top: 14px;">
                                         {% csrf_token %}
                                         <button type="submit" style="padding: 6px 16px; font-size: 14px; font-weight: 600; background: var(--accent); color: #000; border: 1px solid var(--border); cursor: pointer;">
                                             Republicar
@@ -494,7 +512,7 @@
                                 Republicado por <span>{% firstof item.republicado_por.get_full_name item.republicado_por.username %}</span>
                             </p>
                             <article class="card" aria-label="{{ item.publicacion.titulo }} (republicado)">
-                                <a href="{% url 'materiales:detalle_libro' item.publicacion.pk %}" style="text-decoration:none; color:inherit; display:block;">
+                                <a href="{{ item.publicacion.url }}" style="text-decoration:none; color:inherit; display:block;">
                                     {% if item.publicacion.portada_url %}
                                         <img src="{{ item.publicacion.portada_url }}" alt="Portada de {{ item.publicacion.titulo }}" class="image-placeholder" style="object-fit: cover;">
                                     {% else %}
@@ -502,7 +520,7 @@
                                     {% endif %}
                                 </a>
                                 <div class="card-content">
-                                    <h2><a href="{% url 'materiales:detalle_libro' item.publicacion.pk %}" style="text-decoration:none; color:inherit;">{{ item.publicacion.titulo }}</a></h2>
+                                    <h2><a href="{{ item.publicacion.url }}" style="text-decoration:none; color:inherit;">{{ item.publicacion.titulo }}</a></h2>
                                     <p class="autor-original">Autor original: {% firstof item.publicacion.autor.get_full_name item.publicacion.autor.username %}</p>
                                     <div class="tags">
                                         {% for cat in item.publicacion.categorias.all %}
@@ -516,7 +534,7 @@
                                     {% endif %}
 
                                     {% if user.is_authenticated and item.publicacion.autor != request.user %}
-                                    <form action="{% url 'materiales:republicar_libro' item.publicacion.pk %}" method="post" style="margin-top: 14px;">
+                                    <form action="{% url 'materiales:republicar_libro' item.publicacion.material_pk %}" method="post" style="margin-top: 14px;">
                                         {% csrf_token %}
                                         <button type="submit" style="padding: 6px 16px; font-size: 14px; font-weight: 600; background: var(--accent); color: #000; border: 1px solid var(--border); cursor: pointer;">
                                             Republicar

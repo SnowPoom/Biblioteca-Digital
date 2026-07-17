@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Búsqueda - Biblioteca</title>
+    <title>Busqueda - Biblioteca</title>
     <style>
         :root {
             --bg: #ffffff;
@@ -55,10 +55,16 @@
             transition: opacity 0.15s ease;
         }
 
+        
+        .sidebar-dropdown { position: relative; }
+        .dropdown-toggle { cursor: pointer; }
+        .dropdown-content { display: none; padding-left: 20px; }
+        .dropdown-content.show { display: block; }
+        .dropdown-content a { padding: 10px 0; font-size: 18px; color: var(--muted); }
+        .dropdown-content a:hover { color: var(--text); }
         .sidebar-nav a:hover { opacity: 0.55; }
         .sidebar-nav .activo { font-weight: 600; }
 
-        /* Icono de campana */
         .notificacion-link {
             display: flex;
             align-items: center;
@@ -103,29 +109,128 @@
             position: relative;
         }
 
+        
+        .avatar-dropdown-container {
+            position: absolute;
+            top: 24px;
+            right: 40px;
+            z-index: 1000;
+        }
+        .avatar-dropdown-toggle { cursor: pointer; }
+        .avatar-dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 80px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            min-width: 150px;
+            overflow: hidden;
+        }
+        .avatar-dropdown-content.show { display: block; }
+        .avatar-dropdown-content a {
+            display: block;
+            padding: 12px 16px;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background 0.15s ease;
+        }
+        .avatar-dropdown-content a:hover { background: var(--surface-soft); }
+
         .avatar {
             width: 74px;
             height: 72px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #d9d9d9, #bfbfbf);
-            position: absolute;
-            top: 24px;
-            right: 0;
+            object-fit: cover;
+            display: block;
         }
 
-        .search-bar {
-            margin: 24px 0 0 0;
+        .avatar-placeholder {
+            width: 74px;
+            height: 72px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #d9d9d9, #bfbfbf);
+            display: block;
+        }
+
+        /* Barra de busqueda */
+        .search-form {
+            margin: 24px 140px 0 0;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .search-input {
+            flex: 1;
             background: var(--surface);
             border-radius: 25px;
-            padding: 20px 24px;
+            padding: 16px 24px;
+            color: var(--text);
+            font-size: 18px;
+            font-weight: 500;
+            border: none;
+            outline: none;
+        }
+
+        .search-input:focus {
+            outline: 2px solid #008080;
+            outline-offset: 1px;
+        }
+
+        .search-input::placeholder {
             color: var(--muted);
-            font-size: 20px;
             font-weight: 600;
         }
 
+        .search-submit {
+            padding: 14px 28px;
+            background: #6798f2;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #000;
+            cursor: pointer;
+            transition: opacity 0.15s ease;
+        }
+
+        .search-submit:hover { opacity: 0.8; }
+
+        /* Filtros de rol */
+        .filtros {
+            display: flex;
+            gap: 10px;
+            margin: 16px 0 0;
+            flex-wrap: wrap;
+        }
+
+        .filtro-btn {
+            padding: 8px 20px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            text-decoration: none;
+            transition: background 0.15s ease;
+        }
+
+        .filtro-btn:hover { background: var(--surface-soft); }
+
+        .filtro-btn.activo {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
         .results-title {
-            margin: 40px 0 24px;
-            font-size: 48px;
+            margin: 32px 0 24px;
+            font-size: 40px;
             font-weight: 600;
             letter-spacing: -0.48px;
         }
@@ -147,15 +252,35 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 25px;
+            font-size: 14px;
             font-weight: 600;
             border: 1px solid #e0d7d7;
+            overflow: hidden;
+        }
+
+        .image-placeholder img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         .content h3 {
-            margin: 0 0 12px;
-            font-size: 25px;
+            margin: 0 0 6px;
+            font-size: 22px;
             font-weight: 600;
+        }
+
+        .content h3 a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .content h3 a:hover { text-decoration: underline; }
+
+        .autor-info {
+            font-size: 13px;
+            color: var(--muted);
+            margin: 0 0 10px;
         }
 
         .tags {
@@ -167,7 +292,7 @@
 
         .tag {
             background: var(--accent);
-            padding: 8px 18px;
+            padding: 6px 14px;
             font-size: 12px;
             font-weight: 600;
         }
@@ -186,20 +311,48 @@
             padding: 24px;
             display: flex;
             flex-direction: column;
-            gap: 14px;
+            gap: 10px;
         }
 
         .collection-card h3 {
             margin: 0;
-            font-size: 25px;
+            font-size: 22px;
             font-weight: 600;
+        }
+
+        .collection-card h3 a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .collection-card h3 a:hover { text-decoration: underline; }
+
+        .collection-card .descripcion {
+            font-size: 14px;
+            color: #333;
+            margin: 0;
+        }
+
+        .sin-resultados {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--muted);
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .seccion-titulo {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 32px 0 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border);
         }
 
         @media (max-width: 720px) {
             .content-frame { padding: 24px 16px 40px; }
             .result-card { grid-template-columns: 1fr; }
             .image-placeholder { width: 100%; max-width: 220px; }
-            .search-bar { padding: 18px 20px; }
         }
     </style>
 </head>
@@ -218,40 +371,118 @@
             <a class="activo" href="{% url 'busqueda:busqueda' %}">Buscar</a>
             <a href="{% url 'materiales:inicio' %}">Para ti</a>
             <a href="{% url 'feed:feed' %}">Siguiendo</a>
-            <a href="{% url 'materiales:creacion_material' %}">Crear material</a>
-            <a href="{% url 'colecciones:crear_coleccion' %}">Crear colección</a>
+                        <div class="sidebar-dropdown">
+                <a href="#" class="dropdown-toggle" onclick="this.nextElementSibling.classList.toggle('show'); return false;">Crear ▼</a>
+                <div class="dropdown-content">
+                    <a href="{% url 'materiales:creacion_material' %}">Material</a>
+                    <a href="{% url 'colecciones:crear_coleccion' %}">Colección</a>
+                </div>
+            </div>
+        
+            <div style="flex:1;"></div>
+            
         </nav>
     </aside>
 
     <div class="content-frame">
-        <a href="{% url 'feed:perfil_publico' request.user.username %}" style="text-decoration:none; color:inherit;">
-        <div class="avatar" aria-label="Perfil"></div>
-        </a>
+        <div class="avatar-dropdown-container">
+            <div class="avatar-dropdown-toggle" onclick="this.nextElementSibling.classList.toggle('show');">
+                {% if request.user.perfil.avatar %}
+                    <img src="/media/avatares/{{ request.user.perfil.avatar }}" class="avatar" alt="Perfil" />
+                {% else %}
+                    <div class="avatar-placeholder" aria-label="Perfil"></div>
+                {% endif %}
+            </div>
+            <div class="avatar-dropdown-content">
+                <a href="{% url 'perfil_publico_global' request.user.username %}">Ir al perfil</a>
+                <a href="{% url 'login:cerrar_sesion' %}" style="color: #d9534f;">Cerrar sesión</a>
+            </div>
+        </div>
 
-        <div class="search-bar">Ingrese titulo del material o colección o autor</div>
-        <div class="results-title">Resultados</div>
+        <form class="search-form" method="get" action="{% url 'busqueda:busqueda' %}">
+            <input
+                type="text"
+                name="q"
+                class="search-input"
+                placeholder="Buscar material, coleccion, categoria o autor..."
+                value="{{ query }}"
+                autocomplete="off"
+            />
+            {% if rol_filtro %}
+            <input type="hidden" name="rol" value="{{ rol_filtro }}" />
+            {% endif %}
+            <button type="submit" class="search-submit">Buscar</button>
+        </form>
 
-            <section class="result-card">
-                <div class="image-placeholder">Imagen</div>
-                <div class="content">
-                    <h3>Título</h3>
-                    <div class="tags">
-                        <span class="tag">categoria</span>
-                        <span class="tag">categoria</span>
-                        <span class="tag">categoria</span>
+        {% if busqueda_realizada %}
+        <div class="filtros">
+            <a href="{% url 'busqueda:busqueda' %}?q={{ query }}"
+               class="filtro-btn{% if not rol_filtro %} activo{% endif %}">Todos</a>
+            <a href="{% url 'busqueda:busqueda' %}?q={{ query }}&rol=estudiante"
+               class="filtro-btn{% if rol_filtro == 'estudiante' %} activo{% endif %}">Estudiantes</a>
+            <a href="{% url 'busqueda:busqueda' %}?q={{ query }}&rol=profesor"
+               class="filtro-btn{% if rol_filtro == 'profesor' %} activo{% endif %}">Profesores</a>
+        </div>
+        {% endif %}
+
+        {% if busqueda_realizada %}
+            <div class="results-title">Resultados</div>
+
+            {% if not hay_resultados %}
+                <div class="sin-resultados">No se encontraron resultados para "{{ query }}"</div>
+            {% else %}
+
+                {% if libros %}
+                <h2 class="seccion-titulo">Materiales</h2>
+                {% for libro in libros %}
+                <section class="result-card">
+                    <div class="image-placeholder">
+                        {% if libro.portada %}
+                            <img src="{{ libro.portada.url }}" alt="Portada de {{ libro.titulo }}" />
+                        {% else %}
+                            Sin portada
+                        {% endif %}
                     </div>
-                    <p>Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since 1966, when designers at Letraset and James Mosley...</p>
-                </div>
-            </section>
+                    <div class="content">
+                        <h3><a href="{% url 'materiales:detalle_libro' libro.pk %}">{{ libro.titulo }}</a></h3>
+                        <p class="autor-info">
+                            Por {{ libro.autor.first_name }} (@{{ libro.autor.username }})
+                            {% if libro.autor.perfil %}
+                             — {{ libro.autor.perfil.get_rol_display }}
+                            {% endif %}
+                        </p>
+                        <div class="tags">
+                            {% for cat in libro.categorias.all %}
+                            <span class="tag">{{ cat.nombre }}</span>
+                            {% endfor %}
+                        </div>
+                        {% if libro.contenido_texto %}
+                        <p>{{ libro.contenido_texto|truncatewords:30 }}</p>
+                        {% endif %}
+                    </div>
+                </section>
+                {% endfor %}
+                {% endif %}
 
-            <section class="collection-card">
-                <h3>Título de la colección</h3>
-                <div class="tags">
-                    <span class="tag">categoria</span>
-                    <span class="tag">categoria</span>
-                    <span class="tag">categoria</span>
-                </div>
-            </section>
+                {% if colecciones %}
+                <h2 class="seccion-titulo">Colecciones</h2>
+                {% for col in colecciones %}
+                <section class="collection-card">
+                    <h3><a href="{% url 'materiales:detalle_coleccion' col.pk %}">{{ col.nombre }}</a></h3>
+                    <div class="tags">
+                        {% for cat in col.categorias.all %}
+                        <span class="tag">{{ cat.nombre }}</span>
+                        {% endfor %}
+                    </div>
+                    {% if col.descripcion %}
+                    <p class="descripcion">{{ col.descripcion|truncatewords:25 }}</p>
+                    {% endif %}
+                </section>
+                {% endfor %}
+                {% endif %}
+
+            {% endif %}
+        {% endif %}
     </div>
 </body>
 </html>

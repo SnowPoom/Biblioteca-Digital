@@ -12,9 +12,11 @@ Característica: Autenticación y Perfil de Usuario
     Dado que un visitante proporciona sus datos de autenticación básicos
     Y proporciona su nombre completo y un nickname
     Y selecciona obligatoriamente un rol académico
+    Y escoge un avatar de la lista de avatares disponibles
     Cuando el visitante completa el registro
     Entonces el sistema crea su cuenta exitosamente
     Y asigna el rol seleccionado a su perfil de usuario
+    Y asocia el avatar seleccionado a su perfil de usuario
 
   Escenario: Inicio de sesión exitoso
     Dado que un usuario académico está registrado en el sistema

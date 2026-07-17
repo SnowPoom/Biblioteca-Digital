@@ -50,11 +50,15 @@ def step_visitando_perfil_publico(context):
         rol=PerfilUsuario.ESTUDIANTE,
     )
     # El usuario objetivo ya tiene contenido publicado
-    context.publicacion_objetivo = Publicacion.objects.create(
+    from src.materiales.models import Libro
+    _libro = Libro.objects.create(
         autor=context.usuario_objetivo,
         titulo='Libro del usuario objetivo',
-        tipo=Publicacion.LIBRO,
+        estado=Libro.PUBLICADO,
+        contenido_texto='Contenido de prueba',
+        numero_paginas=10
     )
+    context.publicacion_objetivo = Publicacion.objects.create(libro=_libro)
 
 
 @when('el usuario decide seguir a ese perfil')
@@ -123,11 +127,15 @@ def step_usuario_sigue_a_otro_con_contenido(context):
         rol=PerfilUsuario.ESTUDIANTE,
     )
 
-    context.publicacion_a_desaparecer = Publicacion.objects.create(
+    from src.materiales.models import Libro
+    _libro = Libro.objects.create(
         autor=context.usuario_a_dejar,
         titulo='Publicacion que debe desaparecer',
-        tipo=Publicacion.LIBRO,
+        estado=Libro.PUBLICADO,
+        contenido_texto='Contenido de prueba',
+        numero_paginas=10
     )
+    context.publicacion_a_desaparecer = Publicacion.objects.create(libro=_libro)
 
     context.seguimiento_a_eliminar = Seguimiento.objects.create(
         seguidor=context.usuario_principal,
@@ -228,29 +236,41 @@ def step_seguidos_con_publicaciones(context):
     # Las publicaciones se crean con fechas explícitamente distintas
     # para garantizar el orden esperado en la prueba.
     ahora = timezone.now()
-    publicacion_antigua = Publicacion.objects.create(
+    from src.materiales.models import Libro
+    _libro = Libro.objects.create(
         autor=usuario_a,
         titulo='Publicacion antigua',
-        tipo=Publicacion.LIBRO,
+        estado=Libro.PUBLICADO,
+        contenido_texto='Contenido de prueba',
+        numero_paginas=10
     )
+    publicacion_antigua = Publicacion.objects.create(libro=_libro)
     Publicacion.objects.filter(pk=publicacion_antigua.pk).update(
         creado=ahora - timezone.timedelta(hours=2)
     )
 
-    publicacion_media = Publicacion.objects.create(
+    from src.materiales.models import Libro
+    _libro = Libro.objects.create(
         autor=usuario_b,
         titulo='Publicacion media',
-        tipo=Publicacion.LIBRO,
+        estado=Libro.PUBLICADO,
+        contenido_texto='Contenido de prueba',
+        numero_paginas=10
     )
+    publicacion_media = Publicacion.objects.create(libro=_libro)
     Publicacion.objects.filter(pk=publicacion_media.pk).update(
         creado=ahora - timezone.timedelta(hours=1)
     )
 
-    publicacion_reciente = Publicacion.objects.create(
+    from src.materiales.models import Libro
+    _libro = Libro.objects.create(
         autor=usuario_a,
         titulo='Publicacion reciente',
-        tipo=Publicacion.LIBRO,
+        estado=Libro.PUBLICADO,
+        contenido_texto='Contenido de prueba',
+        numero_paginas=10
     )
+    publicacion_reciente = Publicacion.objects.create(libro=_libro)
     Publicacion.objects.filter(pk=publicacion_reciente.pk).update(
         creado=ahora
     )
@@ -316,16 +336,24 @@ def step_usuarios_no_seguidos_con_contenido(context):
         seguido=usuario_seguido,
     )
 
-    context.publicacion_seguido = Publicacion.objects.create(
+    from src.materiales.models import Libro
+    _libro = Libro.objects.create(
         autor=usuario_seguido,
         titulo='Publicacion de seguido',
-        tipo=Publicacion.LIBRO,
+        estado=Libro.PUBLICADO,
+        contenido_texto='Contenido de prueba',
+        numero_paginas=10
     )
-    context.publicacion_no_seguido = Publicacion.objects.create(
+    context.publicacion_seguido = Publicacion.objects.create(libro=_libro)
+    from src.materiales.models import Libro
+    _libro = Libro.objects.create(
         autor=usuario_no_seguido,
         titulo='Publicacion de no seguido',
-        tipo=Publicacion.LIBRO,
+        estado=Libro.PUBLICADO,
+        contenido_texto='Contenido de prueba',
+        numero_paginas=10
     )
+    context.publicacion_no_seguido = Publicacion.objects.create(libro=_libro)
 
 
 @then('solo aparece contenido de los usuarios que sigue')
@@ -379,11 +407,15 @@ def step_seguido_republicó_contenido(context):
         seguido=republicador,
     )
 
-    publicacion_original = Publicacion.objects.create(
+    from src.materiales.models import Libro
+    _libro = Libro.objects.create(
         autor=autor_original,
         titulo='Recurso original del tercero',
-        tipo=Publicacion.LIBRO,
+        estado=Libro.PUBLICADO,
+        contenido_texto='Contenido de prueba',
+        numero_paginas=10
     )
+    publicacion_original = Publicacion.objects.create(libro=_libro)
 
     context.republicacion = Republicacion.objects.create(
         publicacion=publicacion_original,
@@ -489,7 +521,7 @@ def step_no_sigue_a_nadie_o_sin_publicaciones(context):
     generales en la redireccion. RN-FED-07, US-27.
     """
     from src.materiales.models import Libro, Categoria
-    from src.feed.models import Publicacion, Categoria as FeedCategoria
+    from src.feed.models import Publicacion
 
     # El usuario_principal creado en el antecedente no sigue a nadie
     Seguimiento.objects.filter(seguidor=context.usuario_principal).delete()
@@ -517,14 +549,8 @@ def step_no_sigue_a_nadie_o_sin_publicaciones(context):
         visualizaciones=800,
         descargas=300,
     )
-    pub = Publicacion.objects.create(
-        pk=libro_popular.pk,
-        autor=otro_autor,
-        titulo=libro_popular.titulo,
-        tipo=Publicacion.LIBRO,
-    )
-    feed_cat, _ = FeedCategoria.objects.get_or_create(nombre=cat_general.nombre)
-    pub.categorias.add(feed_cat)
+    pub = Publicacion.objects.create(libro=libro_popular)
+    pub.libro.categorias.add(cat_general)
 
     context.libro_popular_feed_vacio = libro_popular
 
@@ -555,7 +581,7 @@ def step_muestra_feed_recomendaciones(context):
     )
 
     recomendaciones = list(response_inicio.context.get('recomendaciones', []))
-    ids_recomendados = [pub.pk for pub in recomendaciones]
+    ids_recomendados = [pub.material_pk for pub in recomendaciones]
     context.test.assertIn(
         context.libro_popular_feed_vacio.pk,
         ids_recomendados,
@@ -583,7 +609,7 @@ def step_revisando_feed(context):
 def step_selecciona_publicacion(context):
     import re
     html = context.response.content.decode('utf-8')
-    match = re.search(fr'href="([^"]+/{context.publicacion_a_seleccionar.pk}/?[^"]*)"', html)
+    match = re.search(fr'href="([^"]+/{context.publicacion_a_seleccionar.material_pk}/?[^"]*)"', html)
     context.test.assertIsNotNone(match, "No se encontró el enlace a la publicación en el HTML")
     url = match.group(1)
     context.response_detalle = context.test.client.get(url)

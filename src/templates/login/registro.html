@@ -23,7 +23,6 @@
         position: relative;
         width: min(685px, calc(100% - 32px));
         max-width: 685px;
-        min-height: 725px;
         border: 1px solid #70cdde;
         border-radius: 1px;
         background: #fff9f9;
@@ -112,6 +111,67 @@
         color: #166534;
         border: 1px solid #a7f3d0;
       }
+      .error {
+        background: #fdecea;
+        color: #9b1c1c;
+        border: 1px solid #f5c2c7;
+      }
+
+      /* Carrusel de avatares */
+      .avatar-section {
+        margin: 24px 0 0;
+      }
+      .avatar-carousel {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 8px;
+      }
+      .avatar-carousel-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: 1px solid #d9d9d9;
+        background: #fff;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        font-weight: 700;
+        color: #333;
+        flex-shrink: 0;
+        transition: background 0.2s ease, border-color 0.2s ease;
+      }
+      .avatar-carousel-btn:hover {
+        background: #70cdde;
+        border-color: #70cdde;
+        color: #fff;
+      }
+      .avatar-track {
+        display: flex;
+        gap: 16px;
+        overflow: hidden;
+        flex: 1;
+        padding: 4px 0;
+      }
+      .avatar-option {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        border: 3px solid transparent;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: border-color 0.2s ease, transform 0.2s ease;
+        object-fit: cover;
+      }
+      .avatar-option:hover {
+        transform: scale(1.08);
+      }
+      .avatar-option.seleccionado {
+        border-color: #008080;
+        box-shadow: 0 0 0 2px rgba(0, 128, 128, 0.3);
+      }
     </style>
   </head>
   <body>
@@ -123,8 +183,14 @@
           <div class="message success">{{ mensaje_exito }}</div>
         {% endif %}
 
+        {% if formulario.non_field_errors %}
+          <div class="message error">{{ formulario.non_field_errors|striptags }}</div>
+        {% endif %}
+
         <form method="post" novalidate>
           {% csrf_token %}
+          {{ formulario.avatar }}
+
           <div class="input-group">
             <label class="field-label" for="nombre">{{ formulario.nombre.label }}</label>
             {{ formulario.nombre }}
@@ -169,16 +235,78 @@
             {{ formulario.rol }}
           </div>
 
+          <div class="avatar-section">
+            <label class="field-label">Escoge tu avatar</label>
+            <div class="avatar-carousel">
+              <button type="button" class="avatar-carousel-btn" id="avatar-prev" aria-label="Avatar anterior">&#8249;</button>
+              <div class="avatar-track" id="avatar-track">
+                {% for av in avatares %}
+                <img
+                  src="/media/avatares/{{ av }}"
+                  alt="Avatar {{ forloop.counter }}"
+                  class="avatar-option{% if forloop.first %} seleccionado{% endif %}"
+                  data-avatar="{{ av }}"
+                />
+                {% endfor %}
+              </div>
+              <button type="button" class="avatar-carousel-btn" id="avatar-next" aria-label="Avatar siguiente">&#8250;</button>
+            </div>
+            {% if formulario.avatar.errors %}
+              <div class="message error">{{ formulario.avatar.errors|striptags }}</div>
+            {% endif %}
+          </div>
+
           <button class="login-action" type="submit">
             <span>Crear cuenta</span>
           </button>
         </form>
 
         <p class="link-text">
-          <span>¿Ya tienes cuenta?</span>
-          <a href="{% url 'login:inicio' %}">Inicia sesión</a>
+          <span>Ya tienes cuenta?</span>
+          <a href="{% url 'login:inicio' %}">Inicia sesion</a>
         </p>
       </section>
     </main>
+
+    <script>
+      (function() {
+        var track = document.getElementById('avatar-track');
+        var opciones = track.querySelectorAll('.avatar-option');
+        var inputAvatar = document.getElementById('avatar');
+        var btnPrev = document.getElementById('avatar-prev');
+        var btnNext = document.getElementById('avatar-next');
+        var indiceActual = 0;
+
+        function seleccionar(indice) {
+          opciones.forEach(function(op) { op.classList.remove('seleccionado'); });
+          opciones[indice].classList.add('seleccionado');
+          inputAvatar.value = opciones[indice].getAttribute('data-avatar');
+          indiceActual = indice;
+          desplazar();
+        }
+
+        function desplazar() {
+          var anchoItem = 72 + 16;
+          var anchoTrack = track.offsetWidth;
+          var maxDesplazamiento = Math.max(0, (opciones.length * anchoItem) - anchoTrack);
+          var desplazamiento = Math.min(indiceActual * anchoItem, maxDesplazamiento);
+          track.scrollTo({ left: desplazamiento, behavior: 'smooth' });
+        }
+
+        opciones.forEach(function(op, i) {
+          op.addEventListener('click', function() { seleccionar(i); });
+        });
+
+        btnPrev.addEventListener('click', function() {
+          var nuevo = (indiceActual - 1 + opciones.length) % opciones.length;
+          seleccionar(nuevo);
+        });
+
+        btnNext.addEventListener('click', function() {
+          var nuevo = (indiceActual + 1) % opciones.length;
+          seleccionar(nuevo);
+        });
+      })();
+    </script>
   </body>
 </html>

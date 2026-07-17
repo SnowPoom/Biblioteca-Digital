@@ -16,8 +16,9 @@ db.sqlite3.bak
 .env
 .env.*
 
-# Archivos estáticos y subidos por usuarios
-/media/
+# Archivos subidos por usuarios (excepto avatares predefinidos)
+/media/*
+!/media/avatares/
 
 # Logs
 *.log

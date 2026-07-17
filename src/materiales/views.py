@@ -36,37 +36,35 @@ def vista_previa_material(request):
     })
 def detalle_libro(request, pk):
     from django.http import Http404
-    from src.feed.models import Publicacion
-    from django.shortcuts import get_object_or_404
     from .models import Coleccion
 
     material = Libro.objects.filter(pk=pk).first()
-    publicacion = Publicacion.objects.filter(pk=pk).first()
-
-    if publicacion:
-        libro = publicacion
-    elif material and material.autor == request.user:
-        # RN-PUB-10: el libro retirado sigue disponible de forma privada para su autor.
-        libro = material
-    else:
+    if not material:
         raise Http404('Material no encontrado.')
 
+    # Si no está publicado, solo el autor tiene acceso privado (RN-PUB-10)
+    if material.estado != Libro.PUBLICADO and material.autor != request.user:
+        raise Http404('Material no encontrado.')
+
+    libro = material
+
     # RN-PUB-13: Cada visita de un usuario distinto al autor cuenta como visualizacion.
-    if material and material.autor != request.user:
+    if material.autor != request.user:
         material.registrar_visualizacion()
 
     # RN-PUB-13: Las métricas del material solo se exponen al autor.
-    metricas = material.metricas_para(request.user) if material else None
+    metricas = material.metricas_para(request.user)
     colecciones_usuario = Coleccion.objects.filter(participaciones__usuario=request.user) if request.user.is_authenticated else []
-    puede_retirar = bool(material and material.autor == request.user and material.estado == Libro.PUBLICADO)
-    esta_retirado = bool(material and material.estado == Libro.RETIRADO)
+    puede_retirar = bool(material.autor == request.user and material.estado == Libro.PUBLICADO)
+    esta_retirado = bool(material.estado == Libro.RETIRADO)
 
     return render(request, 'materiales/vista_previa_material.html', {
         'colecciones_usuario': colecciones_usuario,
         'libro': libro,
         'titulo': libro.titulo,
         'autor': libro.autor,
-        'descripcion': getattr(libro, 'descripcion', ''),
+        'descripcion': libro.descripcion,
+        'categorias': libro.categorias.all(),
         'metricas': metricas,
         'puede_retirar': puede_retirar,
         'esta_retirado': esta_retirado,
@@ -112,7 +110,7 @@ def lectura_material(request, libro_id):
         fragmentos_resaltados = libro.fragmentos_anotados_por(request.user)
 
         # Registrar la lectura para alimentar el motor de recomendaciones (RN-REC-01, RN-REC-03)
-        pub = Publicacion.objects.filter(pk=libro.pk).first()
+        pub = Publicacion.objects.filter(libro=libro).first()
         if pub:
             historial, created = HistorialLectura.objects.get_or_create(
                 usuario=request.user,
@@ -244,9 +242,9 @@ def creacion_material(request):
             if resultado:
                 from django.contrib import messages
                 messages.success(request, f'El libro "{libro.titulo}" ha sido publicado con éxito.')
-                return redirect('feed:perfil_publico', username=request.user.username)
+                return redirect('perfil_publico_global', username=request.user.username)
             else:
-                return redirect('feed:perfil_publico', username=request.user.username)
+                return redirect('perfil_publico_global', username=request.user.username)
         else:
             mensaje_error = 'Corrige los errores indicados en el formulario.'
 
@@ -281,9 +279,9 @@ def edicion_material(request, pk):
             if resultado:
                 from django.contrib import messages
                 messages.success(request, f'El libro "{libro.titulo}" ha sido publicado con éxito.')
-                return redirect('feed:perfil_publico', username=request.user.username)
+                return redirect('perfil_publico_global', username=request.user.username)
             else:
-                return redirect('feed:perfil_publico', username=request.user.username)
+                return redirect('perfil_publico_global', username=request.user.username)
         else:
             mensaje_error = 'Corrige los errores indicados en el formulario.'
 

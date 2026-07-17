@@ -28,6 +28,10 @@ def step_proporciona_nombre_nickname(context):
 def step_visitante_rol_academico(context):
     context.form_data['rol'] = PerfilUsuario.ESTUDIANTE
 
+@given('escoge un avatar de la lista de avatares disponibles')
+def step_visitante_escoge_avatar(context):
+    context.form_data['avatar'] = 'avatar1.png'
+
 @when('el visitante completa el registro')
 def step_visitante_completa_registro(context):
     url = reverse('login:registro')
@@ -44,6 +48,14 @@ def step_asigna_rol_perfil(context):
     user = User.objects.get(email='nuevo@ejemplo.com')
     context.test.assertTrue(hasattr(user, 'perfil'), "El usuario no tiene un perfil asociado.")
     context.test.assertEqual(user.perfil.rol, PerfilUsuario.ESTUDIANTE, "El rol asignado no coincide.")
+
+@then('asocia el avatar seleccionado a su perfil de usuario')
+def step_asocia_avatar_perfil(context):
+    user = User.objects.get(email='nuevo@ejemplo.com')
+    context.test.assertEqual(
+        user.perfil.avatar, 'avatar1.png',
+        "El avatar seleccionado no fue asociado correctamente al perfil."
+    )
 
 @given('que un usuario académico está registrado en el sistema')
 def step_usuario_registrado(context):
@@ -72,7 +84,7 @@ def step_sistema_permite_acceso(context):
 
 @then('lo redirige a su panel personal')
 def step_redirige_panel_personal(context):
-    context.test.assertRedirects(context.response, reverse('login:panel'))
+    context.test.assertRedirects(context.response, reverse('materiales:inicio'))
 
 @given('que un usuario registrado requiere recuperar su contraseña')
 def step_usuario_requiere_recuperar(context):

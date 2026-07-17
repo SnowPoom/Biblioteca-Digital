@@ -1,4 +1,4 @@
-from django.db.models import Sum, F, Value, FloatField, ExpressionWrapper
+from django.db.models import Sum, F, Value, FloatField, ExpressionWrapper, Q
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -87,7 +87,7 @@ class MotorRecomendaciones:
         )
         ids_propios = set(
             Publicacion.objects.filter(
-                autor=self.usuario
+                Q(libro__autor=self.usuario) | Q(coleccion__creador=self.usuario)
             ).values_list('pk', flat=True)
         )
         return ids_leidos | ids_descartados | ids_propios
@@ -105,7 +105,7 @@ class MotorRecomendaciones:
         ahora = timezone.now()
         lecturas = HistorialLectura.objects.filter(
             usuario=self.usuario
-        ).select_related('publicacion').prefetch_related('publicacion__categorias')
+        ).select_related('publicacion').prefetch_related('publicacion__libro__categorias', 'publicacion__coleccion__categorias')
 
         pesos_categorias = {}
 
@@ -119,7 +119,7 @@ class MotorRecomendaciones:
                 0.1,
             )
 
-            for categoria in lectura.publicacion.categorias.all():
+            for categoria in lectura.publicacion.categorias.all() if lectura.publicacion.categorias else []:
                 nombre = categoria.nombre
                 pesos_categorias[nombre] = (
                     pesos_categorias.get(nombre, 0.0) + peso_temporal
@@ -128,7 +128,7 @@ class MotorRecomendaciones:
         # Restar peso a las categorias basandose en las publicaciones descartadas
         descartes = DescarteRecomendacion.objects.filter(
             usuario=self.usuario
-        ).select_related('publicacion').prefetch_related('publicacion__categorias')
+        ).select_related('publicacion').prefetch_related('publicacion__libro__categorias', 'publicacion__coleccion__categorias')
 
         for descarte in descartes:
             dias_antiguedad = max(
@@ -140,7 +140,7 @@ class MotorRecomendaciones:
                 0.1,
             )
 
-            for categoria in descarte.publicacion.categorias.all():
+            for categoria in descarte.publicacion.categorias.all() if descarte.publicacion.categorias else []:
                 nombre = categoria.nombre
                 pesos_categorias[nombre] = (
                     pesos_categorias.get(nombre, 0.0) - peso_temporal
@@ -164,13 +164,13 @@ class MotorRecomendaciones:
         )
 
         # 1. Subconsulta para popularidad de Libros
-        libro_qs = Libro.objects.filter(pk=OuterRef('pk')).annotate(
+        libro_qs = Libro.objects.filter(pk=OuterRef('libro_id')).annotate(
             pop_calc=ExpressionWrapper(pop_expr, output_field=FloatField())
         )
         subq_libro_pop = Subquery(libro_qs.values('pop_calc')[:1], output_field=FloatField())
 
         # 2. Subconsulta para popularidad de Colecciones (suma de los libros que contiene)
-        coleccion_qs = Coleccion.objects.filter(pk=OuterRef('pk')).annotate(
+        coleccion_qs = Coleccion.objects.filter(pk=OuterRef('coleccion_id')).annotate(
             pop_total=Sum(
                 F('libros__visualizaciones') * Value(PESO_VISUALIZACIONES) +
                 F('libros__descargas') * Value(PESO_DESCARGAS) +
@@ -182,26 +182,29 @@ class MotorRecomendaciones:
 
         # 3. Expresion para afinidad tematica (solo si hay pesos)
         if pesos_categorias:
-            whens = [When(categorias__nombre=nombre, then=Value(peso)) 
-                     for nombre, peso in pesos_categorias.items()]
-            if whens:
-                afinidad_expr = Coalesce(Sum(Case(*whens, default=Value(0.0), output_field=FloatField())), Value(0.0))
+            whens_libro = [When(libro__categorias__nombre=nombre, then=Value(peso)) for nombre, peso in pesos_categorias.items()]
+            whens_coleccion = [When(coleccion__categorias__nombre=nombre, then=Value(peso)) for nombre, peso in pesos_categorias.items()]
+            if whens_libro:
+                afinidad_expr_libro = Coalesce(Sum(Case(*whens_libro, default=Value(0.0), output_field=FloatField())), Value(0.0))
+                afinidad_expr_coleccion = Coalesce(Sum(Case(*whens_coleccion, default=Value(0.0), output_field=FloatField())), Value(0.0))
             else:
-                afinidad_expr = Value(0.0)
+                afinidad_expr_libro = Value(0.0)
+                afinidad_expr_coleccion = Value(0.0)
         else:
-            afinidad_expr = Value(0.0)
+            afinidad_expr_libro = Value(0.0)
+            afinidad_expr_coleccion = Value(0.0)
 
         # 4. Separar querysets y anotar
-        qs_libros = candidatas.filter(tipo=Publicacion.LIBRO).annotate(
+        qs_libros = candidatas.filter(libro__isnull=False).annotate(
             popularidad_bruta=Coalesce(subq_libro_pop, Value(0.0)),
-            afinidad=afinidad_expr
+            afinidad=afinidad_expr_libro
         ).annotate(
             puntuacion=F('afinidad') + (F('popularidad_bruta') / 100.0)
         ).order_by('-puntuacion')[:10]
 
-        qs_colecciones = candidatas.filter(tipo=Publicacion.COLECCION).annotate(
+        qs_colecciones = candidatas.filter(coleccion__isnull=False).annotate(
             popularidad_bruta=Coalesce(subq_coleccion_pop, Value(0.0)),
-            afinidad=afinidad_expr
+            afinidad=afinidad_expr_coleccion
         ).annotate(
             puntuacion=F('afinidad') + (F('popularidad_bruta') / 100.0)
         ).order_by('-puntuacion')[:10]
@@ -215,7 +218,7 @@ class MotorRecomendaciones:
 
         candidatas = Publicacion.objects.exclude(
             pk__in=ids_excluidos
-        ).prefetch_related('categorias')
+        ).prefetch_related('libro__categorias', 'coleccion__categorias')
 
         qs_libros, qs_colecciones = self._construir_queryset_anotado(candidatas, pesos_categorias)
 
@@ -237,7 +240,7 @@ class MotorRecomendaciones:
 
         candidatas = Publicacion.objects.exclude(
             pk__in=ids_excluidos
-        ).prefetch_related('categorias')
+        ).prefetch_related('libro__categorias', 'coleccion__categorias')
 
         # Para arranque en frio, no hay afinidad tematica (pesos_categorias=None)
         qs_libros, qs_colecciones = self._construir_queryset_anotado(candidatas, None)

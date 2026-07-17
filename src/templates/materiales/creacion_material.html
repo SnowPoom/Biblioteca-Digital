@@ -43,14 +43,51 @@
             letter-spacing: -0.48px;
         }
 
+                .avatar-dropdown-container {
+            position: absolute;
+            top: 24px;
+            right: 10px;
+            z-index: 1000;
+        }
+        .avatar-dropdown-toggle { cursor: pointer; }
+        .avatar-dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 80px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            min-width: 150px;
+            overflow: hidden;
+        }
+        .avatar-dropdown-content.show { display: block; }
+        .avatar-dropdown-content a {
+            display: block;
+            padding: 12px 16px;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background 0.15s ease;
+        }
+        .avatar-dropdown-content a:hover { background: var(--surface-soft); }
+
         .avatar {
             width: 74px;
             height: 72px;
             border-radius: 50%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .avatar-placeholder {
+            width: 74px;
+            height: 72px;
+            border-radius: 50%;
             background: linear-gradient(135deg, #d9d9d9, #bfbfbf);
-            position: absolute;
-            top: 24px;
-            right: 10px;
+            display: block;
         }
 
         .editor-panel {
@@ -218,9 +255,19 @@
     <div class="page">
         <div class="shell">
             <div class="title">{{ titulo }}</div>
-            <a href="{% url 'feed:perfil_publico' request.user.username %}" style="text-decoration:none; color:inherit;">
-            <div class="avatar" aria-label="Perfil"></div>
-            </a>
+                    <div class="avatar-dropdown-container">
+            <div class="avatar-dropdown-toggle" onclick="this.nextElementSibling.classList.toggle('show');">
+                {% if request.user.perfil.avatar %}
+                    <img src="/media/avatares/{{ request.user.perfil.avatar }}" class="avatar" alt="Perfil" />
+                {% else %}
+                    <div class="avatar-placeholder" aria-label="Perfil"></div>
+                {% endif %}
+            </div>
+            <div class="avatar-dropdown-content">
+                <a href="{% url 'perfil_publico_global' request.user.username %}">Ir al perfil</a>
+                <a href="{% url 'login:cerrar_sesion' %}" style="color: #d9534f;">Cerrar sesión</a>
+            </div>
+        </div>
 
             <section class="editor-panel">
                 {% if mensaje_exito %}

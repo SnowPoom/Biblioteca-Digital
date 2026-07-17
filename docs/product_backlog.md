@@ -15,6 +15,7 @@ El backlog está organizado por Épicas (basadas en las Capacidades del Negocio)
 6. Épica 6: Exportación y Sistema de Cuotas
 7. Épica 7: Feed de Actividad Académica (Red Social)
 8. Épica 8: Recomendaciones Contextuales
+9. Épica 9: Búsqueda y Exploración
 
 ---
 
@@ -26,6 +27,7 @@ Orientada a la gestión de accesos, roles académicos y configuración básica d
 *   **Criterios de Aceptación:**
     *   El usuario debe registrarse proporcionando datos de autenticación básicos.
     *   Debe seleccionarse obligatoriamente un rol académico: "Estudiante" o "Profesor" (almacenados en PerfilUsuario).
+    *   El usuario debe escoger un avatar de la lista de avatares disponibles durante el registro.
 *   **Prioridad:** Alta
 *   **Estimación:** S
 *   **Reglas de Negocio asociadas:** RN-PUB-01
@@ -322,3 +324,19 @@ Genera un flujo inteligente y dinámico para descubrir nuevos materiales educati
 *   **Prioridad:** Media
 *   **Estimación:** S
 *   **Reglas de Negocio asociadas:** RN-REC-04
+
+---
+
+## Épica 9: Búsqueda y Exploración
+Permite a los usuarios buscar y encontrar contenido en la plataforma.
+
+### [US-29] Búsqueda Global de Recursos
+*   **Descripción:** Como usuario de la biblioteca digital, quiero buscar materiales, colecciones y autores para encontrar recursos educativos específicos de mi interés.
+*   **Criterios de Aceptación:**
+    *   El usuario puede buscar por nombre de material, nombre de colección o nombre de categoría.
+    *   Los resultados se dividen en materiales y colecciones que coinciden con el término.
+    *   El usuario puede filtrar los resultados de materiales por el rol del autor (estudiante o profesor).
+    *   Si no hay resultados, el sistema informa adecuadamente.
+*   **Prioridad:** Alta
+*   **Estimación:** M
+*   **Reglas de Negocio asociadas:** N/A

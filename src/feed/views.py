@@ -20,19 +20,20 @@ def feed(request):
         seguidor=request.user
     ).values_list('seguido_id', flat=True)
 
+    from django.db.models import Q
     publicaciones = Publicacion.objects.filter(
-        autor_id__in=ids_seguidos
-    ).select_related('autor')
+        Q(libro__autor_id__in=ids_seguidos) | Q(coleccion__creador_id__in=ids_seguidos)
+    ).select_related('libro__autor', 'coleccion__creador')
 
     republicaciones = Republicacion.objects.filter(
         republicado_por_id__in=ids_seguidos
-    ).select_related('republicado_por', 'publicacion__autor')
+    ).select_related('republicado_por', 'publicacion__libro__autor', 'publicacion__coleccion__creador')
 
     # Separar colecciones
-    colecciones = publicaciones.filter(tipo=Publicacion.COLECCION).order_by('-creado')
+    colecciones = publicaciones.filter(coleccion__isnull=False).order_by('-creado')
 
     # Combinar libros y republicaciones estrictamente por fecha
-    libros = publicaciones.filter(tipo=Publicacion.LIBRO)
+    libros = publicaciones.filter(libro__isnull=False)
     material_feed = sorted(
         chain(libros, republicaciones),
         key=lambda obj: obj.creado,
@@ -61,13 +62,13 @@ def seguir_usuario(request, usuario_id):
 
     # Un usuario no puede seguirse a sí mismo
     if usuario_objetivo == request.user:
-        return redirect('feed:perfil_publico', username=request.user.username)
+        return redirect('perfil_publico_global', username=request.user.username)
 
     Seguimiento.objects.get_or_create(
         seguidor=request.user,
         seguido=usuario_objetivo,
     )
-    return redirect('feed:perfil_publico', username=usuario_objetivo.username)
+    return redirect('perfil_publico_global', username=usuario_objetivo.username)
 
 
 @login_required
@@ -84,7 +85,7 @@ def dejar_de_seguir(request, usuario_id):
         seguido=usuario_objetivo,
     ).delete()
 
-    return redirect('feed:perfil_publico', username=usuario_objetivo.username)
+    return redirect('perfil_publico_global', username=usuario_objetivo.username)
 
 
 @login_required
@@ -108,13 +109,14 @@ def perfil_publico(request, username):
         seguidor=usuario_perfil,
     ).count()
 
+    from django.db.models import Q
     publicaciones_propias = Publicacion.objects.filter(
-        autor=usuario_perfil,
-    ).select_related('autor')
+        Q(libro__autor=usuario_perfil) | Q(coleccion__creador=usuario_perfil)
+    ).select_related('libro__autor', 'coleccion__creador')
 
     republicaciones_propias = Republicacion.objects.filter(
         republicado_por=usuario_perfil,
-    ).select_related('republicado_por', 'publicacion__autor')
+    ).select_related('republicado_por', 'publicacion__libro__autor', 'publicacion__coleccion__creador')
 
     from itertools import chain
     publicaciones = sorted(

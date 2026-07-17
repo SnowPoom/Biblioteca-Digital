@@ -11,6 +11,10 @@ TIPOS_USUARIO = [
     (PerfilUsuario.PROFESOR, 'Profesor'),
 ]
 
+AVATARES_DISPONIBLES = [
+    f'avatar{i}.png' for i in range(1, 8)
+]
+
 
 class InicioSesionFormulario(forms.Form):
     correo = forms.EmailField(
@@ -151,6 +155,18 @@ class RegistroFormulario(forms.Form):
             }
         ),
     )
+    avatar = forms.CharField(
+        widget=forms.HiddenInput(
+            attrs={'id': 'avatar'}
+        ),
+        initial='avatar1.png',
+    )
+
+    def clean_avatar(self):
+        avatar = self.cleaned_data.get('avatar', 'avatar1.png')
+        if avatar not in AVATARES_DISPONIBLES:
+            raise forms.ValidationError('El avatar seleccionado no es valido.')
+        return avatar
 
     def clean_correo(self):
         correo = self.cleaned_data['correo'].strip().lower()
@@ -180,6 +196,7 @@ class RegistroFormulario(forms.Form):
         rol = self.cleaned_data['rol']
         nombre = self.cleaned_data['nombre']
         nickname = self.cleaned_data['nickname']
+        avatar = self.cleaned_data.get('avatar', 'avatar1.png')
 
         usuario = User.objects.create_user(
             username=nickname,
@@ -187,7 +204,7 @@ class RegistroFormulario(forms.Form):
             password=contrasena,
             first_name=nombre,
         )
-        PerfilUsuario.objects.create(usuario=usuario, rol=rol)
+        PerfilUsuario.objects.create(usuario=usuario, rol=rol, avatar=avatar)
         return usuario
 
 
