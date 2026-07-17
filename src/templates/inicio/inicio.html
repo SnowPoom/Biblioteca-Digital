@@ -371,6 +371,14 @@
                                         <span class="tag">Sin categoria</span>
                                         {% endfor %}
                                     </div>
+                                    {% if user.is_authenticated and libro.autor != request.user %}
+                                    <form action="{% url 'materiales:republicar_libro' libro.pk %}" method="post" style="margin-top: 10px;">
+                                        {% csrf_token %}
+                                        <button type="submit" style="padding: 6px 16px; font-size: 14px; font-weight: 600; background: var(--accent); color: #000; border: 1px solid var(--border); cursor: pointer;">
+                                            Republicar
+                                        </button>
+                                    </form>
+                                    {% endif %}
                                 </div>
                             </div>
                             {% empty %}
