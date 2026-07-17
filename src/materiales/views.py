@@ -600,3 +600,23 @@ def api_buscar_libros(request):
     libros = Libro.objects.filter(estado=Libro.PUBLICADO, titulo__icontains=q)[:10]
     results = [{'id': libro.id, 'titulo': libro.titulo, 'autor': libro.autor.username} for libro in libros]
     return JsonResponse({'libros': results})
+
+def ajustar_limite(request, coleccion_id):
+    if request.method == 'POST':
+        coleccion = get_object_or_404(Coleccion, id=coleccion_id)
+        if not coleccion.es_administrador(request.user):
+            messages.error(request, "Solo los administradores pueden ajustar el límite.")
+            return redirect('materiales:detalle_coleccion', coleccion_id=coleccion_id)
+        
+        try:
+            nuevo_limite = int(request.POST.get('limite_libros', 20))
+            if 5 <= nuevo_limite <= 20:
+                coleccion.limite_libros = nuevo_limite
+                coleccion.save()
+                messages.success(request, f"Límite de libros actualizado a {nuevo_limite}.")
+            else:
+                messages.error(request, "El límite debe estar entre 5 y 20.")
+        except ValueError:
+            messages.error(request, "Límite inválido.")
+            
+    return redirect('materiales:detalle_coleccion', coleccion_id=coleccion_id)

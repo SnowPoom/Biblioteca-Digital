@@ -386,12 +386,14 @@
                                     (Administrador)
                                 {% endif %}
                             </p>
+                            <p>Reputación de colaborador: {{ participacion.indice_reputacion }}</p>
                         </div>
                     </div>
                     {% empty %}
                     <p>No hay otros participantes.</p>
                     {% endfor %}
                 </div>
+
 
                 {% if es_admin and solicitudes %}
                 <h2 class="seccion-titulo">Solicitudes de Acceso Pendientes</h2>
@@ -422,6 +424,7 @@
             <h2 class="seccion-titulo">
                 Libros en la Colección ({{ coleccion.libros.count }}/{{ coleccion.limite_libros }})
             </h2>
+
 
             {% if es_miembro %}
             <div
