@@ -10,7 +10,7 @@ Característica: Sistema de revisión y retroalimentación entre pares
     Y que el usuario es participante de una colección colaborativa
 
   Escenario: Dejar un comentario de retroalimentación sobre un libro de la colección
-    Dado que el usuario está visualizando un libro dentro de la colección
+    Dado que el usuario accede a un libro dentro de la colección
     Cuando el usuario deja un comentario de retroalimentación sobre ese libro
     Entonces el comentario queda guardado
     Y todos los participantes de la colección pueden verlo
@@ -34,13 +34,13 @@ Característica: Sistema de revisión y retroalimentación entre pares
 
   Escenario: El administrador aprueba una solicitud de cambio
     Dado que el administrador tiene una solicitud de cambio pendiente en la colección
-    Cuando el administrador aprueba la solicitud
+    Cuando el administrador aprueba la solicitud de cambio
     Entonces el cambio propuesto se aplica a la colección
     Y queda registrado en el historial de actividad
 
   Escenario: El administrador rechaza una solicitud de cambio
     Dado que el administrador tiene una solicitud de cambio pendiente en la colección
-    Cuando el administrador rechaza la solicitud
+    Cuando el administrador rechaza la solicitud de cambio
     Entonces el contenido de la colección no se modifica
     Y el solicitante es notificado del rechazo
 
@@ -50,8 +50,8 @@ Característica: Sistema de revisión y retroalimentación entre pares
     Entonces el sistema detecta el contenido y rechaza la operación
     Y el comentario no queda registrado en la colección
 
-  Escenario: El historial de revisiones no puede ser eliminado
-    Dado que existen comentarios y propuestas de cambio registradas en la colección
-    Cuando un participante intenta eliminar un registro del historial de revisiones
-    Entonces el sistema rechaza la operación
-    Y el registro permanece en el historial
+  Escenario: El historial de comentarios de retroalimentación no puede ser eliminado
+    Dado que existen comentarios de retroalimentación registrados en la colección
+    Cuando un participante intenta eliminar un comentario de retroalimentación
+    Entonces el sistema rechaza la operación de eliminación
+    Y el comentario permanece en el historial

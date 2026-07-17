@@ -718,3 +718,65 @@ def ajustar_limite(request, coleccion_id):
             messages.error(request, "Límite inválido.")
             
     return redirect('materiales:detalle_coleccion', coleccion_id=coleccion_id)
+
+@login_required(login_url='/auth/')
+def retroalimentacion_coleccion(request, coleccion_id):
+    from .models import Coleccion, Libro, ComentarioRetroalimentacion
+    coleccion = get_object_or_404(Coleccion, id=coleccion_id)
+    
+    # Solo participantes pueden ver
+    if not coleccion.participantes_activos().filter(usuario=request.user).exists() and request.user != coleccion.creador:
+        from django.contrib import messages
+        messages.error(request, "Solo los participantes pueden ver la retroalimentación de la colección.")
+        return redirect('materiales:detalle_coleccion', coleccion_id=coleccion.id)
+
+    from .forms import ComentarioRetroalimentacionForm
+    formulario = ComentarioRetroalimentacionForm()
+
+    # Agrupar comentarios por libro dentro de esta colección
+    libros_con_comentarios = []
+    for libro in coleccion.libros.all():
+        comentarios = ComentarioRetroalimentacion.objects.filter(coleccion=coleccion, libro=libro).order_by('fecha')
+        libros_con_comentarios.append({
+            'libro': libro,
+            'comentarios': comentarios
+        })
+
+    return render(request, 'colecciones/retroalimentacion_coleccion.html', {
+        'coleccion': coleccion,
+        'formulario': formulario,
+        'libros_con_comentarios': libros_con_comentarios,
+    })
+
+@login_required(login_url='/auth/')
+def crear_comentario_coleccion(request, coleccion_id, libro_id):
+    from .models import Coleccion, Libro, ComentarioRetroalimentacion
+    from django.core.exceptions import ValidationError
+    from django.contrib import messages
+    from .forms import ComentarioRetroalimentacionForm
+
+    coleccion = get_object_or_404(Coleccion, id=coleccion_id)
+    libro = get_object_or_404(Libro, id=libro_id)
+
+    if request.method == 'POST':
+        formulario = ComentarioRetroalimentacionForm(request.POST)
+        if formulario.is_valid():
+            texto = formulario.cleaned_data['texto']
+            try:
+                ComentarioRetroalimentacion.crear_comentario(
+                    coleccion=coleccion,
+                    libro=libro,
+                    usuario=request.user,
+                    texto=texto
+                )
+                messages.success(request, "Comentario de retroalimentación añadido.")
+            except ValidationError as e:
+                # Extraemos solo el mensaje de la validacion
+                mensaje = e.messages[0] if hasattr(e, 'messages') else str(e)
+                messages.error(request, mensaje)
+            except PermissionError as e:
+                messages.error(request, str(e))
+        else:
+            messages.error(request, "Error en el formulario. Revisa los datos.")
+
+    return redirect('materiales:retroalimentacion_coleccion', coleccion_id=coleccion.id)

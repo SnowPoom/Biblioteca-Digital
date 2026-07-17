@@ -31,6 +31,8 @@ urlpatterns = [
     path('colecciones/<int:coleccion_id>/eliminar_libro/<int:libro_id>/', views.eliminar_libro_coleccion, name='eliminar_libro_coleccion'),
     path('colecciones/invitaciones/<int:invitacion_id>/procesar/<str:accion>/', views.procesar_invitacion, name='procesar_invitacion'),
     path('colecciones/solicitudes/<int:solicitud_id>/procesar/<str:accion>/', views.procesar_solicitud, name='procesar_solicitud'),
+    path('colecciones/<int:coleccion_id>/retroalimentacion/', views.retroalimentacion_coleccion, name='retroalimentacion_coleccion'),
+    path('colecciones/<int:coleccion_id>/retroalimentacion/<int:libro_id>/comentar/', views.crear_comentario_coleccion, name='crear_comentario_coleccion'),
     path('api/buscar-usuarios/', views.api_buscar_usuarios, name='api_buscar_usuarios'),
     path('api/buscar-libros/', views.api_buscar_libros, name='api_buscar_libros'),
 ]

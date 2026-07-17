@@ -87,3 +87,23 @@ class PublicacionLibroFormulario(forms.ModelForm):
                 'La portada es obligatoria. Sube una imagen para la portada del libro.'
             )
         return portada
+
+class ComentarioRetroalimentacionForm(forms.ModelForm):
+    """Formulario para añadir comentarios de retroalimentación a libros en colecciones."""
+    class Meta:
+        from .models import ComentarioRetroalimentacion
+        model = ComentarioRetroalimentacion
+        fields = ['texto']
+        widgets = {
+            'texto': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Escribe tu comentario o sugerencia de mejora aquí...',
+                'id': 'id_texto_comentario'
+            })
+        }
+        error_messages = {
+            'texto': {
+                'required': 'El texto del comentario no puede estar vacío.'
+            }
+        }

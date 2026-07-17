@@ -21,3 +21,14 @@ class AnotacionAdmin(admin.ModelAdmin):
     list_display = ('usuario', 'libro', 'tipo_fragmento', 'fragmento_texto', 'creado')
     list_filter = ('tipo_fragmento',)
     search_fields = ('usuario__username', 'libro__titulo', 'fragmento_texto')
+
+from .models import ComentarioRetroalimentacion
+
+@admin.register(ComentarioRetroalimentacion)
+class ComentarioRetroalimentacionAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'libro', 'coleccion', 'fecha')
+    list_filter = ('coleccion', 'fecha')
+    search_fields = ('usuario__username', 'texto')
+
+    def has_delete_permission(self, request, obj=None):
+        return False
