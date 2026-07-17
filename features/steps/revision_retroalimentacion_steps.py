@@ -287,9 +287,9 @@ def step_impl(context):
 @then('queda registrado en el historial de actividad')
 def step_impl(context):
     from src.materiales.models import BitacoraColeccion
-    # Buscamos en la bitacora de la colección la última acción registrada (idealmente debería filtrar por el tipo de acción específica)
     registro = BitacoraColeccion.objects.filter(
-        coleccion=context.coleccion
+        coleccion=context.coleccion,
+        accion__in=[BitacoraColeccion.PROPUESTA_APROBADA, BitacoraColeccion.PROPUESTA_RECHAZADA]
     ).exists()
     context.test.assertTrue(registro)
 
@@ -309,8 +309,18 @@ def step_impl(context):
 
 @then('el solicitante es notificado del rechazo')
 def step_impl(context):
+    from src.feed.models import Notificacion
     from src.materiales.models import PropuestaCambioColeccion
+    
+    # Comprobar que el estado de la propuesta cambió
     context.test.assertEqual(context.solicitud.estado, PropuestaCambioColeccion.RECHAZADA)
+    
+    # Comprobar que el usuario solicitante recibió una notificación
+    notificado = Notificacion.objects.filter(
+        usuario=context.solicitud.usuario_solicitante,
+        mensaje__icontains="rechazada"
+    ).exists()
+    context.test.assertTrue(notificado)
 
 
 

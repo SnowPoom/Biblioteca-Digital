@@ -1199,53 +1199,69 @@ class PropuestaCambioColeccion(models.Model):
 
     @classmethod
     def crear_propuesta_inclusion(cls, coleccion, libro, usuario_solicitante, justificacion):
+        from django.db import transaction
         if not coleccion.participantes_activos().filter(usuario=usuario_solicitante).exists():
             raise PermissionError("Solo los participantes pueden proponer cambios.")
-        propuesta = cls.objects.create(
-            coleccion=coleccion, libro=libro, usuario_solicitante=usuario_solicitante,
-            tipo_cambio=cls.INCLUSION, justificacion=justificacion
-        )
-        
-        BitacoraColeccion.objects.create(
-            coleccion=coleccion,
-            usuario=usuario_solicitante,
-            accion=BitacoraColeccion.PROPUESTA_ENVIADA,
-            detalles=f"Propuesta de inclusión para '{libro.titulo}'"
-        )
-        
-        from src.feed.models import Notificacion
-        Notificacion.objects.create(
-            usuario=coleccion.creador,
-            tipo='sistema',
-            mensaje=f"@{usuario_solicitante.username} ha propuesto añadir el libro '{libro.titulo}' a tu colección '{coleccion.nombre}'.",
-            extra_data={'coleccion_id': coleccion.id}
-        )
-        return propuesta
+            
+        if coleccion.libros.filter(id=libro.id).exists():
+            raise ValueError("El libro ya pertenece a la colección.")
+            
+        with transaction.atomic():
+            propuesta = cls.objects.create(
+                coleccion=coleccion, libro=libro, usuario_solicitante=usuario_solicitante,
+                tipo_cambio=cls.INCLUSION, justificacion=justificacion
+            )
+            
+            detalles_msg = f"Propuesta de inclusión para '{libro.titulo}'"[:260]
+            BitacoraColeccion.objects.create(
+                coleccion=coleccion,
+                usuario=usuario_solicitante,
+                accion=BitacoraColeccion.PROPUESTA_ENVIADA,
+                detalles=detalles_msg
+            )
+            
+            from src.feed.models import Notificacion
+            noti_msg = f"@{usuario_solicitante.username} ha propuesto añadir el libro '{libro.titulo}' a tu colección '{coleccion.nombre}'."[:255]
+            Notificacion.objects.create(
+                usuario=coleccion.creador,
+                tipo='sistema',
+                mensaje=noti_msg,
+                extra_data={'coleccion_id': coleccion.id}
+            )
+            return propuesta
 
     @classmethod
     def crear_propuesta_exclusion(cls, coleccion, libro, usuario_solicitante, justificacion):
+        from django.db import transaction
         if not coleccion.participantes_activos().filter(usuario=usuario_solicitante).exists():
             raise PermissionError("Solo los participantes pueden proponer cambios.")
-        propuesta = cls.objects.create(
-            coleccion=coleccion, libro=libro, usuario_solicitante=usuario_solicitante,
-            tipo_cambio=cls.EXCLUSION, justificacion=justificacion
-        )
-        
-        BitacoraColeccion.objects.create(
-            coleccion=coleccion,
-            usuario=usuario_solicitante,
-            accion=BitacoraColeccion.PROPUESTA_ENVIADA,
-            detalles=f"Propuesta de exclusión para '{libro.titulo}'"
-        )
-        
-        from src.feed.models import Notificacion
-        Notificacion.objects.create(
-            usuario=coleccion.creador,
-            tipo='sistema',
-            mensaje=f"@{usuario_solicitante.username} ha propuesto excluir el libro '{libro.titulo}' de tu colección '{coleccion.nombre}'.",
-            extra_data={'coleccion_id': coleccion.id}
-        )
-        return propuesta
+            
+        if not coleccion.libros.filter(id=libro.id).exists():
+            raise ValueError("El libro no pertenece a la colección.")
+            
+        with transaction.atomic():
+            propuesta = cls.objects.create(
+                coleccion=coleccion, libro=libro, usuario_solicitante=usuario_solicitante,
+                tipo_cambio=cls.EXCLUSION, justificacion=justificacion
+            )
+            
+            detalles_msg = f"Propuesta de exclusión para '{libro.titulo}'"[:260]
+            BitacoraColeccion.objects.create(
+                coleccion=coleccion,
+                usuario=usuario_solicitante,
+                accion=BitacoraColeccion.PROPUESTA_ENVIADA,
+                detalles=detalles_msg
+            )
+            
+            from src.feed.models import Notificacion
+            noti_msg = f"@{usuario_solicitante.username} ha propuesto excluir el libro '{libro.titulo}' de tu colección '{coleccion.nombre}'."[:255]
+            Notificacion.objects.create(
+                usuario=coleccion.creador,
+                tipo='sistema',
+                mensaje=noti_msg,
+                extra_data={'coleccion_id': coleccion.id}
+            )
+            return propuesta
 
     def aprobar(self, admin_usuario):
         from django.db import transaction
@@ -1253,55 +1269,67 @@ class PropuestaCambioColeccion(models.Model):
             raise PermissionError("Solo el administrador puede aprobar propuestas.")
             
         with transaction.atomic():
-            if self.estado != self.PENDIENTE:
+            propuesta = PropuestaCambioColeccion.objects.select_for_update().get(id=self.id)
+            if propuesta.estado != self.PENDIENTE:
                 return False
                 
-            if self.tipo_cambio == self.INCLUSION:
-                self.coleccion.agregar_libro(self.usuario_solicitante, self.libro)
-            elif self.tipo_cambio == self.EXCLUSION:
-                self.coleccion.eliminar_libro(self.usuario_solicitante, self.libro)
+            if propuesta.tipo_cambio == self.INCLUSION:
+                propuesta.coleccion.agregar_libro(propuesta.usuario_solicitante, propuesta.libro)
+            elif propuesta.tipo_cambio == self.EXCLUSION:
+                propuesta.coleccion.eliminar_libro(propuesta.usuario_solicitante, propuesta.libro)
                 
-            self.estado = self.APROBADA
-            self.save()
+            propuesta.estado = self.APROBADA
+            propuesta.save()
             
+            detalles_msg = f"Aprobada propuesta de {propuesta.get_tipo_cambio_display().lower()} para '{propuesta.libro.titulo}'"[:260]
             BitacoraColeccion.objects.create(
-                coleccion=self.coleccion,
+                coleccion=propuesta.coleccion,
                 usuario=admin_usuario,
                 accion=BitacoraColeccion.PROPUESTA_APROBADA,
-                detalles=f"Aprobada propuesta de {self.get_tipo_cambio_display().lower()} para '{self.libro.titulo}'"
+                detalles=detalles_msg
             )
             
             from src.feed.models import Notificacion
+            noti_msg = f"Tu propuesta de {propuesta.get_tipo_cambio_display().lower()} para '{propuesta.libro.titulo}' ha sido aprobada."[:255]
             Notificacion.objects.create(
-                usuario=self.usuario_solicitante,
+                usuario=propuesta.usuario_solicitante,
                 tipo='sistema',
-                mensaje=f"Tu propuesta de {self.get_tipo_cambio_display().lower()} para '{self.libro.titulo}' ha sido aprobada.",
-                extra_data={'coleccion_id': self.coleccion.id}
+                mensaje=noti_msg,
+                extra_data={'coleccion_id': propuesta.coleccion.id}
             )
+            
+            self.estado = propuesta.estado
             return True
 
     def rechazar(self, admin_usuario):
+        from django.db import transaction
         if not self.coleccion.es_administrador(admin_usuario):
             raise PermissionError("Solo el administrador puede rechazar propuestas.")
             
-        if self.estado != self.PENDIENTE:
-            return False
+        with transaction.atomic():
+            propuesta = PropuestaCambioColeccion.objects.select_for_update().get(id=self.id)
+            if propuesta.estado != self.PENDIENTE:
+                return False
+                
+            propuesta.estado = self.RECHAZADA
+            propuesta.save()
             
-        self.estado = self.RECHAZADA
-        self.save()
-        
-        BitacoraColeccion.objects.create(
-            coleccion=self.coleccion,
-            usuario=admin_usuario,
-            accion=BitacoraColeccion.PROPUESTA_RECHAZADA,
-            detalles=f"Rechazada propuesta de {self.get_tipo_cambio_display().lower()} para '{self.libro.titulo}'"
-        )
-        
-        from src.feed.models import Notificacion
-        Notificacion.objects.create(
-            usuario=self.usuario_solicitante,
-            tipo='sistema',
-            mensaje=f"Tu propuesta de {self.get_tipo_cambio_display().lower()} para '{self.libro.titulo}' ha sido rechazada.",
-            extra_data={'coleccion_id': self.coleccion.id}
-        )
-        return True
+            detalles_msg = f"Rechazada propuesta de {propuesta.get_tipo_cambio_display().lower()} para '{propuesta.libro.titulo}'"[:260]
+            BitacoraColeccion.objects.create(
+                coleccion=propuesta.coleccion,
+                usuario=admin_usuario,
+                accion=BitacoraColeccion.PROPUESTA_RECHAZADA,
+                detalles=detalles_msg
+            )
+            
+            from src.feed.models import Notificacion
+            noti_msg = f"Tu propuesta de {propuesta.get_tipo_cambio_display().lower()} para '{propuesta.libro.titulo}' ha sido rechazada."[:255]
+            Notificacion.objects.create(
+                usuario=propuesta.usuario_solicitante,
+                tipo='sistema',
+                mensaje=noti_msg,
+                extra_data={'coleccion_id': propuesta.coleccion.id}
+            )
+            
+            self.estado = propuesta.estado
+            return True
