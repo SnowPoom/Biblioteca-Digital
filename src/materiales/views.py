@@ -35,24 +35,60 @@ def vista_previa_material(request):
         'categorias': ['categoria', 'categoria'],
     })
 def detalle_libro(request, pk):
+    from django.http import Http404
     from src.feed.models import Publicacion
     from django.shortcuts import get_object_or_404
     from .models import Coleccion
-    libro = get_object_or_404(Publicacion, pk=pk)
+
+    material = Libro.objects.filter(pk=pk).first()
+    publicacion = Publicacion.objects.filter(pk=pk).first()
+
+    if publicacion:
+        libro = publicacion
+    elif material and material.autor == request.user:
+        # RN-PUB-10: el libro retirado sigue disponible de forma privada para su autor.
+        libro = material
+    else:
+        raise Http404('Material no encontrado.')
+
+    # RN-PUB-13: Cada visita de un usuario distinto al autor cuenta como visualizacion.
+    if material and material.autor != request.user:
+        material.registrar_visualizacion()
 
     # RN-PUB-13: Las métricas del material solo se exponen al autor.
-    material = Libro.objects.filter(pk=pk).first()
     metricas = material.metricas_para(request.user) if material else None
     colecciones_usuario = Coleccion.objects.filter(participaciones__usuario=request.user) if request.user.is_authenticated else []
+    puede_retirar = bool(material and material.autor == request.user and material.estado == Libro.PUBLICADO)
+    esta_retirado = bool(material and material.estado == Libro.RETIRADO)
 
     return render(request, 'materiales/vista_previa_material.html', {
         'colecciones_usuario': colecciones_usuario,
         'libro': libro,
         'titulo': libro.titulo,
         'autor': libro.autor,
-        'descripcion': libro.descripcion,
+        'descripcion': getattr(libro, 'descripcion', ''),
         'metricas': metricas,
+        'puede_retirar': puede_retirar,
+        'esta_retirado': esta_retirado,
     })
+
+
+@login_required(login_url='/auth/')
+def retirar_libro(request, pk):
+    """Vista para que el autor retire (despublique) su propio material.
+
+    Reglas de negocio aplicadas:
+    - RN-PUB-10: El autor puede retirar su propio material en cualquier momento.
+    """
+    from django.contrib import messages
+
+    libro = get_object_or_404(Libro, pk=pk, autor=request.user)
+
+    if request.method == 'POST' and libro.estado == Libro.PUBLICADO:
+        libro.retirar()
+        messages.success(request, f'Has retirado "{libro.titulo}". Ya no es visible para la comunidad.')
+
+    return redirect('materiales:detalle_libro', pk=pk)
 
 
 def lectura_material(request, libro_id):
