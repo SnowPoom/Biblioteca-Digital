@@ -406,6 +406,54 @@ def descargar_libro(request, libro_id, formato='pdf'):
     respuesta['Content-Disposition'] = f'attachment; filename="{libro.titulo}.{extension}"'
     return respuesta
 
+@login_required(login_url='/auth/')
+def descargar_pagina(request, libro_id, pagina, formato='pdf'):
+    return descargar_rango(request, libro_id, pagina, pagina, formato)
+
+@login_required(login_url='/auth/')
+def descargar_rango(request, libro_id, inicio, fin, formato='pdf'):
+    libro = get_object_or_404(Libro, pk=libro_id)
+    perfil = request.user.perfil
+
+    formato = formato.lower()
+    if formato not in ('pdf', 'epub'):
+        formato = 'pdf'
+
+    paginas_a_descargar = fin - inicio + 1
+    if paginas_a_descargar <= 0:
+        return HttpResponse("Rango de páginas inválido", status=400)
+
+    # RN-EXP-05: La descarga se registra como metrica sin importar si supera la cuota
+    libro.registrar_descarga()
+
+    # RN-EXP-02: Renovar la cuota si han pasado 30 dias antes de intentar usarla
+    perfil.renovar_cuota_si_corresponde()
+
+    # RN-EXP-01: Solo se permite la descarga si las paginas no exceden la cuota disponible
+    if not perfil.puede_descargar(paginas_a_descargar):
+        return HttpResponse(
+            "no tiene suficientes páginas en su cuota",
+            status=403,
+            content_type='text/plain',
+        )
+
+    perfil.reducir_cuota(paginas_a_descargar)
+
+    # RN-EXP-06: El archivo generado incluye metadatos del autor original y la fuente
+    contenido = libro.generar_contenido_descarga(formato, inicio, fin)
+
+    if formato == 'epub':
+        tipo_contenido = 'application/epub+zip'
+        extension = 'epub'
+    else:
+        tipo_contenido = 'application/pdf'
+        extension = 'pdf'
+
+    respuesta = HttpResponse(contenido, content_type=tipo_contenido)
+    rango_str = f"_paginas_{inicio}_a_{fin}" if inicio != fin else f"_pagina_{inicio}"
+    respuesta['Content-Disposition'] = f'attachment; filename="{libro.titulo}{rango_str}.{extension}"'
+    return respuesta
+
 # -----------------------------------------------------------------------------
 # VISTAS DE COLECCIONES
 # -----------------------------------------------------------------------------
@@ -435,6 +483,13 @@ def detalle_coleccion(request, coleccion_id):
     libros_disponibles = Libro.objects.filter(estado=Libro.PUBLICADO).exclude(id__in=coleccion.libros.all()) if es_miembro else []
     libros_coleccion = coleccion.librocoleccion_set.select_related('libro', 'agregado_por').all()
     
+    bitacora = []
+    if es_miembro:
+        try:
+            bitacora = coleccion.obtener_bitacora(request.user)
+        except PermissionError:
+            pass
+    
     context = {
         'coleccion': coleccion,
         'participaciones': participaciones,
@@ -444,6 +499,7 @@ def detalle_coleccion(request, coleccion_id):
         'invitaciones': invitaciones,
         'libros_disponibles': libros_disponibles,
         'libros_coleccion': libros_coleccion,
+        'bitacora': bitacora,
     }
     return render(request, 'colecciones/detalle_coleccion.html', context)
 

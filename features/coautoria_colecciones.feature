@@ -83,3 +83,19 @@ Característica: Coautoría y edición compartida de colecciones
     Cuando el creador de la colección es eliminado de la plataforma
     Entonces el sistema asigna el rol de administrador al participante activo con mayor índice de reputación de colaborador
     Y el participante retirado no es considerado para el rol de administrador
+
+  Escenario: Registrar acciones de libros en la bitácora de la colección
+    Dado que un participante agrega o quita un libro de la colección
+    Entonces el sistema registra automáticamente la acción en la bitácora
+    Y el registro muestra el tipo de acción, el autor y la fecha
+
+  Escenario: Registrar ingreso y salida de miembros en la bitácora
+    Dado que un usuario ingresa o sale de una colección colaborativa
+    Entonces el sistema registra automáticamente la acción en la bitácora
+    Y el registro muestra el tipo de acción, el usuario y la fecha
+
+  Escenario: Solo los miembros pueden visualizar la bitácora de actividad
+    Dado que un usuario intenta visualizar la bitácora de una colección
+    Cuando el usuario no es miembro activo de la colección
+    Entonces el sistema deniega el acceso a la bitácora
+    Y si es miembro activo, el sistema muestra el historial de cambios

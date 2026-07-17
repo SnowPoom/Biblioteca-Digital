@@ -217,17 +217,33 @@ class Libro(models.Model):
         self.descargas += 1
         self.save()
 
-    def generar_contenido_descarga(self, formato='pdf'):
-        """Genera un archivo en formato PDF o EPUB con el contenido del libro
-        y metadatos de autoria original (RN-EXP-06)."""
-        if formato == 'epub':
-            return self._generar_epub()
-        return self._generar_pdf()
-
-    def _extraer_texto_plano(self):
-        """Extrae texto plano del contenido HTML del libro."""
+    def _obtener_contenido_paginas(self, inicio=None, fin=None):
+        """Extrae unicamente el HTML correspondiente al rango de paginas indicado."""
         import re
         texto = self.contenido_texto or ''
+        if inicio is None and fin is None:
+            return texto
+            
+        paginas = re.split(r'<div\s+class=[\'"]page-gap[\'"][^>]*>\s*</div>', texto)
+        
+        idx_inicio = max(0, inicio - 1) if inicio is not None else 0
+        idx_fin = fin if fin is not None else len(paginas)
+        
+        paginas_seleccionadas = paginas[idx_inicio:idx_fin]
+        return '<div class="page-gap"></div>'.join(paginas_seleccionadas)
+
+    def generar_contenido_descarga(self, formato='pdf', pagina_inicio=None, pagina_fin=None):
+        """Genera un archivo en formato PDF o EPUB con el contenido del libro
+        y metadatos de autoria original (RN-EXP-06)."""
+        contenido_html = self._obtener_contenido_paginas(pagina_inicio, pagina_fin)
+        if formato == 'epub':
+            return self._generar_epub(contenido_html)
+        return self._generar_pdf(contenido_html)
+
+    def _extraer_texto_plano(self, texto):
+        """Extrae texto plano del contenido HTML especificado."""
+        import re
+        texto = texto or ''
         # Reemplazar saltos de parrafo/divs con saltos de linea
         texto = re.sub(r'<br\s*/?>', '\n', texto)
         texto = re.sub(r'</p>', '\n', texto)
@@ -241,11 +257,11 @@ class Libro(models.Model):
         texto = texto.replace('&quot;', '"')
         return texto.strip()
 
-    def _generar_pdf(self):
-        """Genera un PDF valido con el contenido real del libro y metadatos obligatorios."""
+    def _generar_pdf(self, contenido_html):
+        """Genera un PDF valido con el contenido proporcionado y metadatos obligatorios."""
         nombre_autor = self.autor.get_full_name() or self.autor.username
         fuente = "Biblioteca Digital"
-        texto_contenido = self._extraer_texto_plano()
+        texto_contenido = self._extraer_texto_plano(contenido_html)
 
         linea_meta = f"Autor original: {nombre_autor}  |  Fuente: {fuente}"
         lineas = [linea_meta, f"Titulo: {self.titulo}", ""]
@@ -320,14 +336,15 @@ class Libro(models.Model):
 
         return (encabezado + cuerpo + "\n" + xref + trailer).encode('latin-1')
 
-    def _generar_epub(self):
-        """Genera un EPUB valido con el contenido real del libro y metadatos obligatorios."""
+    def _generar_epub(self, contenido_html):
+        """Genera un EPUB valido con el contenido proporcionado y metadatos obligatorios."""
         import io
         import zipfile
 
         nombre_autor = self.autor.get_full_name() or self.autor.username
         fuente = "Biblioteca Digital"
-        contenido_html = self.contenido_texto or '<p>Sin contenido.</p>'
+        if not contenido_html or not contenido_html.strip():
+            contenido_html = '<p>Sin contenido.</p>'
         mimetype = 'application/epub+zip'
         container_xml = (
             '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -623,6 +640,12 @@ class Coleccion(models.Model):
                     libro=libro,
                     agregado_por=usuario
                 )
+                BitacoraColeccion.objects.create(
+                    coleccion=col,
+                    usuario=usuario,
+                    accion=BitacoraColeccion.AGREGAR_LIBRO,
+                    detalles=f'"{libro.titulo}"'
+                )
             except IntegrityError:
                 raise ValidationError("El libro ya se encuentra en la colección.")
 
@@ -644,6 +667,12 @@ class Coleccion(models.Model):
             raise PermissionError("Solo el administrador o el participante activo que añadió el libro puede eliminarlo.")
 
         lc.delete()
+        BitacoraColeccion.objects.create(
+            coleccion=self,
+            usuario=usuario,
+            accion=BitacoraColeccion.QUITAR_LIBRO,
+            detalles=f'"{libro.titulo}"'
+        )
 
     def es_administrador(self, usuario):
         return self.participantes_activos().filter(usuario=usuario, rol=ParticipacionColeccion.ADMINISTRADOR).exists()
@@ -681,10 +710,21 @@ class Coleccion(models.Model):
             usuario=usuario,
             defaults={'rol': rol, 'estado': ParticipacionColeccion.ACTIVO}
         )
-        if not creada and participacion.estado == ParticipacionColeccion.RETIRADO:
+        if creada:
+            BitacoraColeccion.objects.create(
+                coleccion=self,
+                usuario=usuario,
+                accion=BitacoraColeccion.INGRESO_MIEMBRO
+            )
+        elif participacion.estado == ParticipacionColeccion.RETIRADO:
             participacion.estado = ParticipacionColeccion.ACTIVO
             participacion.rol = rol
             participacion.save()
+            BitacoraColeccion.objects.create(
+                coleccion=self,
+                usuario=usuario,
+                accion=BitacoraColeccion.INGRESO_MIEMBRO
+            )
 
     def invitar_usuario(self, admin, usuario_invitado):
         if not self.es_administrador(admin):
@@ -754,6 +794,11 @@ class Coleccion(models.Model):
         if participacion:
             participacion.estado = ParticipacionColeccion.RETIRADO
             participacion.save()
+            BitacoraColeccion.objects.create(
+                coleccion=self,
+                usuario=admin_usuario,
+                accion=BitacoraColeccion.SALIDA_MIEMBRO
+            )
             from src.feed.models import Notificacion
             Notificacion.objects.create(
                 usuario=participante_usuario,
@@ -774,6 +819,12 @@ class Coleccion(models.Model):
                 
         participacion.delete()
         
+        BitacoraColeccion.objects.create(
+            coleccion=self,
+            usuario=usuario,
+            accion=BitacoraColeccion.SALIDA_MIEMBRO
+        )
+        
         if self.creador and self.creador != usuario:
             from src.feed.models import Notificacion
             Notificacion.objects.create(
@@ -784,6 +835,11 @@ class Coleccion(models.Model):
             )
             
         return True
+
+    def obtener_bitacora(self, usuario):
+        if not self.participantes_activos().filter(usuario=usuario).exists():
+            raise PermissionError("Solo los miembros activos pueden ver la bitácora.")
+        return BitacoraColeccion.objects.filter(coleccion=self).order_by('-fecha')
 
 class ParticipacionColeccion(models.Model):
     ADMINISTRADOR = 'administrador'
@@ -1014,3 +1070,32 @@ def reasignar_creador_al_eliminar_participacion(sender, instance, **kwargs):
     if coleccion is None or coleccion.creador_id is not None:
         return
     coleccion.reasignar_administrador()
+
+class BitacoraColeccion(models.Model):
+    AGREGAR_LIBRO = 'agregar_libro'
+    QUITAR_LIBRO = 'quitar_libro'
+    INGRESO_MIEMBRO = 'ingreso_miembro'
+    SALIDA_MIEMBRO = 'salida_miembro'
+    CAMBIO_CONFIGURACION = 'cambio_configuracion'
+
+    OPCIONES_ACCION = [
+        (AGREGAR_LIBRO, 'Agregar libro'),
+        (QUITAR_LIBRO, 'Quitar libro'),
+        (INGRESO_MIEMBRO, 'Ingreso miembro'),
+        (SALIDA_MIEMBRO, 'Salida miembro'),
+        (CAMBIO_CONFIGURACION, 'Cambio configuración'),
+    ]
+
+    coleccion = models.ForeignKey(Coleccion, on_delete=models.CASCADE, related_name='bitacora')
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    accion = models.CharField(max_length=50, choices=OPCIONES_ACCION)
+    detalles = models.CharField(max_length=255, null=True, blank=True)
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Registro de Bitácora'
+        verbose_name_plural = 'Registros de Bitácora'
+        ordering = ['-fecha']
+
+    def __str__(self):
+        return f"{self.usuario.username} - {self.get_accion_display()} en {self.coleccion.nombre}"
